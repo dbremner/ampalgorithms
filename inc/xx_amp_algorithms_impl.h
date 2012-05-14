@@ -1,5 +1,5 @@
 /*----------------------------------------------------------------------------
- * Copyright © Microsoft Corp.
+ * Copyright (c) Microsoft Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not 
  * use this file except in compliance with the License.  You may obtain a copy 
@@ -26,72 +26,65 @@
 
 namespace amp_algorithms
 {
-namespace _details
-{
+
 using namespace concurrency;
 
-void amp_assert(bool cond) restrict(cpu)
+namespace _details
 {
-	assert(cond);
-}
+    inline accelerator_view auto_select_target()
+    {
+        static accelerator_view auto_select_accelerator_view = concurrency::accelerator(accelerator::cpu_accelerator).create_view();
+        return auto_select_accelerator_view;
+    }
 
-void amp_assert(bool cond) restrict(amp)
-{
-	// TODO
-}
-	
-template <typename array_type>
-void assert_arrays_are_same_toplevel_resource(const array_type& a1, const array_type& a2) restrict(cpu,amp)
-{
-	// TODO
-}
+    template <int _Rank, typename _Kernel_type>
+    void parallel_for_each(const accelerator_view &_Accl_view, const extent<_Rank>& _Compute_domain, const _Kernel_type &_Kernel)
+    {
+        _Host_Scheduling_info _SchedulingInfo = { NULL };
+        if (_Accl_view != _details::auto_select_target()) 
+        {
+            _SchedulingInfo._M_accelerator_view = details::_Get_accelerator_view_impl_ptr(_Accl_view);
+        }
 
-//////////////////////////////////////////////////////////////////////////
-// Empty array factories
-//
-// Random iterators require a default constructors. Because array_view
-// iterators must hold an array view or equivalent, there must be a way
-// to create a "default" array_view. It is possible to simply not provide
-// a default constructor, but then some algorithms may not work.
-//
-// Instead the following classes and functions make a good effort to create
-// a "real" array_view pointing to at least superficially valid data -- as 
-// long as it is not dereferenced.
-//
-// Note: only array_view<T, 1> is supported.
-/////////////////////////////////////////////////////////////////////////////
-	
-// Specialization for array_views 
-template <typename value_type>
-class empty_array_view_factory
-{
-public:
-	// On the CPU, use local static variables as stable storage
-	static concurrency::array_view<value_type> create() restrict(cpu)
-	{
-		static value_type stable_storage;
-		return array_view<value_type>(1, &stable_storage);
-	}
+        details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
+    }
 
-	// On the accelerator, use the stable storage helper.
-	static concurrency::array_view<value_type> create() restrict(amp)
-	{
-		return array_view<value_type>(0, nullptr);
-	}
-};
+    template <int _Dim0, int _Dim1, int _Dim2, typename _Kernel_type>
+    void parallel_for_each(const accelerator_view &_Accl_view, const tiled_extent<_Dim0, _Dim1, _Dim2>& _Compute_domain, const _Kernel_type& _Kernel)
+    {
+        _Host_Scheduling_info _SchedulingInfo = { NULL };
+        if (_Accl_view != _details::auto_select_target()) 
+        {
+            _SchedulingInfo._M_accelerator_view = details::_Get_accelerator_view_impl_ptr(_Accl_view);
+        }
 
-template <class value_type, int rank>
-array_view<value_type> make_array_view(array<value_type, rank>& arr) restrict(cpu,amp)
-{
-	return arr.view_as(extent<1>(arr.get_extent().size()));
-}
+        details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
+    }
 
-template <class value_type, int rank>
-array_view<const value_type> make_array_view(const array<value_type, rank>& arr) restrict(cpu,amp)
-{
-	return arr.view_as(extent<1>(arr.get_extent().size()));
-}
+    template <int _Dim0, int _Dim1, typename _Kernel_type>
+    void parallel_for_each(const accelerator_view &_Accl_view, const tiled_extent<_Dim0, _Dim1>& _Compute_domain, const _Kernel_type& _Kernel)
+    {
+        _Host_Scheduling_info _SchedulingInfo = { NULL };
+        if (_Accl_view != _details::auto_select_target()) 
+        {
+            _SchedulingInfo._M_accelerator_view = details::_Get_accelerator_view_impl_ptr(_Accl_view);
+        }
 
-} // namespace _details
+        details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
+    }
+
+    template <int _Dim0, typename _Kernel_type>
+    void parallel_for_each(const accelerator_view &_Accl_view, const tiled_extent<_Dim0>& _Compute_domain, const _Kernel_type& _Kernel)
+    {
+        _Host_Scheduling_info _SchedulingInfo = { NULL };
+        if (_Accl_view != _details::auto_select_target()) 
+        {
+            _SchedulingInfo._M_accelerator_view = details::_Get_accelerator_view_impl_ptr(_Accl_view);
+        }
+
+        details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
+    }
+
+} // namespace amp_algorithms::_details
 
 } // namespace amp_algorithms

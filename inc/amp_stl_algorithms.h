@@ -1,5 +1,5 @@
 /*----------------------------------------------------------------------------
- * Copyright © Microsoft Corp.
+ * Copyright (c) Microsoft Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not 
  * use this file except in compliance with the License.  You may obtain a copy 
@@ -23,7 +23,7 @@
 #include <xx_amp_algorithms_impl.h>
 #include <amp_iterators.h>
 
-namespace amp_algorithms
+namespace amp_stl_algorithms
 {
 //----------------------------------------------------------------------------
 // all_of, any_of, none_of
@@ -556,7 +556,7 @@ template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator
  // TODO: consider supporting the heap functions (is_heap et al)
 
 #ifdef max
-#error amp_algorithms encoutered a definition of the macro max
+#error amp_stl_algorithms encoutered a definition of the macro max
 #endif
 
 template<typename T> 
@@ -566,7 +566,7 @@ template<typename T, typename Compare>
 const T& max( const T& a, const T& b, Compare comp ) restrict (cpu,amp);
 
 #ifdef max
-#error amp_algorithms encoutered a definition of the macro max
+#error amp_stl_algorithms encoutered a definition of the macro max
 #endif
 
 template<typename T> 
@@ -694,6 +694,6 @@ RandomAccessIterator partial_sum( ConstRandomAccessIterator first,
                                   RandomAccessIterator result, 
 							      BinaryOperation binary_op );
 
-}// namespace amp_algorithms
+}// namespace amp_stl_algorithms
 
-#include <xx_amp_algorithms_impl_inl.h>
+#include <xx_amp_stl_algorithms_impl_inl.h>

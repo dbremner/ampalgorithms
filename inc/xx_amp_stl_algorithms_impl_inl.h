@@ -1,5 +1,5 @@
 /*----------------------------------------------------------------------------
- * Copyright © Microsoft Corp.
+ * Copyright (c) Microsoft Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not 
  * use this file except in compliance with the License.  You may obtain a copy 
@@ -23,7 +23,7 @@
 #include <amp_stl_algorithms.h>
 #include <functional>
 
-namespace amp_algorithms
+namespace amp_stl_algorithms
 {
 
 namespace _details
@@ -82,7 +82,7 @@ UnaryFunction for_each( ConstRandomAccessIterator first, ConstRandomAccessIterat
 template<typename ConstRandomAccessIterator,  typename UnaryPredicate >
 bool all_of(ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate p ) 
 {
-	return !amp_algorithms::any_of(
+	return !amp_stl_algorithms::any_of(
 		first, last, 
 		[p] (const decltype(*first)& val) restrict(amp) { return !p(val); }
 	);
@@ -95,7 +95,7 @@ template<typename ConstRandomAccessIterator, typename UnaryPredicate, typename O
 void any_of(ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate p,  OutputIterator dest)
 {
 	auto section_view = _details::create_section(dest, 1);
-	amp_algorithms::for_each_no_return(
+	amp_stl_algorithms::for_each_no_return(
 		first, last, 
 		[section_view, p] (const decltype(*first)& val) restrict(amp) 
         {
@@ -118,7 +118,7 @@ bool any_of(ConstRandomAccessIterator first, ConstRandomAccessIterator last, Una
 {
 	int found_any_storage = 0;
 	concurrency::array_view<int> found_any_av(extent<1>(1), &found_any_storage);
-    amp_algorithms::any_of(first, last, p, amp_algorithms::begin(found_any_av));
+    amp_stl_algorithms::any_of(first, last, p, amp_stl_algorithms::begin(found_any_av));
 	found_any_av.synchronize();
 	return found_any_storage == 1;
 }
@@ -126,7 +126,7 @@ bool any_of(ConstRandomAccessIterator first, ConstRandomAccessIterator last, Una
 template<typename ConstRandomAccessIterator, typename UnaryPredicate >
 bool none_of( ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate p )
 {
-	return !amp_algorithms::any_of(first, last, p);
+	return !amp_stl_algorithms::any_of(first, last, p);
 }
 
 
@@ -137,7 +137,7 @@ template<typename ConstRandomAccessIterator, typename T >
 typename std::iterator_traits<ConstRandomAccessIterator>::difference_type
 count( ConstRandomAccessIterator first, ConstRandomAccessIterator last, const T &value )
 {
-	return amp_algorithms::count_if(
+	return amp_stl_algorithms::count_if(
 		first, last, 
 		[value] (const decltype(*first)& cur_val) restrict(amp) { return cur_val==value; }
 	);
@@ -235,9 +235,9 @@ ConstRandomAccessIterator find_if(ConstRandomAccessIterator first, ConstRandomAc
 template<typename ConstRandomAccessIterator, typename T>
 ConstRandomAccessIterator find( ConstRandomAccessIterator first, ConstRandomAccessIterator last, const T& value )
 {
-	return amp_algorithms::find_if(first, last, [=] (const decltype(*first)& curr_val) restrict(amp) {
+	return amp_stl_algorithms::find_if(first, last, [=] (const decltype(*first)& curr_val) restrict(amp) {
 		return curr_val == value;
 	});
 }
 
-}// namespace amp_algorithms
+}// namespace amp_stl_algorithms

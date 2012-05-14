@@ -26,7 +26,7 @@
 #include <amp_stl_algorithms.h>
 
 using namespace concurrency;
-using namespace amp_algorithms;
+using namespace amp_stl_algorithms;
 
 // TODO: replace this with a unit test framework
 
@@ -37,7 +37,7 @@ void test_for_each_no_return()
 	array_view<const int> av(1024, vec);
 	int sum = 0;
 	array_view<int> av_sum(1, &sum);
-	amp_algorithms::for_each_no_return(begin(av), end(av), [av_sum] (int val) restrict(amp) {
+	amp_stl_algorithms::for_each_no_return(begin(av), end(av), [av_sum] (int val) restrict(amp) {
 		atomic_fetch_add(&av_sum(0), val);
 	});
 	av_sum.synchronize();
@@ -50,11 +50,11 @@ void test_find()
 	static const int n = sizeof(numbers)/sizeof(numbers[0]);
 
 	array_view<const int> av(extent<1>(n), numbers);
-	auto iter = amp_algorithms::find(begin(av), end(av), 3);
+	auto iter = amp_stl_algorithms::find(begin(av), end(av), 3);
 	int position = std::distance(begin(av), iter);
 	assert(position == 1);
 
-	iter = amp_algorithms::find(begin(av), end(av), 17);
+	iter = amp_stl_algorithms::find(begin(av), end(av), 17);
 	assert(iter == end(av));
 }
 
@@ -64,9 +64,9 @@ void test_none_of()
 	static const int n = sizeof(numbers)/sizeof(numbers[0]);
 
 	array_view<const int> av(extent<1>(n), numbers);
-	bool r1 = amp_algorithms::none_of(begin(av), end(av), [] (int v) restrict(amp) -> bool { return v>10; });
+	bool r1 = amp_stl_algorithms::none_of(begin(av), end(av), [] (int v) restrict(amp) -> bool { return v>10; });
 	assert(r1 == true);
-	bool r2 = amp_algorithms::none_of(begin(av), end(av), [] (int v) restrict(amp) -> bool { return v>5; });
+	bool r2 = amp_stl_algorithms::none_of(begin(av), end(av), [] (int v) restrict(amp) -> bool { return v>5; });
 	assert(r2 == false);
 }
 
@@ -76,9 +76,9 @@ void test_any_of()
 	static const int n = sizeof(numbers)/sizeof(numbers[0]);
 
 	array_view<const int> av(extent<1>(n), numbers);
-	bool r1 = amp_algorithms::any_of(begin(av), end(av), [] (int v) restrict(amp) -> bool { return v>10; });
+	bool r1 = amp_stl_algorithms::any_of(begin(av), end(av), [] (int v) restrict(amp) -> bool { return v>10; });
 	assert(r1 == false);
-	bool r2 = amp_algorithms::any_of(begin(av), end(av), [] (int v) restrict(amp) -> bool { return v>5; });
+	bool r2 = amp_stl_algorithms::any_of(begin(av), end(av), [] (int v) restrict(amp) -> bool { return v>5; });
 	assert(r2 == true);
 }
 
@@ -88,9 +88,9 @@ void test_all_of()
 	static const int n = sizeof(numbers)/sizeof(numbers[0]);
 
 	array_view<const int> av(extent<1>(n), numbers);
-	bool r1 = amp_algorithms::all_of(begin(av), end(av), [] (int v) restrict(amp) -> bool { return v>10; });
+	bool r1 = amp_stl_algorithms::all_of(begin(av), end(av), [] (int v) restrict(amp) -> bool { return v>10; });
 	assert(r1 == false);
-	bool r2 = amp_algorithms::all_of(begin(av), end(av), [] (int v) restrict(amp) -> bool { return v>5; });
+	bool r2 = amp_stl_algorithms::all_of(begin(av), end(av), [] (int v) restrict(amp) -> bool { return v>5; });
 	assert(r2 == false);
 }
 
@@ -99,9 +99,9 @@ void test_count()
 	static const int numbers[] = {1 , 3, 6, 3, 2, 2, 7, 8, 2, 9, 2, 19, 2};
 	static const int n = sizeof(numbers)/sizeof(numbers[0]);
 	array_view<const int> av(extent<1>(n), numbers);
-	auto r1 = amp_algorithms::count(begin(av), end(av), 2);
+	auto r1 = amp_stl_algorithms::count(begin(av), end(av), 2);
 	assert(r1 == 5);
-	auto r2 = amp_algorithms::count(begin(av), end(av), 17);
+	auto r2 = amp_stl_algorithms::count(begin(av), end(av), 17);
 	assert(r2 == 0);
 }
 

@@ -1,5 +1,5 @@
 /*----------------------------------------------------------------------------
- * Copyright © Microsoft Corp.
+ * Copyright (c) Microsoft Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not 
  * use this file except in compliance with the License.  You may obtain a copy 
@@ -24,9 +24,9 @@
 #include <amp.h>
 #include <iterator>
 #include <type_traits>
-#include <xx_amp_algorithms_impl.h>
+#include <xx_amp_stl_algorithms_impl.h>
 
-namespace amp_algorithms
+namespace amp_stl_algorithms
 {
 using namespace concurrency;
 //----------------------------------------------------------------------------
@@ -297,4 +297,4 @@ array_view_iterator<value_type> end(const concurrency::array_view<value_type>& a
 	return array_view_iterator<value_type>(arr, arr.get_extent().size());
 }
 
-} // amp_algorithm
+} // amp_stl_algorithms

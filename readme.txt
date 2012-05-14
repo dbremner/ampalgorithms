@@ -11,6 +11,6 @@ To use the library:
 2) Add "include <amp_stl_algorthms>" in cpp source file. 
    (There may be new headers for additional algorithms that will be introduced in future)
 
-To follow an example, please use the amp_algorithms.vcxproj as a guide to creating 
-a project for using the C++ AMP algorithms.
+To follow an example, please use the amp_stl_algorithms.vcxproj and amp_algorithms.vcxproj
+project files as a guide to creating a project for using the C++ AMP algorithms.
  
