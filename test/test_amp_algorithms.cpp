@@ -112,6 +112,93 @@ void test_functor_view()
     }
 }
 
+void test_generate()
+{
+	std::vector<int> vec(1024);
+	array_view<int,1> av(1024, vec);
+	av.discard_data();
+
+	amp_algorithms::generate(av, [] () restrict(amp) {
+		return 7;
+	});
+	av.synchronize();
+
+	std::for_each(begin(vec), end(vec), [] (int element) {
+		assert(element == 7);
+	});
+}
+
+void test_unary_transform()
+{
+	const int height = 16;
+	const int width = 16;
+	const int size = height * width;
+
+	std::vector<int> vec_in(size);
+	std::fill(begin(vec_in), end(vec_in), 7);
+	array_view<const int, 2> av_in(height, width, vec_in);
+
+	std::vector<int> vec_out(size);
+	array_view<int,2> av_out(height, width, vec_out);
+
+	// Test "transform" by doubling the input elements
+
+	amp_algorithms::transform(av_in, av_out, [] (int x) restrict(amp) {
+		return 2 * x;
+	});
+	av_out.synchronize();
+
+	std::for_each(begin(vec_out), end(vec_out), [] (int element) {
+		assert(element == 2*7);
+	});
+}
+
+void test_binary_transform()
+{
+	const int depth = 16;
+	const int height = 16;
+	const int width = 16;
+	const int size = depth * height * width;
+
+	std::vector<int> vec_in1(size);
+	std::fill(begin(vec_in1), end(vec_in1), 343);
+	array_view<const int, 3> av_in1(depth, height, width, vec_in1);
+
+	std::vector<int> vec_in2(size);
+	std::fill(begin(vec_in2), end(vec_in2), 323);
+	array_view<const int, 3> av_in2(depth, height, width, vec_in2);
+
+	std::vector<int> vec_out(size);
+	array_view<int, 3> av_out(depth, height, width, vec_out);
+
+	// Test "transform" by adding the two input elements
+
+	amp_algorithms::transform(av_in1, av_in2, av_out, [] (int x1, int x2) restrict(amp) {
+		return x1 + x2;
+	});
+	av_out.synchronize();
+
+	std::for_each(begin(vec_out), end(vec_out), [] (int element) {
+		assert(element == 343 + 323);
+	});
+}
+
+void test_fill()
+{
+	std::vector<int> vec(1024);
+	array_view<int> av(1024, vec);
+	av.discard_data();
+
+	amp_algorithms::fill(av, 7);
+	av.synchronize();
+
+	std::for_each(begin(vec), end(vec), [] (int element) {
+		assert(element == 7);
+	});
+}
+
+
+
 int main()
 {
     //test_indexable_view_traits();
@@ -120,6 +207,11 @@ int main()
     test_reduce<float>(1023 * 1029 * 5, amp_algorithms::max<float>(), "Test max reduction float");
 
     test_functor_view<float>();
+
+	test_generate();
+	test_unary_transform();
+	test_binary_transform();
+	test_fill();
 
     return 0;
 }

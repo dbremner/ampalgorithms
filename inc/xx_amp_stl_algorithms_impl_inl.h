@@ -77,6 +77,115 @@ UnaryFunction for_each( ConstRandomAccessIterator first, ConstRandomAccessIterat
 }
 
 //----------------------------------------------------------------------------
+// generate, generate_n
+//
+// The "Generator" functor needs to be callable as "g()" and must return a type
+// that is assignable to RandomAccessIterator::value_type.  The functor needs
+// to be blittable and cannot contain any array, array_view, or textures.
+//----------------------------------------------------------------------------
+
+template<typename RandomAccessIterator, typename Size, typename Generator>
+void generate_n(RandomAccessIterator begin, Size count, Generator g)
+{
+	if (count <= 0) 
+		return;
+
+	auto section_view = _details::create_section(begin, count);
+
+	concurrency::parallel_for_each(section_view.extent, [g,section_view] (index<1> idx) restrict(amp) {
+		section_view[idx] = g();
+	});
+}
+
+template <typename RandomAccessIterator, typename Generator>
+void generate(RandomAccessIterator begin, RandomAccessIterator end, Generator g)
+{
+	typedef std::iterator_traits<RandomAccessIterator>::difference_type difference_type;
+
+	difference_type distance = std::distance(begin, end);
+
+	amp_stl_algorithms::generate_n(begin, distance, g);
+}
+
+//----------------------------------------------------------------------------
+// fill, fill_n
+//----------------------------------------------------------------------------
+
+template<typename RandomAccessIterator, typename T>
+void fill( RandomAccessIterator begin, RandomAccessIterator end, const T& value )
+{
+	amp_stl_algorithms::generate(begin, end, [value] () restrict(amp) { return value; });
+}
+
+template<typename RandomAccessIterator, typename Size, typename T>
+void fill_n( RandomAccessIterator begin, Size count, const T& value )
+{
+	amp_stl_algorithms::generate_n(begin, count, [value] () restrict(amp) { return value; });
+}
+
+//----------------------------------------------------------------------------
+// transform (Unary)
+//
+// The "UnaryFunction" functor needs to be callable as "func(ConstRandomAccessIterator::value_type)".
+// The functor needs to be blittable and cannot contain any array, array_view, or textures.
+//----------------------------------------------------------------------------
+
+template<typename ConstRandomAccessIterator,typename RandomAccessIterator, typename UnaryFunction>
+RandomAccessIterator transform( ConstRandomAccessIterator begin1, 
+						        ConstRandomAccessIterator end1, 
+						        RandomAccessIterator result_begin,
+						        UnaryFunction func)
+{
+	typedef std::iterator_traits<ConstRandomAccessIterator>::difference_type difference_type;
+
+	difference_type distance = std::distance(begin1, end1);
+	if (distance <= 0) 
+		return result_begin;
+
+	auto input_view = _details::create_section(begin1, distance);
+	auto output_view = _details::create_section(result_begin, distance);
+
+	concurrency::parallel_for_each(output_view.extent, [func,input_view,output_view] (index<1> idx) restrict(amp) {
+		output_view[idx] = func(input_view[idx]);
+	});
+
+	return result_begin;
+}
+
+
+//----------------------------------------------------------------------------
+// transform (Binary)
+//
+// The "BinaryFunction" functor needs to be callable as "func(ConstRandomAccessIterator1::value_type, ConstRandomAccessIterator2::value_type)".
+// The functor needs to be blittable and cannot contain any array, array_view, or textures.
+//----------------------------------------------------------------------------
+
+template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2,typename RandomAccessIterator, typename BinaryFunction>
+RandomAccessIterator transform( ConstRandomAccessIterator1 begin1, 
+						        ConstRandomAccessIterator1 end1,
+						        ConstRandomAccessIterator2 begin2, 
+						        RandomAccessIterator result_begin,
+						        BinaryFunction func)
+{
+	typedef std::iterator_traits<ConstRandomAccessIterator1>::difference_type difference_type;
+
+	difference_type distance = std::distance(begin1, end1);
+	if (distance <= 0) 
+		return result_begin;
+
+	auto input1_view = _details::create_section(begin1, distance);
+	auto input2_view = _details::create_section(begin2, distance);
+	auto output_view = _details::create_section(result_begin, distance);
+
+	concurrency::parallel_for_each(output_view.extent, [func,input1_view,input2_view,output_view] (index<1> idx) restrict(amp) {
+		output_view[idx] = func(input1_view[idx], input2_view[idx]);
+	});
+
+	return result_begin;
+}
+
+
+//----------------------------------------------------------------------------
 // all_of, any_of, none_of
 //----------------------------------------------------------------------------
 template<typename ConstRandomAccessIterator,  typename UnaryPredicate >
@@ -181,21 +290,6 @@ count_if( ConstRandomAccessIterator first, ConstRandomAccessIterator last, Unary
 
 	count_av.synchronize();
 	return count;
-}
-
-//----------------------------------------------------------------------------
-// mismatch
-//----------------------------------------------------------------------------
-template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2 >
-std::pair<ConstRandomAccessIterator1,ConstRandomAccessIterator2>
-mismatch( ConstRandomAccessIterator1 first1, ConstRandomAccessIterator1 last1, ConstRandomAccessIterator2 first2 )
-{
-}
-
-template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2, typename BinaryPredicate >
-std::pair<ConstRandomAccessIterator1,ConstRandomAccessIterator2>
-mismatch( ConstRandomAccessIterator1 first1, ConstRandomAccessIterator1 last1, ConstRandomAccessIterator2 first2, BinaryPredicate p )
-{
 }
 
 //----------------------------------------------------------------------------

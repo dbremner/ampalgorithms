@@ -265,6 +265,119 @@ void test_random_access_iterator_in_amp()
 	}
 }
 
+void test_generate()
+{
+	std::vector<int> vec(1024);
+
+	// Generate using an array_view over the vector. Requires explicit synchronize.
+	array_view<int> av(1024, vec);
+	av.discard_data();
+
+	amp_stl_algorithms::generate(begin(av), end(av), [] () restrict(amp) {
+		return 7;
+	});
+	av.synchronize();
+
+	std::for_each(begin(vec), end(vec), [] (int element) {
+		assert(element == 7);
+	});
+}
+
+void test_generate_n()
+{
+	std::vector<int> vec(1024);
+	array_view<int> av(1024, vec);
+	av.discard_data();
+
+	amp_stl_algorithms::generate_n(begin(av), av.extent.size(), [] () restrict(amp) {
+		return 616;
+	});
+	av.synchronize();
+
+	std::for_each(begin(vec), end(vec), [] (int element) {
+		assert(element == 616);
+	});
+}
+
+void test_unary_transform()
+{
+	const int size = 1024;
+	std::vector<int> vec_in(size);
+	std::fill(begin(vec_in), end(vec_in), 7);
+	array_view<const int> av_in(size, vec_in);
+
+	std::vector<int> vec_out(size);
+	array_view<int> av_out(size, vec_out);
+
+	// Test "transform" by doubling the input elements
+
+	amp_stl_algorithms::transform(begin(av_in), end(av_in), begin(av_out), [] (int x) restrict(amp) {
+		return 2 * x;
+	});
+	av_out.synchronize();
+
+	std::for_each(begin(vec_out), end(vec_out), [] (int element) {
+		assert(element == 2*7);
+	});
+}
+
+void test_binary_transform()
+{
+	const int size = 1024;
+
+	std::vector<int> vec_in1(size);
+	std::fill(begin(vec_in1), end(vec_in1), 343);
+	array_view<const int> av_in1(size, vec_in1);
+
+	std::vector<int> vec_in2(size);
+	std::fill(begin(vec_in2), end(vec_in2), 323);
+	array_view<const int> av_in2(size, vec_in2);
+
+	std::vector<int> vec_out(size);
+	array_view<int> av_out(size, vec_out);
+
+	// Test "transform" by adding the two input elements
+
+	amp_stl_algorithms::transform(begin(av_in1), end(av_in1), begin(av_in2), begin(av_out), [] (int x1, int x2) restrict(amp) {
+		return x1 + x2;
+	});
+	av_out.synchronize();
+
+	std::for_each(begin(vec_out), end(vec_out), [] (int element) {
+		assert(element == 343 + 323);
+	});
+}
+
+void test_fill()
+{
+	std::vector<int> vec(1024);
+
+	// Fill using an array_view iterator
+	array_view<int> av(1024, vec);
+	av.discard_data();
+
+	amp_stl_algorithms::fill(begin(av), end(av), 7);
+	av.synchronize();
+
+	std::for_each(begin(vec), end(vec), [] (int element) {
+		assert(element == 7);
+	});
+}
+
+void test_fill_n()
+{
+	std::vector<int> vec(1024);
+	array_view<int> av(1024, vec);
+	av.discard_data();
+
+	amp_stl_algorithms::fill_n(begin(av), av.extent.size(), 616);
+	av.synchronize();
+
+	std::for_each(begin(vec), end(vec), [] (int element) {
+		assert(element == 616);
+	});
+}
+
 
 int main()
 {
@@ -277,4 +390,10 @@ int main()
 	test_all_of();
 	test_any_of();
 	test_count();
+	test_generate();
+	test_generate_n();
+	test_unary_transform();
+	test_binary_transform();
+	test_fill();
+	test_fill_n();
 }
