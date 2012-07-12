@@ -82,7 +82,7 @@ void test_functor_view()
     T gpuSum = amp_algorithms::reduce(accelerator().create_view(), inArrView, amp_algorithms::sum<T>());
     T gpuMean = gpuSum / inArrView.extent.size();
 
-    auto funcView = create_indexable_view(inArrView.extent, [inArrView, gpuMean](const concurrency::index<1> &idx) restrict(cpu, amp) {
+    auto funcView = make_indexable_view(inArrView.extent, [inArrView, gpuMean](const concurrency::index<1> &idx) restrict(cpu, amp) {
         return ((inArrView(idx) - gpuMean) * (inArrView(idx) - gpuMean));
     });
 

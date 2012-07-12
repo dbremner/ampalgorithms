@@ -33,7 +33,7 @@ using namespace concurrency;
 // b. A typedef 'value_type' to indicate the element type of the view.
 // c. Must have an extent property denoting the dense zero based extents
 //    of the view which returns an object convertible to 'const extent<rank>&'
-// d. Must have an 'operator()' overload with the following properties:
+// d. Must have an 'operator[]' overload with the following properties:
 //      i) Have the 'restrict(cpu, amp)' restriction qualifier
 //     ii) Have a single parameter which 'const index<rank>&' is convertible to
 //    iii) The return type of the 'operator()(const index<rank> &idx)'
@@ -45,15 +45,15 @@ struct indexable_view_traits
 {
     typedef typename view::value_type value_type;
     static const int rank = view::rank;
-    static const bool is_writable = std::is_convertible<typename decltype((*((view*)NULL))(*((concurrency::index<rank>*)NULL))), value_type&>::value;
+    static const bool is_writable = std::is_convertible<typename decltype(std::declval<view>()[std::declval<concurrency::index<rank>>()]), value_type&>::value;
     
     // TODO: Other traits such as whether the storage is dense in LSD or in which dimension is the storage contiguous
 
-    static_assert(std::is_convertible<typename decltype(((view*)NULL)->extent), const concurrency::extent<rank>&>::value, "Not a valid indexable_view. Should have a member 'extent'");
+    static_assert(std::is_convertible<typename decltype(std::declval<view>().extent), const concurrency::extent<rank>&>::value, "Not a valid indexable_view. Should have a member 'extent'");
 
     // TODO: This needs to ensure that the operator() has both the cpu and amp restriction qualifiers. The current check 
     // checks that it has the required parameter and return types and just the "cpu" restriction qualifier.
-    static_assert(std::is_convertible<typename decltype((*((view*)NULL))(*((const concurrency::index<rank>*)NULL))), const value_type&>::value, "Not a valid indexable_view.");
+    static_assert(std::is_convertible<typename decltype(std::declval<view>()[std::declval<concurrency::index<rank>>()]), const value_type&>::value, "Not a valid indexable_view.");
 
     // TODO: More checks to statically verify the view template parameter and issue appropriate errors.
 };
@@ -74,7 +74,7 @@ public:
     {
     }
 
-    functor_return_type operator()(const concurrency::index<rank> &idx) const restrict(cpu, amp)
+    functor_return_type operator[](const concurrency::index<rank> &idx) const restrict(cpu, amp)
     {
         return _M_functor(idx);
     }
@@ -93,7 +93,7 @@ private:
 // This is a template method for constructing a functor_view object which can be used with the "auto" keyword
 // obviating the need to explicitly specify the functor type which is not very straightforward to obtain for lambdas
 template <typename Functor, int Rank>
-functor_view<Functor, Rank> create_indexable_view(const concurrency::extent<Rank> &ext, const Functor &functor)
+functor_view<Functor, Rank> make_indexable_view(const concurrency::extent<Rank> &ext, const Functor &functor)
 {
     return functor_view<Functor, Rank>(ext, functor);
 }

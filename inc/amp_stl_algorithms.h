@@ -22,6 +22,7 @@
 
 #include <xx_amp_algorithms_impl.h>
 #include <amp_iterators.h>
+#include <amp_algorithms.h>
 
 namespace amp_stl_algorithms
 {
@@ -175,12 +176,6 @@ minmax_element( ConstRandomAccessIterator first, ConstRandomAccessIterator last 
 template<typename ConstRandomAccessIterator, typename Compare>
 std::pair<ConstRandomAccessIterator,ConstRandomAccessIterator> 
 minmax_element( ConstRandomAccessIterator first, ConstRandomAccessIterator last, Compare comp ); 
-
-template<typename ConstRandomAccessIterator, typename T>
-T accumulate( ConstRandomAccessIterator first, ConstRandomAccessIterator last, T init );
-
-template<typename ConstRandomAccessIterator, typename T, typename BinaryOperation>
-T accumulate( ConstRandomAccessIterator first, ConstRandomAccessIterator last, T init, BinaryOperation op ); 
 
 // non-standard
 template<typename ConstRandomAccessIterator, typename T>

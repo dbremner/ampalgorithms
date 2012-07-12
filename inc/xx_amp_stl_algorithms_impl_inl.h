@@ -334,4 +334,23 @@ ConstRandomAccessIterator find( ConstRandomAccessIterator first, ConstRandomAcce
 	});
 }
 
+//----------------------------------------------------------------------------
+// reduce
+//----------------------------------------------------------------------------
+template<typename ConstRandomAccessIterator, typename T, typename BinaryOperation>
+T reduce( ConstRandomAccessIterator first, ConstRandomAccessIterator last, T init, BinaryOperation op )
+{
+    typedef typename std::iterator_traits<ConstRandomAccessIterator>::difference_type diff_type;
+	diff_type element_count = std::distance(first, last);
+	auto section_view = _details::create_section(first, element_count);
+
+	return op(init, amp_algorithms::reduce(section_view, op));
+}
+
+template<typename ConstRandomAccessIterator, typename T>
+T reduce( ConstRandomAccessIterator first, ConstRandomAccessIterator last, T init )
+{
+	return amp_stl_algorithms::reduce(first, last, init, amp_algorithms::sum<std::remove_const<typename std::iterator_traits<ConstRandomAccessIterator>::value_type>::type>());
+}
+
 }// namespace amp_stl_algorithms

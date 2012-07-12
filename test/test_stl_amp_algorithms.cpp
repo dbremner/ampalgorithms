@@ -378,6 +378,25 @@ void test_fill_n()
 	});
 }
 
+void test_reduce1()
+{
+	static const int numbers[] = {1, 3, 6, 3, 2, 2, 7, 8, 2, 9, 2, 19, 2};
+	static const int n = sizeof(numbers)/sizeof(numbers[0]);
+	array_view<const int> av(extent<1>(n), numbers);
+	auto result = amp_stl_algorithms::reduce(begin(av), end(av), 0);
+	assert(result == 66);
+}
+
+void test_reduce2()
+{
+	static const int numbers[] = {1, 3, 6, 3, 2, 2, 7, 8, 2, 9, 2, 19, 2};
+	static const int n = sizeof(numbers)/sizeof(numbers[0]);
+	array_view<const int> av(extent<1>(n), numbers);
+	auto result = amp_stl_algorithms::reduce(begin(av), end(av), 0, [](int a, int b) restrict(cpu, amp) {
+		return (a < b) ? b : a;
+	});
+	assert(result == 19);
+}
 
 int main()
 {
@@ -396,4 +415,6 @@ int main()
 	test_binary_transform();
 	test_fill();
 	test_fill_n();
+	test_reduce1();
+	test_reduce2();
 }
