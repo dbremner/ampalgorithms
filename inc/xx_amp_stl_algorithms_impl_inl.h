@@ -30,14 +30,14 @@ namespace amp_stl_algorithms
 namespace _details
 {
 	template<class ConstRandomAccessIterator>
-	array_view<typename std::iterator_traits<ConstRandomAccessIterator>::value_type> 
+	concurrency::array_view<typename std::iterator_traits<ConstRandomAccessIterator>::value_type> 
 	create_section(ConstRandomAccessIterator iter, typename std::iterator_traits<ConstRandomAccessIterator>::difference_type distance) 
 	{
 		typedef std::iterator_traits<ConstRandomAccessIterator>::value_type value_type;
 		typedef std::iterator_traits<ConstRandomAccessIterator>::difference_type difference_type;
 		auto base_view = _details::array_view_iterator_helper<value_type>::get_base_array_view(iter);
 		difference_type start = std::distance(begin(base_view), iter);
-		return base_view.section(index<1>(start), extent<1>(distance));
+		return base_view.section(concurrency::index<1>(start), concurrency::extent<1>(distance));
 	}		
 }
 
@@ -56,7 +56,7 @@ void for_each_no_return( ConstRandomAccessIterator first, ConstRandomAccessItera
 	}
 
 	auto section_view = _details::create_section(first, distance);
-	concurrency::parallel_for_each(concurrency::extent<1>(distance), [f,section_view] (index<1> idx) restrict(amp) {
+	concurrency::parallel_for_each(concurrency::extent<1>(distance), [f,section_view] (concurrency::index<1> idx) restrict(amp) {
 		f(section_view[idx]);
 	});
 }
@@ -93,7 +93,7 @@ void generate_n(RandomAccessIterator begin, Size count, Generator g)
 
 	auto section_view = _details::create_section(begin, count);
 
-	concurrency::parallel_for_each(section_view.extent, [g,section_view] (index<1> idx) restrict(amp) {
+	concurrency::parallel_for_each(section_view.extent, [g,section_view] (concurrency::index<1> idx) restrict(amp) {
 		section_view[idx] = g();
 	});
 }
@@ -146,7 +146,7 @@ RandomAccessIterator transform( ConstRandomAccessIterator begin1,
 	auto input_view = _details::create_section(begin1, distance);
 	auto output_view = _details::create_section(result_begin, distance);
 
-	concurrency::parallel_for_each(output_view.extent, [func,input_view,output_view] (index<1> idx) restrict(amp) {
+	concurrency::parallel_for_each(output_view.extent, [func,input_view,output_view] (concurrency::index<1> idx) restrict(amp) {
 		output_view[idx] = func(input_view[idx]);
 	});
 
@@ -178,7 +178,7 @@ RandomAccessIterator transform( ConstRandomAccessIterator1 begin1,
 	auto input2_view = _details::create_section(begin2, distance);
 	auto output_view = _details::create_section(result_begin, distance);
 
-	concurrency::parallel_for_each(output_view.extent, [func,input1_view,input2_view,output_view] (index<1> idx) restrict(amp) {
+	concurrency::parallel_for_each(output_view.extent, [func,input1_view,input2_view,output_view] (concurrency::index<1> idx) restrict(amp) {
 		output_view[idx] = func(input1_view[idx], input2_view[idx]);
 	});
 
@@ -227,7 +227,7 @@ template<typename ConstRandomAccessIterator, typename UnaryPredicate >
 bool any_of(ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate p )
 {
 	int found_any_storage = 0;
-	concurrency::array_view<int> found_any_av(extent<1>(1), &found_any_storage);
+	concurrency::array_view<int> found_any_av(concurrency::extent<1>(1), &found_any_storage);
     amp_stl_algorithms::any_of(first, last, p, amp_stl_algorithms::begin(found_any_av));
 	found_any_av.synchronize();
 	return found_any_storage == 1;
@@ -270,7 +270,7 @@ count_if( ConstRandomAccessIterator first, ConstRandomAccessIterator last, Unary
 	auto section_view = _details::create_section(first, element_count);
 
 	concurrency::parallel_for_each(
-		extent<1>(num_threads),
+		concurrency::extent<1>(num_threads),
 		[section_view,element_count,p,count_av] (concurrency::index<1> idx) restrict (amp) 
 	    {
 			int tid = idx[0];
@@ -308,11 +308,11 @@ ConstRandomAccessIterator find_if(ConstRandomAccessIterator first, ConstRandomAc
 	}
 
 	difference_type result_position = distance;
-	concurrency::array_view<int> result_av(extent<1>(1), &result_position);
+	concurrency::array_view<int> result_av(concurrency::extent<1>(1), &result_position);
 	
 	auto section_view = _details::create_section(first, distance);
 
-	concurrency::parallel_for_each(extent<1>(distance), [=] (index<1> idx) restrict(amp) {
+	concurrency::parallel_for_each(concurrency::extent<1>(distance), [=] (concurrency::index<1> idx) restrict(amp) {
 		int i = idx[0];
 		if (p(section_view[idx]))
 		{

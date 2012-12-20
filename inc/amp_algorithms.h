@@ -139,7 +139,7 @@ namespace amp_algorithms
 
         // Performs exclusive scan in specified direction
         template <typename T, typename BinaryFunction>
-        void scan_exclusive(const array<T> &input_array, array<T> &output_array, scan_direction direction, const BinaryFunction &binary_op)
+        void scan_exclusive(const concurrency::array<T> &input_array, concurrency::array<T> &output_array, scan_direction direction, const BinaryFunction &binary_op)
         {
             // Scan is special case of multiscan where scan_size == scan_pitch and scan_count = 1
             scan_internal(input_array, output_array, direction, binary_op, input_array.extent.size(), input_array.extent.size(), 1);
@@ -147,28 +147,28 @@ namespace amp_algorithms
 
         // Performs forward exclusive scan (overload with direction already specified)
         template <typename T, typename BinaryFunction>
-        void scan_exclusive(const array<T> &input_array, array<T> &output_array, const BinaryFunction &binary_op)
+        void scan_exclusive(const concurrency::array<T> &input_array, concurrency::array<T> &output_array, const BinaryFunction &binary_op)
         {
             scan_exclusive(input_array, output_array, scan_direction::forward, binary_op);
         }
 
         // Performs forward exclusive prefix sum (overload with direction and binary function already specified)
         template <typename T>
-        void scan_exclusive(const array<T> &input_array, array<T> &output_array)
+        void scan_exclusive(const concurrency::array<T> &input_array, concurrency::array<T> &output_array)
         {
             scan_exclusive(input_array, output_array, scan_direction::forward, amp_algorithms::sum<T>());
         }
 
         // Performs exclusive multi scan is specified direction
         template <typename T, typename BinaryFunction>
-        void multi_scan_exclusive(const array<T, 2> &input_array, array<T, 2> &output_array, scan_direction direction, const BinaryFunction &binary_op)
+        void multi_scan_exclusive(const concurrency::array<T, 2> &input_array, concurrency::array<T, 2> &output_array, scan_direction direction, const BinaryFunction &binary_op)
         {
             scan_internal(input_array, output_array, direction, binary_op, input_array.extent[1], input_array.extent[1], input_array.extent[0]);
         }
 
         // Performs exclusive segmented scan in specified direction
         template <typename T, typename BinaryFunction>
-        void segmented_scan_exclusive(const array<T> &input_array, array<T> &output_array, const array<unsigned int> &flags_array, scan_direction direction, const BinaryFunction &binary_op)
+        void segmented_scan_exclusive(const concurrency::array<T> &input_array, concurrency::array<T> &output_array, const concurrency::array<unsigned int> &flags_array, scan_direction direction, const BinaryFunction &binary_op)
         {
             static_assert(_details::_dx_scan_type_helper<T>::is_type_supported, "Unsupported type for scan");
             static_assert(_details::_dx_scan_op_helper<BinaryFunction>::is_op_supported, "Unsupported binary function for scan");
@@ -225,7 +225,7 @@ namespace amp_algorithms
 
         // Common subset of scan setup for multiscan and scan
         template <typename T, unsigned int Rank, typename BinaryFunction>
-        void scan_internal(const array<T, Rank> &input_array, array<T, Rank> &output_array, scan_direction direction, const BinaryFunction &binary_op, unsigned int scan_size, unsigned int scan_pitch, unsigned int scan_count) 
+        void scan_internal(const concurrency::array<T, Rank> &input_array, concurrency::array<T, Rank> &output_array, scan_direction direction, const BinaryFunction &binary_op, unsigned int scan_size, unsigned int scan_pitch, unsigned int scan_count) 
         {
             static_assert(_details::_dx_scan_type_helper<T>::is_type_supported, "Unsupported type for scan");
             static_assert(_details::_dx_scan_op_helper<BinaryFunction>::is_op_supported, "Currently only fixed set of binary functions is allowed, we are working to remove this limitation");
@@ -291,7 +291,7 @@ namespace amp_algorithms
     template <typename OutputIndexableView, typename Generator>
     void generate(const accelerator_view &accl_view, OutputIndexableView& output_view, const Generator& generator)
     {
-        _details::parallel_for_each(accl_view, output_view.extent, [output_view,generator] (index<indexable_view_traits<OutputIndexableView>::rank> idx) restrict(amp) {
+        _details::parallel_for_each(accl_view, output_view.extent, [output_view,generator] (concurrency::index<indexable_view_traits<OutputIndexableView>::rank> idx) restrict(amp) {
             output_view[idx] = generator();
         });
     }
@@ -309,7 +309,7 @@ namespace amp_algorithms
     template <typename ConstInputIndexableView, typename OutputIndexableView, typename UnaryFunc>
     void transform(const accelerator_view &accl_view, const ConstInputIndexableView& input_view, OutputIndexableView& output_view, const UnaryFunc& func)
     {
-        _details::parallel_for_each(accl_view, output_view.extent, [input_view,output_view,func] (index<indexable_view_traits<OutputIndexableView>::rank> idx) restrict(amp) {
+        _details::parallel_for_each(accl_view, output_view.extent, [input_view,output_view,func] (concurrency::index<indexable_view_traits<OutputIndexableView>::rank> idx) restrict(amp) {
             output_view[idx] = func(input_view[idx]);
         });
     }
@@ -327,7 +327,7 @@ namespace amp_algorithms
     template <typename ConstInputIndexableView1, typename ConstInputIndexableView2, typename OutputIndexableView, typename BinaryFunc>
     void transform(const accelerator_view &accl_view, const ConstInputIndexableView1& input_view1, const ConstInputIndexableView2& input_view2, OutputIndexableView& output_view, const BinaryFunc& func)
     {
-        _details::parallel_for_each(accl_view, output_view.extent, [input_view1,input_view2,output_view,func] (index<indexable_view_traits<OutputIndexableView>::rank> idx) restrict(amp) {
+        _details::parallel_for_each(accl_view, output_view.extent, [input_view1,input_view2,output_view,func] (concurrency::index<indexable_view_traits<OutputIndexableView>::rank> idx) restrict(amp) {
             output_view[idx] = func(input_view1[idx], input_view2[idx]);
         });
     }

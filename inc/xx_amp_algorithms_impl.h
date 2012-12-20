@@ -43,7 +43,7 @@ namespace _details
     }
 
     template <int _Rank, typename _Kernel_type>
-    void parallel_for_each(const accelerator_view &_Accl_view, const extent<_Rank>& _Compute_domain, const _Kernel_type &_Kernel)
+    void parallel_for_each(const accelerator_view &_Accl_view, const concurrency::extent<_Rank>& _Compute_domain, const _Kernel_type &_Kernel)
     {
         _Host_Scheduling_info _SchedulingInfo = { NULL };
         if (_Accl_view != _details::auto_select_target()) 
@@ -55,7 +55,7 @@ namespace _details
     }
 
     template <int _Dim0, int _Dim1, int _Dim2, typename _Kernel_type>
-    void parallel_for_each(const accelerator_view &_Accl_view, const tiled_extent<_Dim0, _Dim1, _Dim2>& _Compute_domain, const _Kernel_type& _Kernel)
+    void parallel_for_each(const accelerator_view &_Accl_view, const concurrency::tiled_extent<_Dim0, _Dim1, _Dim2>& _Compute_domain, const _Kernel_type& _Kernel)
     {
         _Host_Scheduling_info _SchedulingInfo = { NULL };
         if (_Accl_view != _details::auto_select_target()) 
@@ -67,7 +67,7 @@ namespace _details
     }
 
     template <int _Dim0, int _Dim1, typename _Kernel_type>
-    void parallel_for_each(const accelerator_view &_Accl_view, const tiled_extent<_Dim0, _Dim1>& _Compute_domain, const _Kernel_type& _Kernel)
+    void parallel_for_each(const accelerator_view &_Accl_view, const concurrency::tiled_extent<_Dim0, _Dim1>& _Compute_domain, const _Kernel_type& _Kernel)
     {
         _Host_Scheduling_info _SchedulingInfo = { NULL };
         if (_Accl_view != _details::auto_select_target()) 
@@ -79,7 +79,7 @@ namespace _details
     }
 
     template <int _Dim0, typename _Kernel_type>
-    void parallel_for_each(const accelerator_view &_Accl_view, const tiled_extent<_Dim0>& _Compute_domain, const _Kernel_type& _Kernel)
+    void parallel_for_each(const accelerator_view &_Accl_view, const concurrency::tiled_extent<_Dim0>& _Compute_domain, const _Kernel_type& _Kernel)
     {
         _Host_Scheduling_info _SchedulingInfo = { NULL };
         if (_Accl_view != _details::auto_select_target()) 
@@ -176,7 +176,7 @@ namespace _details
                 int partial_data_length = n - tid.tile[0] * tile_size;
 
 			// initialize local buffer
-			smem = input_view[index<1>(idx)];
+			smem = input_view[concurrency::index<1>(idx)];
 			// next chunk
 			idx += thread_count;
 
@@ -184,7 +184,7 @@ namespace _details
 			while (idx < n)
 			{
 				// reduction of smem and X[idx] with results stored in smem
-				smem = binary_op(smem, input_view[index<1>(idx)]);
+				smem = binary_op(smem, input_view[concurrency::index<1>(idx)]);
 
 				// next chunk
 				idx += thread_count;

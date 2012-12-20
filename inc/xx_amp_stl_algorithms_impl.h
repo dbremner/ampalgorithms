@@ -70,26 +70,26 @@ public:
 	static concurrency::array_view<value_type> create() restrict(cpu)
 	{
 		static value_type stable_storage;
-		return array_view<value_type>(1, &stable_storage);
+		return concurrency::array_view<value_type>(1, &stable_storage);
 	}
 
 	// On the accelerator, use the stable storage helper.
 	static concurrency::array_view<value_type> create() restrict(amp)
 	{
-		return array_view<value_type>(0, nullptr);
+		return concurrency::array_view<value_type>(0, nullptr);
 	}
 };
 
 template <class value_type, int rank>
-array_view<value_type> make_array_view(array<value_type, rank>& arr) restrict(cpu,amp)
+concurrency::array_view<value_type> make_array_view(concurrency::array<value_type, rank>& arr) restrict(cpu,amp)
 {
-	return arr.view_as(extent<1>(arr.get_extent().size()));
+	return arr.view_as(concurrency::extent<1>(arr.get_extent().size()));
 }
 
 template <class value_type, int rank>
-array_view<const value_type> make_array_view(const array<value_type, rank>& arr) restrict(cpu,amp)
+concurrency::array_view<const value_type> make_array_view(const concurrency::array<value_type, rank>& arr) restrict(cpu,amp)
 {
-	return arr.view_as(extent<1>(arr.get_extent().size()));
+	return arr.view_as(concurrency::extent<1>(arr.get_extent().size()));
 }
 
 } // namespace _details
