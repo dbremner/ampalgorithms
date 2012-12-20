@@ -22,6 +22,7 @@
 
 #include <amp_stl_algorithms.h>
 #include <functional>
+#include <amp_algorithms.h>
 
 namespace amp_stl_algorithms
 {
