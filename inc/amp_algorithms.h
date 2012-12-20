@@ -103,7 +103,7 @@ namespace amp_algorithms
     // Generic reduction template for binary operators that are commutative and associative
     template <typename InputIndexableView, typename BinaryFunction>
     typename std::result_of<BinaryFunction(const typename indexable_view_traits<InputIndexableView>::value_type&, const typename indexable_view_traits<InputIndexableView>::value_type&)>::type
-        reduce(const accelerator_view &accl_view, const InputIndexableView &input_view, const BinaryFunction &binary_op) 
+        reduce(const concurrency::accelerator_view &accl_view, const InputIndexableView &input_view, const BinaryFunction &binary_op) 
     {
         return _details::reduce<512, 10000, InputIndexableView, BinaryFunction>(accl_view, input_view, binary_op);
     }
@@ -126,13 +126,13 @@ namespace amp_algorithms
     {
     public:
         // Constructs scan object, this constructor provides ability to define max_scan_count for multiscan
-        scan(unsigned int max_scan_size, unsigned int max_scan_count, const accelerator_view &target_accel_view = accelerator().default_view) : m_scan_accelerator_view(target_accel_view)
+        scan(unsigned int max_scan_size, unsigned int max_scan_count, const concurrency::accelerator_view &target_accel_view = concurrency::accelerator().default_view) : m_scan_accelerator_view(target_accel_view)
         {
             initialize_scan(max_scan_size, max_scan_count);
         }
 
         // Constructs scan object 
-        scan(unsigned int max_scan_size, const accelerator_view &target_accel_view = accelerator().default_view) : m_scan_accelerator_view(target_accel_view)
+        scan(unsigned int max_scan_size, const concurrency::accelerator_view &target_accel_view = concurrency::accelerator().default_view) : m_scan_accelerator_view(target_accel_view)
         {
             initialize_scan(max_scan_size, 1);
         }
@@ -279,7 +279,7 @@ namespace amp_algorithms
 
         Microsoft::WRL::ComPtr<ID3D11Device> m_device;
         Microsoft::WRL::ComPtr<ID3D11DeviceContext> m_immediate_context;
-        const accelerator_view m_scan_accelerator_view;
+        const concurrency::accelerator_view m_scan_accelerator_view;
 
         scan_direction m_selected_scan_direction;
     };
@@ -289,7 +289,7 @@ namespace amp_algorithms
     //----------------------------------------------------------------------------
 
     template <typename OutputIndexableView, typename Generator>
-    void generate(const accelerator_view &accl_view, OutputIndexableView& output_view, const Generator& generator)
+    void generate(const concurrency::accelerator_view &accl_view, OutputIndexableView& output_view, const Generator& generator)
     {
         _details::parallel_for_each(accl_view, output_view.extent, [output_view,generator] (concurrency::index<indexable_view_traits<OutputIndexableView>::rank> idx) restrict(amp) {
             output_view[idx] = generator();
@@ -307,7 +307,7 @@ namespace amp_algorithms
     //----------------------------------------------------------------------------
 
     template <typename ConstInputIndexableView, typename OutputIndexableView, typename UnaryFunc>
-    void transform(const accelerator_view &accl_view, const ConstInputIndexableView& input_view, OutputIndexableView& output_view, const UnaryFunc& func)
+    void transform(const concurrency::accelerator_view &accl_view, const ConstInputIndexableView& input_view, OutputIndexableView& output_view, const UnaryFunc& func)
     {
         _details::parallel_for_each(accl_view, output_view.extent, [input_view,output_view,func] (concurrency::index<indexable_view_traits<OutputIndexableView>::rank> idx) restrict(amp) {
             output_view[idx] = func(input_view[idx]);
@@ -325,7 +325,7 @@ namespace amp_algorithms
     //----------------------------------------------------------------------------
 
     template <typename ConstInputIndexableView1, typename ConstInputIndexableView2, typename OutputIndexableView, typename BinaryFunc>
-    void transform(const accelerator_view &accl_view, const ConstInputIndexableView1& input_view1, const ConstInputIndexableView2& input_view2, OutputIndexableView& output_view, const BinaryFunc& func)
+    void transform(const concurrency::accelerator_view &accl_view, const ConstInputIndexableView1& input_view1, const ConstInputIndexableView2& input_view2, OutputIndexableView& output_view, const BinaryFunc& func)
     {
         _details::parallel_for_each(accl_view, output_view.extent, [input_view1,input_view2,output_view,func] (concurrency::index<indexable_view_traits<OutputIndexableView>::rank> idx) restrict(amp) {
             output_view[idx] = func(input_view1[idx], input_view2[idx]);
@@ -343,7 +343,7 @@ namespace amp_algorithms
     //----------------------------------------------------------------------------
 
     template<typename OutputIndexableView, typename T>
-    void fill(const accelerator_view &accl_view, OutputIndexableView& output_view, const T& value )
+    void fill(const concurrency::accelerator_view &accl_view, OutputIndexableView& output_view, const T& value )
     {
         :::amp_algorithms::generate(accl_view, output_view, [value] () restrict(amp) { return value; });
     }

@@ -1,23 +1,23 @@
 /*----------------------------------------------------------------------------
- * Copyright © Microsoft Corp.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not 
- * use this file except in compliance with the License.  You may obtain a copy 
- * of the License at http://www.apache.org/licenses/LICENSE-2.0  
- * 
- * THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED 
- * WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE, 
- * MERCHANTABLITY OR NON-INFRINGEMENT. 
- *
- * See the Apache Version 2.0 License for specific language governing 
- * permissions and limitations under the License.
- *---------------------------------------------------------------------------
- * 
- * C++ AMP standard algorithm library.
- *
- * This file contains the test driver
- *---------------------------------------------------------------------------*/
+* Copyright © Microsoft Corp.
+*
+* Licensed under the Apache License, Version 2.0 (the "License"); you may not 
+* use this file except in compliance with the License.  You may obtain a copy 
+* of the License at http://www.apache.org/licenses/LICENSE-2.0  
+* 
+* THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED 
+* WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE, 
+* MERCHANTABLITY OR NON-INFRINGEMENT. 
+*
+* See the Apache Version 2.0 License for specific language governing 
+* permissions and limitations under the License.
+*---------------------------------------------------------------------------
+* 
+* C++ AMP standard algorithm library.
+*
+* This file contains the test driver
+*---------------------------------------------------------------------------*/
 
 #pragma once
 
@@ -94,8 +94,8 @@ inline bool are_almost_equal(T v1, T v2, const T maxAbsoluteDiff, const T maxRel
 
 // Compare two floats and return true if they are close to each other.
 inline bool compare(float v1, float v2, 
-                const float maxAbsoluteDiff = 0.000005f,
-                const float maxRelativeDiff = 0.001f)
+                    const float maxAbsoluteDiff = 0.000005f,
+                    const float maxRelativeDiff = 0.001f)
 {
     return are_almost_equal(v1, v2, maxAbsoluteDiff, maxRelativeDiff);
 }

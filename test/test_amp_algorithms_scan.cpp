@@ -1,23 +1,23 @@
 /*----------------------------------------------------------------------------
- * Copyright © Microsoft Corp.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not 
- * use this file except in compliance with the License.  You may obtain a copy 
- * of the License at http://www.apache.org/licenses/LICENSE-2.0  
- * 
- * THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED 
- * WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE, 
- * MERCHANTABLITY OR NON-INFRINGEMENT. 
- *
- * See the Apache Version 2.0 License for specific language governing 
- * permissions and limitations under the License.
- *---------------------------------------------------------------------------
- * 
- * C++ AMP standard algorithm library.
- *
- * This file contains the test driver
- *---------------------------------------------------------------------------*/
+* Copyright © Microsoft Corp.
+*
+* Licensed under the Apache License, Version 2.0 (the "License"); you may not 
+* use this file except in compliance with the License.  You may obtain a copy 
+* of the License at http://www.apache.org/licenses/LICENSE-2.0  
+* 
+* THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED 
+* WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE, 
+* MERCHANTABLITY OR NON-INFRINGEMENT. 
+*
+* See the Apache Version 2.0 License for specific language governing 
+* permissions and limitations under the License.
+*---------------------------------------------------------------------------
+* 
+* C++ AMP standard algorithm library.
+*
+* This file contains the test driver
+*---------------------------------------------------------------------------*/
 #define NOMINMAX
 
 #include <vector>
@@ -153,32 +153,32 @@ namespace amp_algorithms_tests
                 scan s2(2 * elem_count, elem_count, accelerator().default_view);
                 s2.scan_exclusive(input, input);
             }, 
-            L"Expected exception for non-matching accelerator_view in scan object");
+                L"Expected exception for non-matching accelerator_view in scan object");
 
             Assert::ExpectException<std::runtime_error>([&]() {
                 scan s2(2 * elem_count, elem_count, ref_view);
                 array<unsigned int> output(elem_count, ref.create_view());
                 s2.scan_exclusive(input, output);
             },
-            L"Expected exception for non-matching accelerator_view in output");
+                L"Expected exception for non-matching accelerator_view in output");
 
             Assert::ExpectException<std::runtime_error>([&]() {
                 scan s2(elem_count-1, ref_view);
                 s2.scan_exclusive(input, input);
             },
-            L"Expected exception for scan object with max_scan_size < scan_size");
+                L"Expected exception for scan object with max_scan_size < scan_size");
 
             Assert::ExpectException<std::runtime_error>([&]() {
                 scan s2(elem_count, 0, ref_view);
             },
-            L"Expected exception for scan object with max_scan_count == 0");
+                L"Expected exception for scan object with max_scan_count == 0");
 
             Assert::ExpectException<std::runtime_error>([&]() {
                 scan s2(elem_count, 1, ref_view);
                 array<unsigned int, 2> in2(10, 10);
                 s2.multi_scan_exclusive(in2, in2, scan_direction::forward, amp_algorithms::sum<unsigned int>());
             },
-            L"Expected exception for scan object with max_scan_count < scan_count");
+                L"Expected exception for scan object with max_scan_count < scan_count");
 
             // Check scan binding cleanup
             array_view<const unsigned int> view(input);
