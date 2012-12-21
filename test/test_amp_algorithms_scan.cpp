@@ -113,7 +113,7 @@ namespace amp_algorithms_tests
             const int elem_count = 10;
             std::vector<unsigned int> in(elem_count, 1);
 
-            array<unsigned int> input(extent<1>(elem_count), in.begin(), ref_view);
+            array<unsigned int> input(concurrency::extent<1>(elem_count), in.begin(), ref_view);
             // use max_scan_size and max_scan_count greater than actual usage
             scan s(2 * elem_count, elem_count, ref_view);
 
@@ -132,7 +132,7 @@ namespace amp_algorithms_tests
             in = input;
 
             unsigned int expected_results[elem_count] = {1, 1, 0, 116, 110, 100, 85, 64, 36, 0};
-            for(unsigned int i=0; i<in.size(); ++i)
+            for (unsigned int i = 0; i < in.size(); ++i)
             {
                 Assert::AreEqual(expected_results[i], in[i]);
             }
@@ -146,7 +146,7 @@ namespace amp_algorithms_tests
             const int elem_count = 10;
             std::vector<unsigned int> in(elem_count, 1);
 
-            array<unsigned int> input(extent<1>(elem_count), in.begin(), ref_view);
+            array<unsigned int> input(concurrency::extent<1>(elem_count), in.begin(), ref_view);
 
             // TODO: Shouldn't a runtime_exception be thrown here, not a std::runtime_error?
             Assert::ExpectException<std::runtime_error>([&]() {
@@ -209,7 +209,7 @@ namespace amp_algorithms_tests
             // Run scan
             if (test_type == scan_type::multiscan)
             {
-                extent<2> e2(row_count, column_count);
+                concurrency::extent<2> e2(row_count, column_count);
                 array<T, 2> input(e2, in.begin());
                 array<T, 2> output(e2);
 
@@ -218,7 +218,7 @@ namespace amp_algorithms_tests
             }
             else
             {
-                extent<1> e(column_count);
+                concurrency::extent<1> e(column_count);
                 array<T> input(e, in.begin());
                 array<T> output(e);
                 bitvector *flags_ptr = nullptr;

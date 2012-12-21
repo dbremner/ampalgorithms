@@ -33,6 +33,13 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace concurrency;
 using namespace amp_algorithms;
 
+//  Define these namespaces and classes to pick up poorly specified namespaces and types in library code.
+//  This makes the test code more like a real library client.
+namespace details  { };
+namespace direct3d { };
+namespace graphics { };
+class extent { };
+
 // Helper functions to generate test data of random numbers.
 template <typename T>
 inline void generate_data(std::vector<T> &v)

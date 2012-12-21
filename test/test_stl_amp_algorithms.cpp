@@ -30,6 +30,13 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace concurrency;
 using namespace amp_stl_algorithms;
 
+//  Define these namespaces and classes to pick up poorly specified namespaces and types in library code.
+//  This makes the test code more like a real library client.
+namespace details  { };
+namespace direct3d { };
+namespace graphics { };
+class extent { };
+
 namespace tests
 {
     TEST_CLASS(stl_algorithms_tests)
@@ -53,7 +60,7 @@ namespace tests
             static const int numbers[] = {1 , 3, 6, 3, 2, 2 };
             static const int n = sizeof(numbers)/sizeof(numbers[0]);
 
-            array_view<const int> av(extent<1>(n), numbers);
+            array_view<const int> av(concurrency::extent<1>(n), numbers);
             auto iter = amp_stl_algorithms::find(begin(av), end(av), 3);
             int position = std::distance(begin(av), iter);
             Assert::AreEqual(1, position);
@@ -67,7 +74,7 @@ namespace tests
             static const int numbers[] = {1 , 3, 6, 3, 2, 2 };
             static const int n = sizeof(numbers)/sizeof(numbers[0]);
 
-            array_view<const int> av(extent<1>(n), numbers);
+            array_view<const int> av(concurrency::extent<1>(n), numbers);
             bool r1 = amp_stl_algorithms::none_of(begin(av), end(av), [] (int v) restrict(amp) -> bool { return v>10; });
             Assert::IsTrue(r1);
             bool r2 = amp_stl_algorithms::none_of(begin(av), end(av), [] (int v) restrict(amp) -> bool { return v>5; });
@@ -79,7 +86,7 @@ namespace tests
             static const int numbers[] = {1 , 3, 6, 3, 2, 2 };
             static const int n = sizeof(numbers)/sizeof(numbers[0]);
 
-            array_view<const int> av(extent<1>(n), numbers);
+            array_view<const int> av(concurrency::extent<1>(n), numbers);
             bool r1 = amp_stl_algorithms::any_of(begin(av), end(av), [] (int v) restrict(amp) -> bool { return v>10; });
             Assert::IsFalse(r1);
             bool r2 = amp_stl_algorithms::any_of(begin(av), end(av), [] (int v) restrict(amp) -> bool { return v>5; });
@@ -91,7 +98,7 @@ namespace tests
             static const int numbers[] = {1 , 3, 6, 3, 2, 2 };
             static const int n = sizeof(numbers)/sizeof(numbers[0]);
 
-            array_view<const int> av(extent<1>(n), numbers);
+            array_view<const int> av(concurrency::extent<1>(n), numbers);
             bool r1 = amp_stl_algorithms::all_of(begin(av), end(av), [] (int v) restrict(amp) -> bool { return v>10; });
             Assert::IsFalse(r1);
             bool r2 = amp_stl_algorithms::all_of(begin(av), end(av), [] (int v) restrict(amp) -> bool { return v>5; });
@@ -102,7 +109,7 @@ namespace tests
         {
             static const int numbers[] = {1 , 3, 6, 3, 2, 2, 7, 8, 2, 9, 2, 19, 2};
             static const int n = sizeof(numbers)/sizeof(numbers[0]);
-            array_view<const int> av(extent<1>(n), numbers);
+            array_view<const int> av(concurrency::extent<1>(n), numbers);
             auto r1 = amp_stl_algorithms::count(begin(av), end(av), 2);
             Assert::AreEqual(5, r1);
             auto r2 = amp_stl_algorithms::count(begin(av), end(av), 17);
@@ -202,7 +209,7 @@ namespace tests
             std::vector<int> v2(16);
             array_view<int> result(16, v2);
             result.discard_data();
-            parallel_for_each(extent<1>(1), [=] (index<1> idx) restrict(amp) {
+            parallel_for_each(concurrency::extent<1>(1), [=] (index<1> idx) restrict(amp) {
                 int id = 1;
 
                 // can be default constructed.
@@ -396,7 +403,7 @@ namespace tests
         {
             static const int numbers[] = {1, 3, 6, 3, 2, 2, 7, 8, 2, 9, 2, 19, 2};
             static const int n = sizeof(numbers)/sizeof(numbers[0]);
-            array_view<const int> av(extent<1>(n), numbers);
+            array_view<const int> av(concurrency::extent<1>(n), numbers);
             auto result = amp_stl_algorithms::reduce(begin(av), end(av), 0);
             Assert::AreEqual(66, result);
         }
@@ -405,7 +412,7 @@ namespace tests
         {
             static const int numbers[] = {1, 3, 6, 3, 2, 2, 7, 8, 2, 9, 2, 19, 2};
             static const int n = sizeof(numbers)/sizeof(numbers[0]);
-            array_view<const int> av(extent<1>(n), numbers);
+            array_view<const int> av(concurrency::extent<1>(n), numbers);
             auto result = amp_stl_algorithms::reduce(begin(av), end(av), 0, [](int a, int b) restrict(cpu, amp) {
                 return (a < b) ? b : a;
             });

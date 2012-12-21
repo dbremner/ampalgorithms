@@ -48,10 +48,10 @@ namespace amp_algorithms
             _Host_Scheduling_info _SchedulingInfo = { NULL };
             if (_Accl_view != _details::auto_select_target()) 
             {
-                _SchedulingInfo._M_accelerator_view = details::_Get_accelerator_view_impl_ptr(_Accl_view);
+                _SchedulingInfo._M_accelerator_view = concurrency::details::_Get_accelerator_view_impl_ptr(_Accl_view);
             }
 
-            details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
+            concurrency::details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
         }
 
         template <int _Dim0, int _Dim1, int _Dim2, typename _Kernel_type>
@@ -60,10 +60,10 @@ namespace amp_algorithms
             _Host_Scheduling_info _SchedulingInfo = { NULL };
             if (_Accl_view != _details::auto_select_target()) 
             {
-                _SchedulingInfo._M_accelerator_view = details::_Get_accelerator_view_impl_ptr(_Accl_view);
+                _SchedulingInfo._M_accelerator_view = concurrency::details::_Get_accelerator_view_impl_ptr(_Accl_view);
             }
 
-            details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
+            concurrency::details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
         }
 
         template <int _Dim0, int _Dim1, typename _Kernel_type>
@@ -72,10 +72,10 @@ namespace amp_algorithms
             _Host_Scheduling_info _SchedulingInfo = { NULL };
             if (_Accl_view != _details::auto_select_target()) 
             {
-                _SchedulingInfo._M_accelerator_view = details::_Get_accelerator_view_impl_ptr(_Accl_view);
+                _SchedulingInfo._M_accelerator_view = concurrency::details::_Get_accelerator_view_impl_ptr(_Accl_view);
             }
 
-            details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
+            concurrency::details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
         }
 
         template <int _Dim0, typename _Kernel_type>
@@ -84,10 +84,10 @@ namespace amp_algorithms
             _Host_Scheduling_info _SchedulingInfo = { NULL };
             if (_Accl_view != _details::auto_select_target()) 
             {
-                _SchedulingInfo._M_accelerator_view = details::_Get_accelerator_view_impl_ptr(_Accl_view);
+                _SchedulingInfo._M_accelerator_view = concurrency::details::_Get_accelerator_view_impl_ptr(_Accl_view);
             }
 
-            details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
+            concurrency::details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
         }
 
         // Reduction implementation
@@ -226,7 +226,7 @@ namespace amp_algorithms
 
         inline Microsoft::WRL::ComPtr<ID3D11Device> _get_d3d11_device_ptr(const concurrency::accelerator_view &av)
         {
-            IUnknown *u = direct3d::get_device(av);
+            IUnknown *u = concurrency::direct3d::get_device(av);
             Microsoft::WRL::ComPtr<ID3D11Device> dev_ptr;
             auto hr = u->QueryInterface(__uuidof(ID3D11Device), reinterpret_cast<void**>(dev_ptr.GetAddressOf()));
             u->Release();
@@ -237,7 +237,7 @@ namespace amp_algorithms
         template<typename T, unsigned int Rank>
         inline Microsoft::WRL::ComPtr<ID3D11Buffer> _get_d3d11_buffer_ptr(const array<T, Rank> &a)
         {
-            IUnknown *u = direct3d::get_buffer(a);
+            IUnknown *u = concurrency::direct3d::get_buffer(a);
             Microsoft::WRL::ComPtr<ID3D11Buffer> buf_ptr;
             auto hr = u->QueryInterface(__uuidof(ID3D11Buffer), reinterpret_cast<void**>(buf_ptr.GetAddressOf()));
             u->Release();
