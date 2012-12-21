@@ -176,7 +176,7 @@ namespace amp_algorithms
             // Verify that we have the same accelerator view for both input, output and scan object
             if (input_array.accelerator_view != output_array.accelerator_view || input_array.accelerator_view != flags_array.accelerator_view || input_array.accelerator_view != m_scan_accelerator_view)
             {
-                throw std::runtime_error("The accelerator_view for input_array, output_array, flags_array and scan object has to be the same.");
+                throw runtime_exception("The accelerator_view for input_array, output_array, flags_array and scan object has to be the same.", E_INVALIDARG);
             }
 
             // Get d3d11 buffer pointers
@@ -233,7 +233,7 @@ namespace amp_algorithms
             // Verify that we have the same accelerator view for both input, output and scan object
             if (input_array.accelerator_view != output_array.accelerator_view || input_array.accelerator_view != m_scan_accelerator_view)
             {
-                throw std::runtime_error("The accelerator_view for input_array, output_array and scan object has to be the same.");
+                throw runtime_exception("The accelerator_view for input_array, output_array and scan object has to be the same.", E_INVALIDARG);
             }
 
             // Note: DirectX library performs validation for scan_size, pitch etc, so it would be a dup and unnecessary perf impact to do it here

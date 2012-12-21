@@ -36,6 +36,7 @@ using namespace amp_algorithms;
 //  Define these namespaces and classes to pick up poorly specified namespaces and types in library code.
 //  This makes the test code more like a real library client which may define conflicting namespaces etc.
 namespace details { };
+namespace _details { };
 namespace direct3d { };
 namespace fast_math { };
 namespace graphics { };

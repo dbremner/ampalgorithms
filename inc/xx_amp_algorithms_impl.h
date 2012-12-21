@@ -220,7 +220,7 @@ namespace amp_algorithms
             { 
                 std::stringstream _out;
                 _out << _exception_msg << " 0x" << std::hex << _hr << std::endl; 
-                throw std::runtime_error(_out.str());
+                throw runtime_exception(_out.str().c_str(), _hr);
             }
         }
 

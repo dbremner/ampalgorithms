@@ -148,32 +148,31 @@ namespace amp_algorithms_tests
 
             array<unsigned int> input(concurrency::extent<1>(elem_count), in.begin(), ref_view);
 
-            // TODO: Shouldn't a runtime_exception be thrown here, not a std::runtime_error?
-            Assert::ExpectException<std::runtime_error>([&]() {
+            Assert::ExpectException<runtime_exception>([&]() {
                 scan s2(2 * elem_count, elem_count, accelerator().default_view);
                 s2.scan_exclusive(input, input);
             }, 
                 L"Expected exception for non-matching accelerator_view in scan object");
 
-            Assert::ExpectException<std::runtime_error>([&]() {
+            Assert::ExpectException<runtime_exception>([&]() {
                 scan s2(2 * elem_count, elem_count, ref_view);
                 array<unsigned int> output(elem_count, ref.create_view());
                 s2.scan_exclusive(input, output);
             },
                 L"Expected exception for non-matching accelerator_view in output");
 
-            Assert::ExpectException<std::runtime_error>([&]() {
+            Assert::ExpectException<runtime_exception>([&]() {
                 scan s2(elem_count-1, ref_view);
                 s2.scan_exclusive(input, input);
             },
                 L"Expected exception for scan object with max_scan_size < scan_size");
 
-            Assert::ExpectException<std::runtime_error>([&]() {
+            Assert::ExpectException<runtime_exception>([&]() {
                 scan s2(elem_count, 0, ref_view);
             },
                 L"Expected exception for scan object with max_scan_count == 0");
 
-            Assert::ExpectException<std::runtime_error>([&]() {
+            Assert::ExpectException<runtime_exception>([&]() {
                 scan s2(elem_count, 1, ref_view);
                 array<unsigned int, 2> in2(10, 10);
                 s2.multi_scan_exclusive(in2, in2, scan_direction::forward, amp_algorithms::sum<unsigned int>());
