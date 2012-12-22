@@ -28,8 +28,10 @@
 
 namespace amp_algorithms
 {
-
+    //----------------------------------------------------------------------------
     // Some common binary functions
+    //----------------------------------------------------------------------------
+
     template <typename T>
     class sum
     {
@@ -100,6 +102,10 @@ namespace amp_algorithms
         }
     };
 
+    //----------------------------------------------------------------------------
+    // reduce
+    //----------------------------------------------------------------------------
+
     // Generic reduction template for binary operators that are commutative and associative
     template <typename InputIndexableView, typename BinaryFunction>
     typename std::result_of<BinaryFunction(const typename indexable_view_traits<InputIndexableView>::value_type&, const typename indexable_view_traits<InputIndexableView>::value_type&)>::type
@@ -114,6 +120,10 @@ namespace amp_algorithms
     {
         return reduce(_details::auto_select_target(), input_view, binary_op);
     }
+
+    //----------------------------------------------------------------------------
+    // scan
+    //----------------------------------------------------------------------------
 
     // Allowed directions for scan operations
     enum class scan_direction

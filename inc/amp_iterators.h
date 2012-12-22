@@ -258,6 +258,7 @@ namespace amp_stl_algorithms
     // respective classes.
     //
     ///////////////////////////////////////////////////////////////////////////////
+
     template <typename array_type>
     class iterator_traits
     {
@@ -285,6 +286,7 @@ namespace amp_stl_algorithms
     //----------------------------------------------------------------------------
     // begin and end iterators for array views
     //----------------------------------------------------------------------------
+
     template <typename value_type>
     array_view_iterator<value_type> begin(const concurrency::array_view<value_type>& arr) restrict(cpu,amp)
     {

@@ -23,10 +23,8 @@
 
 namespace amp_algorithms
 {
-
     namespace _details
     {
-
         // Scan helper that converts binary functions from C++ AMP library to DirectX scan operation codes
         template <typename BinaryFunction>
         struct _dx_scan_op_helper

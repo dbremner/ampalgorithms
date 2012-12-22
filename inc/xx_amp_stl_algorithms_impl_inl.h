@@ -42,8 +42,9 @@ namespace amp_stl_algorithms
     }
 
     //----------------------------------------------------------------------------
-    // for_each
+    // for_each_no_return, for_each
     //----------------------------------------------------------------------------
+
     template< typename ConstRandomAccessIterator, typename UnaryFunction >
     void for_each_no_return( ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryFunction f )
     {	
@@ -189,6 +190,7 @@ namespace amp_stl_algorithms
     //----------------------------------------------------------------------------
     // all_of, any_of, none_of
     //----------------------------------------------------------------------------
+
     template<typename ConstRandomAccessIterator,  typename UnaryPredicate >
     bool all_of(ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate p ) 
     {
@@ -239,10 +241,20 @@ namespace amp_stl_algorithms
         return !amp_stl_algorithms::any_of(first, last, p);
     }
 
+    //----------------------------------------------------------------------------
+    // copy_if
+    //----------------------------------------------------------------------------
+
+    template<typename ConstRandomAccessIterator, typename RandomAccessIterator, typename BinaryPredicate>
+    RandomAccessIterator copy_if( ConstRandomAccessIterator first,  
+        ConstRandomAccessIterator last,
+        RandomAccessIterator dest,
+        BinaryPredicate pred);
 
     //----------------------------------------------------------------------------
     // count
     //----------------------------------------------------------------------------
+
     template<typename ConstRandomAccessIterator, typename T >
     typename std::iterator_traits<ConstRandomAccessIterator>::difference_type
         count( ConstRandomAccessIterator first, ConstRandomAccessIterator last, const T &value )
@@ -256,6 +268,7 @@ namespace amp_stl_algorithms
     //----------------------------------------------------------------------------
     // count_if
     //----------------------------------------------------------------------------
+
     template<typename ConstRandomAccessIterator, typename UnaryPredicate >
     typename std::iterator_traits<ConstRandomAccessIterator>::difference_type
         count_if( ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate p )
@@ -296,6 +309,7 @@ namespace amp_stl_algorithms
     //----------------------------------------------------------------------------
     // find_if
     //----------------------------------------------------------------------------
+
     template<typename ConstRandomAccessIterator, typename UnaryPredicate>
     ConstRandomAccessIterator find_if(ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate p )
     {
@@ -327,6 +341,7 @@ namespace amp_stl_algorithms
     //----------------------------------------------------------------------------
     // find
     //----------------------------------------------------------------------------
+
     template<typename ConstRandomAccessIterator, typename T>
     ConstRandomAccessIterator find( ConstRandomAccessIterator first, ConstRandomAccessIterator last, const T& value )
     {
@@ -338,6 +353,7 @@ namespace amp_stl_algorithms
     //----------------------------------------------------------------------------
     // reduce
     //----------------------------------------------------------------------------
+
     template<typename ConstRandomAccessIterator, typename T, typename BinaryOperation>
     T reduce( ConstRandomAccessIterator first, ConstRandomAccessIterator last, T init, BinaryOperation op )
     {

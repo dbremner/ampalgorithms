@@ -42,6 +42,9 @@ namespace amp_algorithms
             return auto_select_accelerator_view;
         }
 
+    //----------------------------------------------------------------------------
+    // parallel_for_each implementation
+    //----------------------------------------------------------------------------
         template <int _Rank, typename _Kernel_type>
         void parallel_for_each(const concurrency::accelerator_view &_Accl_view, const concurrency::extent<_Rank>& _Compute_domain, const _Kernel_type &_Kernel)
         {
@@ -90,7 +93,9 @@ namespace amp_algorithms
             concurrency::details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
         }
 
-        // Reduction implementation
+        //----------------------------------------------------------------------------
+        // reduce implementation
+        //---------------------------------------------------------------------------- 
 
         // This function performs an in-place reduction through co-operating threads within a tile.
         // The input data is in the parameter "mem" and is reduced in-place modifying its existing contents
