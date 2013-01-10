@@ -6,11 +6,13 @@ function script:append-path {
 	set-content Env:\Path $newPath;
 }
 
-if ($env:VSINSTALLDIR -eq "") {
+if (-not (test-path env:VSINSTALLDIR)) {
     echo "Setting up VS environment..."
     $script="${env:ProgramFiles(x86)}\Microsoft Visual Studio 11.0\VC\vcvarsall.bat"
     $tempFile = [IO.Path]::GetTempFileName()  
  
+    echo "Creating setup script: $tempFile"
+
     ## Store the output of cmd.exe.  We also ask cmd.exe to output   
     ## the environment table after the batch file completes  
  
@@ -19,8 +21,7 @@ if ($env:VSINSTALLDIR -eq "") {
     ## Go through the environment variables in the temp file.  
     ## For each of them, set the variable in our local environment.  
 
-    Get-Content $tempFile | Foreach-Object 
-    {   
+    Get-Content $tempFile | Foreach-Object {   
         if ($_ -match "^(.*?)=(.*)$")  
         { 
             Set-Content "env:\$($matches[1])" $matches[2]  
@@ -32,6 +33,7 @@ if ($env:VSINSTALLDIR -eq "") {
 ## Run build
 
 $msbuild="$env:FrameworkDir$env:FrameworkVersion\msbuild.exe"
+# TODO: Make warnings get treated like errors in these builds.
 $msbuild_options="/verbosity:m /nologo /filelogger /target:rebuild"
 $msbuild_sln="amp_algorithms.sln"
 $msbuild_dir = split-path -parent $MyInvocation.MyCommand.Definition
@@ -53,16 +55,16 @@ mkdir $msbuild_dir\Intermediate > $null
 
 echo "== x64/Debug     ==============================================================="
 $log="$msbuild_int\x64_Debug.log"
-Invoke-Expression "$msbuild $msbuild_sln /p:platform=x64 /p:configuration=Debug     $msbuild_options /fileloggerparameters:logfile=$log"
+Invoke-Expression "$msbuild $msbuild_sln /p:platform=x64 /p:configuration=Debug     $msbuild_options /fileloggerparameters:logfile='$log'"
 echo "== Win32/Debug   ==============================================================="
 $log="$msbuild_int\Win32_Debug.log"
-Invoke-Expression "$msbuild $msbuild_sln /p:platform=Win32 /p:configuration=Debug   $msbuild_options /fileloggerparameters:logfile=$log"
+Invoke-Expression "$msbuild $msbuild_sln /p:platform=Win32 /p:configuration=Debug   $msbuild_options /fileloggerparameters:logfile='$log'"
 echo "== x64/Release   ==============================================================="
 $log="$msbuild_int\x64_Release.log"
-Invoke-Expression "$msbuild $msbuild_sln /p:platform=x64 /p:configuration=Release   $msbuild_options /fileloggerparameters:logfile=$log"
+Invoke-Expression "$msbuild $msbuild_sln /p:platform=x64 /p:configuration=Release   $msbuild_options /fileloggerparameters:logfile='$log'"
 echo "== Win32/Release ==============================================================="
 $log="$msbuild_int\Win32_Release.log"
-Invoke-Expression "$msbuild $msbuild_sln /p:platform=Win32 /p:configuration=Release $msbuild_options /fileloggerparameters:logfile=$log"
+Invoke-Expression "$msbuild $msbuild_sln /p:platform=Win32 /p:configuration=Release $msbuild_options /fileloggerparameters:logfile='$log'"
 
 $StopWatch.Stop();
 echo "== Run Tests     ==============================================================="
