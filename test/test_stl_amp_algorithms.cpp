@@ -280,7 +280,7 @@ namespace tests
             std::vector<int> v2(16);
             array_view<int> result(16, v2);
             result.discard_data();
-            parallel_for_each(concurrency::extent<1>(1), [=] (index<1> idx) restrict(amp) {
+            parallel_for_each(concurrency::extent<1>(1), [=] (concurrency::index<1> idx) restrict(amp) {
                 int id = 1;
 
                 // can be default constructed.

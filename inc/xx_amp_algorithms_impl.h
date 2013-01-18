@@ -240,7 +240,7 @@ namespace amp_algorithms
         }
 
         template<typename T, unsigned int Rank>
-        inline Microsoft::WRL::ComPtr<ID3D11Buffer> _get_d3d11_buffer_ptr(const array<T, Rank> &a)
+        inline Microsoft::WRL::ComPtr<ID3D11Buffer> _get_d3d11_buffer_ptr(const concurrency::array<T, Rank> &a)
         {
             IUnknown *u = concurrency::direct3d::get_buffer(a);
             Microsoft::WRL::ComPtr<ID3D11Buffer> buf_ptr;

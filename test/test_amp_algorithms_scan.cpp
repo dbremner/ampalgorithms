@@ -113,7 +113,7 @@ namespace amp_algorithms_tests
             const int elem_count = 10;
             std::vector<unsigned int> in(elem_count, 1);
 
-            array<unsigned int> input(concurrency::extent<1>(elem_count), in.begin(), ref_view);
+            concurrency::array<unsigned int> input(concurrency::extent<1>(elem_count), in.begin(), ref_view);
             // use max_scan_size and max_scan_count greater than actual usage
             scan s(2 * elem_count, elem_count, ref_view);
 
@@ -124,7 +124,7 @@ namespace amp_algorithms_tests
             // 0, 0, 1, 3, 6, 10, 15, 21, 28, 36 -> 
 
             unsigned int flg = 8; // 001000 in binary, so our segment is in here: 0, 0, 1, | 3, 6, 10, 15, 21, 28, 36
-            array<unsigned int> flags(1, &flg, ref_view);
+            concurrency::array<unsigned int> flags(1, &flg, ref_view);
             s.segmented_scan_exclusive(input, input, flags, scan_direction::backward, amp_algorithms::sum<unsigned int>());
             // 1, 1, 0, 116, 110, 100, 85, 64, 36, 0
 
@@ -146,7 +146,7 @@ namespace amp_algorithms_tests
             const int elem_count = 10;
             std::vector<unsigned int> in(elem_count, 1);
 
-            array<unsigned int> input(concurrency::extent<1>(elem_count), in.begin(), ref_view);
+            concurrency::array<unsigned int> input(concurrency::extent<1>(elem_count), in.begin(), ref_view);
 
             Assert::ExpectException<runtime_exception>([&]() {
                 scan s2(2 * elem_count, elem_count, accelerator().default_view);
@@ -156,7 +156,7 @@ namespace amp_algorithms_tests
 
             Assert::ExpectException<runtime_exception>([&]() {
                 scan s2(2 * elem_count, elem_count, ref_view);
-                array<unsigned int> output(elem_count, ref.create_view());
+                concurrency::array<unsigned int> output(elem_count, ref.create_view());
                 s2.scan_exclusive(input, output);
             },
                 L"Expected exception for non-matching accelerator_view in output");
@@ -174,15 +174,15 @@ namespace amp_algorithms_tests
 
             Assert::ExpectException<runtime_exception>([&]() {
                 scan s2(elem_count, 1, ref_view);
-                array<unsigned int, 2> in2(10, 10);
+                concurrency::array<unsigned int, 2> in2(10, 10);
                 s2.multi_scan_exclusive(in2, in2, scan_direction::forward, amp_algorithms::sum<unsigned int>());
             },
                 L"Expected exception for scan object with max_scan_count < scan_count");
 
             // Check scan binding cleanup
             array_view<const unsigned int> view(input);
-            array<unsigned int> output(input.extent, input.accelerator_view);
-            parallel_for_each(output.extent, [view, &output] (index<1> idx) restrict(amp) {
+            concurrency::array<unsigned int> output(input.extent, input.accelerator_view);
+            parallel_for_each(output.extent, [view, &output] (concurrency::index<1> idx) restrict(amp) {
                 output[idx] = view[idx];
             });
             output.accelerator_view.wait();
@@ -209,8 +209,8 @@ namespace amp_algorithms_tests
             if (test_type == scan_type::multiscan)
             {
                 concurrency::extent<2> e2(row_count, column_count);
-                array<T, 2> input(e2, in.begin());
-                array<T, 2> output(e2);
+                concurrency::array<T, 2> input(e2, in.begin());
+                concurrency::array<T, 2> output(e2);
 
                 s.multi_scan_exclusive(input, inplace ? input : output, direction, op);
                 copy(inplace ? input : output, out.begin());
@@ -218,8 +218,8 @@ namespace amp_algorithms_tests
             else
             {
                 concurrency::extent<1> e(column_count);
-                array<T> input(e, in.begin());
-                array<T> output(e);
+                concurrency::array<T> input(e, in.begin());
+                concurrency::array<T> output(e);
                 bitvector *flags_ptr = nullptr;
 
                 if (test_type == scan_type::scan)
@@ -229,7 +229,7 @@ namespace amp_algorithms_tests
                 else
                 {
                     flags.generate_data();
-                    array<unsigned int> input_flags(static_cast<unsigned int>(flags.data.size()), flags.data.begin());
+                    concurrency::array<unsigned int> input_flags(static_cast<unsigned int>(flags.data.size()), flags.data.begin());
                     s.segmented_scan_exclusive(input, inplace ? input : output, input_flags, direction, op);
                 }
 

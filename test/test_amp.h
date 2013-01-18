@@ -45,8 +45,8 @@ namespace precise_math { };
 //  Define these classes to pick up poorly specified namespaces and types in library code.
 //  This makes the test code more like a real library client which may define conflicting classes.
 class extent { };
-/// TODO: Add this back in and clean up remaining code to fix use of array with unspecificed namespaces.
-//class array { };
+class index { };
+class array { };
 
 // Helper functions to generate test data of random numbers.
 template <typename T>
