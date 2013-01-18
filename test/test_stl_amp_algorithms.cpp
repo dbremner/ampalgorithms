@@ -22,13 +22,19 @@
 
 #include <vector>
 #include <algorithm>
+#include <array>
 #include <iostream>
 #include <amp_stl_algorithms.h>
 #include <CppUnitTest.h>
+#include "test_amp.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace concurrency;
 using namespace amp_stl_algorithms;
+
+//  Define these classes to pick up poorly specified namespaces and types in library code.
+//  This makes the test code more like a real library client which may define conflicting classes.
+//class extent { };
 
 //  Define these namespaces and classes to pick up poorly specified namespaces and types in library code.
 //  This makes the test code more like a real library client which may define conflicting namespaces etc.
@@ -38,7 +44,6 @@ namespace direct3d { };
 namespace fast_math { };
 namespace graphics { };
 namespace precise_math { };
-class extent { };
 
 namespace tests
 {
@@ -60,7 +65,7 @@ namespace tests
 
         TEST_METHOD(stl_find)
         {
-            static const int numbers[] = {1 , 3, 6, 3, 2, 2 };
+            static const int numbers[] = { 1, 3, 6, 3, 2, 2 };
             static const int n = sizeof(numbers)/sizeof(numbers[0]);
 
             array_view<const int> av(concurrency::extent<1>(n), numbers);
@@ -74,7 +79,7 @@ namespace tests
 
         TEST_METHOD(stl_none_of)
         {
-            static const int numbers[] = {1 , 3, 6, 3, 2, 2 };
+            static const int numbers[] = { 1, 3, 6, 3, 2, 2 };
             static const int n = sizeof(numbers)/sizeof(numbers[0]);
 
             array_view<const int> av(concurrency::extent<1>(n), numbers);
@@ -86,7 +91,7 @@ namespace tests
 
         TEST_METHOD(stl_any_of)
         {
-            static const int numbers[] = {1 , 3, 6, 3, 2, 2 };
+            static const int numbers[] = { 1, 3, 6, 3, 2, 2 };
             static const int n = sizeof(numbers)/sizeof(numbers[0]);
 
             array_view<const int> av(concurrency::extent<1>(n), numbers);
@@ -98,7 +103,7 @@ namespace tests
 
         TEST_METHOD(stl_all_of)
         {
-            static const int numbers[] = {1 , 3, 6, 3, 2, 2 };
+            static const int numbers[] = { 1, 3, 6, 3, 2, 2 };
             static const int n = sizeof(numbers)/sizeof(numbers[0]);
 
             array_view<const int> av(concurrency::extent<1>(n), numbers);
@@ -106,6 +111,69 @@ namespace tests
             Assert::IsFalse(r1);
             bool r2 = amp_stl_algorithms::all_of(begin(av), end(av), [] (int v) restrict(amp) -> bool { return v>5; });
             Assert::IsFalse(r2);
+        }
+
+        TEST_METHOD(stl_copy_if)
+        {
+            const std::array<int, 5> numbers = { 0, 0, 0, 0, 0 };
+            test_copy_if(begin(numbers), end(numbers));
+
+            const std::array<int, 5> numbers0 = { 3, 0, 0, 0, 0 };
+            test_copy_if(begin(numbers0), end(numbers0));
+
+            const std::array<float, 5> numbers1 = { 0.0f, 0.0f, 0.0f, 0.0f,3.0f };
+            test_copy_if(begin(numbers1), end(numbers1));
+
+            const std::array<int, 12> numbers2 = { -1, 1, 0, 2, 3, 0, 4, 0, 5, 0, 6, 7 };
+            //  predicate result:                   1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1
+            //  Exclusive scan result:              0, 1, 2, 2, 3, 4, 4, 5, 5, 6, 6, 7, 8
+            //  Final result:                      -1, 1, 2, 3, 4, 5, 6, 7
+            test_copy_if(begin(numbers2), end(numbers2));
+
+            const std::array<int, 5> numbers3 = { 0, 0, 0, 0, 0 };
+            test_copy_if(begin(numbers3), end(numbers3));
+
+#ifdef _DEBUG
+            std::vector<int> numbers4(1023);
+#else
+            std::vector<int> numbers4(1023 * 1029 * 13);
+#endif
+            generate_data(numbers4);
+            test_copy_if(begin(numbers4), end(numbers4));
+        }
+
+        template <typename InIt>
+        void test_copy_if(InIt first, InIt last)
+        {
+            typedef typename std::iterator_traits<InIt>::value_type T;
+            int size = int(std::distance(first, last));
+
+            // Calculate expected result for copy all non-zeros.
+
+            std::vector<T> expected(size, -42);
+            auto expected_end = std::copy_if(first, last, begin(expected), [=] (const T i)
+            { 
+                return (i != 0) ? 1 : 0; 
+            });
+            expected.resize(distance(begin(expected), expected_end));
+
+            // Calculate actual result
+
+            array_view<const T> input_av(concurrency::extent<1>(size), &first[0]);
+            std::vector<T> result(size, -42);
+            array_view<T> result_av(concurrency::extent<1>(size), result);
+            auto dest_end = amp_stl_algorithms::copy_if(begin(input_av), 
+                end(input_av), begin(result_av), [=] (const T i) restrict(amp) 
+            { 
+                return (i != 0) ? 1 : 0; 
+            });
+            result_av.synchronize();
+
+            Assert::AreEqual(expected.size(), size_t(std::distance(begin(result_av), dest_end)));
+            for (size_t i = 0; i < expected.size(); ++i)
+            {
+                Assert::AreEqual(expected[i], result[i]);
+            }
         }
 
         TEST_METHOD(stl_count)
@@ -420,6 +488,62 @@ namespace tests
                 return (a < b) ? b : a;
             });
             Assert::AreEqual(19, result);
+        }
+
+        TEST_METHOD(stl_remove_if)
+        {
+            float numbers0[] = { 3, 0, 0, 0, 0 };
+            test_remove_if(numbers0, numbers0 + (sizeof(numbers0) / sizeof(numbers0[0])));
+
+            int numbers1[] = { 0, 0, 0, 0, 3 };
+            test_remove_if(numbers1, numbers1 + (sizeof(numbers1) / sizeof(numbers1[0])));
+            
+            int numbers2[] =               { -1, 1, 0, 2, 3, 0, 4, 0, 5, 0, 6, 7 };
+            //  Predicate result:             0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0
+            //  Scan result:                  0, 0, 0, 1, 1, 1, 2, 2, 3, 3, 4, 4, 4
+            //  Final result:                -1, 1, 2, 3, 4, 5, 6, 7
+            test_remove_if(numbers2, numbers2 + (sizeof(numbers2) / sizeof(numbers2[0])));
+            
+#ifdef _DEBUG
+            std::vector<int> numbers3(1023);
+#else
+            std::vector<int> numbers3(1023 * 1029 * 13);
+#endif
+            generate_data(numbers3);
+            test_remove_if(begin(numbers3), end(numbers3));
+        }
+
+        template <typename InIt>
+        void test_remove_if(InIt first, InIt last)
+        {
+            typedef typename std::iterator_traits<InIt>::value_type T;
+            const int size = int(std::distance(first, last));
+
+            // Calculate expected result, for remove all zeros.
+
+            std::vector<T> expected(size);
+            std::copy(first, last, begin(expected));
+            auto expected_end = std::remove_if(begin(expected), end(expected), [=] (const T i)
+            {
+                return (i > 0) ? 1 : 0;
+            });
+            expected.resize(std::distance(begin(expected), expected_end));
+
+            // Calculate actual result
+
+            array_view<T> input_av(concurrency::extent<1>(size), &first[0]);
+            auto result_end = amp_stl_algorithms::remove_if(begin(input_av), 
+                end(input_av), [=] (const T i) restrict(amp) 
+            { 
+                return (i > 0) ? 1 : 0;
+            });
+            input_av.synchronize();
+
+            Assert::AreEqual(expected.size(), size_t(distance(begin(input_av), result_end)));
+            for (size_t i = 0; i < expected.size(); ++i)
+            {
+                Assert::AreEqual(expected[i], first[i]);
+            }
         }
     };
 };

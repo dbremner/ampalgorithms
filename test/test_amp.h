@@ -33,15 +33,20 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace concurrency;
 using namespace amp_algorithms;
 
-//  Define these namespaces and classes to pick up poorly specified namespaces and types in library code.
-//  This makes the test code more like a real library client which may define conflicting namespaces etc.
+//  Define these namespaces to pick up poorly specified namespaces and types in library code.
+//  This makes the test code more like a real library client which may define conflicting namespaces .
 namespace details { };
 namespace _details { };
 namespace direct3d { };
 namespace fast_math { };
 namespace graphics { };
 namespace precise_math { };
+
+//  Define these classes to pick up poorly specified namespaces and types in library code.
+//  This makes the test code more like a real library client which may define conflicting classes.
 class extent { };
+/// TODO: Add this back in and clean up remaining code to fix use of array with unspecificed namespaces.
+//class array { };
 
 // Helper functions to generate test data of random numbers.
 template <typename T>

@@ -181,11 +181,11 @@ namespace amp_stl_algorithms
     template<typename ConstRandomAccessIterator, typename RandomAccessIterator>
     RandomAccessIterator copy( ConstRandomAccessIterator first,  ConstRandomAccessIterator last, RandomAccessIterator dest_beg );
 
-    template<typename ConstRandomAccessIterator, typename RandomAccessIterator, typename BinaryPredicate>
+    template<typename ConstRandomAccessIterator, typename RandomAccessIterator, typename UnaryPredicate>
     RandomAccessIterator copy_if( ConstRandomAccessIterator first,  
         ConstRandomAccessIterator last,
         RandomAccessIterator dest,
-        BinaryPredicate pred);
+        UnaryPredicate pred);
 
     template<typename ConstRandomAccessIterator, typename Size, typename RandomAccessIterator>
     RandomAccessIterator copy_n(ConstRandomAccessIterator first, Size count, RandomAccessIterator result);

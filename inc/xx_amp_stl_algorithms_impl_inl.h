@@ -26,7 +26,6 @@
 
 namespace amp_stl_algorithms
 {
-
     namespace _details
     {
         template<class ConstRandomAccessIterator>
@@ -154,7 +153,6 @@ namespace amp_stl_algorithms
         return result_begin;
     }
 
-
     //----------------------------------------------------------------------------
     // transform (Binary)
     //
@@ -185,7 +183,6 @@ namespace amp_stl_algorithms
 
         return result_begin;
     }
-
 
     //----------------------------------------------------------------------------
     // all_of, any_of, none_of
@@ -245,11 +242,47 @@ namespace amp_stl_algorithms
     // copy_if
     //----------------------------------------------------------------------------
 
-    template<typename ConstRandomAccessIterator, typename RandomAccessIterator, typename BinaryPredicate>
-    RandomAccessIterator copy_if( ConstRandomAccessIterator first,  
+    template<typename ConstRandomAccessIterator, typename RandomAccessIterator, typename UnaryPredicate>
+    RandomAccessIterator copy_if(ConstRandomAccessIterator first,  
         ConstRandomAccessIterator last,
-        RandomAccessIterator dest,
-        BinaryPredicate pred);
+        RandomAccessIterator dest_first,
+        UnaryPredicate pred)
+    {
+        typedef typename std::iterator_traits<ConstRandomAccessIterator>::difference_type diff_type;
+
+        const int tile_size = 512;
+        const diff_type element_count = std::distance(first, last);
+        auto src_view = _details::create_section(first, element_count);
+        auto dest_view = _details::create_section(dest_first, element_count);
+
+        concurrency::array<unsigned int> map(element_count + 1);
+        concurrency::array_view<unsigned int> map_vw(map);
+        concurrency::tiled_extent<tile_size> computeDomain = concurrency::extent<1>(element_count).tile<tile_size>().pad();
+        concurrency::parallel_for_each(computeDomain,
+            [src_view, map_vw, pred, element_count](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+        {
+            const int i = tidx.global[0];
+            map_vw[i] = static_cast<unsigned int>(pred(src_view[i]));
+        });
+
+        map_vw.synchronize();
+        amp_algorithms::scan s(element_count + 1);
+        s.scan_exclusive(map, map);
+        dest_view.discard_data();
+        concurrency::parallel_for_each(computeDomain,
+            [src_view, map_vw, dest_view, element_count](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+        {
+            const int i = tidx.global[0];
+            if ((i < element_count) && (map_vw[i] != map_vw[i + 1]))
+            {
+                dest_view[map_vw[i]] = src_view[i];
+            }
+        });
+
+        int remaining_elements;
+        concurrency::copy(map_vw.section(element_count, 1), stdext::make_checked_array_iterator(&remaining_elements, 1));
+        return dest_first + remaining_elements;
+    }
 
     //----------------------------------------------------------------------------
     // count
@@ -370,4 +403,31 @@ namespace amp_stl_algorithms
         return amp_stl_algorithms::reduce(first, last, init, amp_algorithms::sum<std::remove_const<typename std::iterator_traits<ConstRandomAccessIterator>::value_type>::type>());
     }
 
+    //----------------------------------------------------------------------------
+    // remove, remove_if
+    //----------------------------------------------------------------------------
+
+    // TODO: Is is possible to remove elements in place and save having to copy?
+    template<typename RandomAccessIterator, typename UnaryPredicate>
+    RandomAccessIterator remove_if(RandomAccessIterator first, RandomAccessIterator last, UnaryPredicate pred)
+    {
+        typedef typename std::iterator_traits<RandomAccessIterator>::difference_type diff_type;
+        typedef typename std::iterator_traits<RandomAccessIterator>::value_type T;
+
+        const diff_type element_count = std::distance(first, last);
+        auto src_view = _details::create_section(first, element_count);
+
+        concurrency::array<T> tmp(element_count);
+        concurrency::array_view<T> tmp_view(tmp);
+
+        //  Here copy_if() is used with the predicate inverted
+        auto last_element =  amp_stl_algorithms::copy_if(first, last, begin(tmp_view), 
+            [pred](const T& i) restrict(amp)
+        {
+            return static_cast<unsigned int>(!pred(i));
+        });
+        const int remaining_elements = static_cast<int>(std::distance(begin(tmp_view), last_element));
+        concurrency::copy(tmp_view.section(0, remaining_elements), src_view.section(0, remaining_elements));
+        return first + remaining_elements;
+    }
 }// namespace amp_stl_algorithms
