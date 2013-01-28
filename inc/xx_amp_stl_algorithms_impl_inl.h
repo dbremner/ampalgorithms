@@ -262,7 +262,10 @@ namespace amp_stl_algorithms
             [src_view, map_vw, pred, element_count](concurrency::tiled_index<tile_size> tidx) restrict(amp)
         {
             const int i = tidx.global[0];
-            map_vw[i] = static_cast<unsigned int>(pred(src_view[i]));
+            if (i < element_count)
+            {
+                map_vw[i] = static_cast<unsigned int>(pred(src_view[i]));
+            }
         });
 
         map_vw.synchronize();
@@ -427,7 +430,10 @@ namespace amp_stl_algorithms
             return static_cast<unsigned int>(!pred(i));
         });
         const int remaining_elements = static_cast<int>(std::distance(begin(tmp_view), last_element));
-        concurrency::copy(tmp_view.section(0, remaining_elements), src_view.section(0, remaining_elements));
+        if (remaining_elements > 0)
+        {
+            concurrency::copy(tmp_view.section(0, remaining_elements), src_view.section(0, remaining_elements));
+        }
         return first + remaining_elements;
     }
 }// namespace amp_stl_algorithms

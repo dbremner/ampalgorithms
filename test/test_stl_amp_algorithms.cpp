@@ -115,6 +115,8 @@ namespace tests
 
         TEST_METHOD(stl_copy_if)
         {
+            // These tests copy all the non-zero elements from the numbers array.
+
             const std::array<int, 5> numbers = { 0, 0, 0, 0, 0 };
             test_copy_if(begin(numbers), end(numbers));
 
@@ -492,25 +494,30 @@ namespace tests
 
         TEST_METHOD(stl_remove_if)
         {
-            float numbers0[] = { 3, 0, 0, 0, 0 };
+            // These tests remove all the non-zero elements from the numbers array.
+
+            float numbers0[] = { 1, 1, 1, 1, 1 };
             test_remove_if(numbers0, numbers0 + (sizeof(numbers0) / sizeof(numbers0[0])));
 
-            int numbers1[] = { 0, 0, 0, 0, 3 };
+            float numbers1[] = { 3, 0, 0, 0, 0 };
             test_remove_if(numbers1, numbers1 + (sizeof(numbers1) / sizeof(numbers1[0])));
+
+            int numbers2[] = { 0, 0, 0, 0, 3 };
+            test_remove_if(numbers2, numbers2 + (sizeof(numbers2) / sizeof(numbers2[0])));
             
-            int numbers2[] =               { -1, 1, 0, 2, 3, 0, 4, 0, 5, 0, 6, 7 };
+            int numbers3[] =               { -1, 1, 0, 2, 3, 0, 4, 0, 5, 0, 6, 7 };
             //  Predicate result:             0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0
             //  Scan result:                  0, 0, 0, 1, 1, 1, 2, 2, 3, 3, 4, 4, 4
             //  Final result:                -1, 1, 2, 3, 4, 5, 6, 7
-            test_remove_if(numbers2, numbers2 + (sizeof(numbers2) / sizeof(numbers2[0])));
+            test_remove_if(numbers3, numbers3 + (sizeof(numbers3) / sizeof(numbers3[0])));
             
 #ifdef _DEBUG
-            std::vector<int> numbers3(1023);
+            std::vector<int> numbers4(1023);
 #else
-            std::vector<int> numbers3(1023 * 1029 * 13);
+            std::vector<int> numbers4(1023 * 1029 * 13);
 #endif
-            generate_data(numbers3);
-            test_remove_if(begin(numbers3), end(numbers3));
+            generate_data(numbers4);
+            test_remove_if(begin(numbers4), end(numbers4));
         }
 
         template <typename InIt>
