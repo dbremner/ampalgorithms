@@ -276,7 +276,6 @@ namespace tests
 
         TEST_METHOD(stl_random_access_iterator_in_amp)
         {
-            int id = 1;
             std::vector<int> v1(16);
             array_view<int> a1(16, v1);
             std::vector<int> v2(16);

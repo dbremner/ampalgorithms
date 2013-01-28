@@ -220,7 +220,6 @@ namespace amp_algorithms_tests
                 concurrency::extent<1> e(column_count);
                 concurrency::array<T> input(e, in.begin());
                 concurrency::array<T> output(e);
-                bitvector *flags_ptr = nullptr;
 
                 if (test_type == scan_type::scan)
                 {
@@ -321,7 +320,7 @@ namespace amp_algorithms_tests
             // For each sub-scan
             for (unsigned int current_scan_num=0; current_scan_num<scan_count; ++current_scan_num)
             {
-                T expected_scan_result;
+                T expected_scan_result = T();
                 for (unsigned int i=current_scan_num * scan_pitch; i<scan_size; ++i)
                 {
                     int pos = i; // pos is used to reference into output and input arrays depending on the direction we go from the front or the back
