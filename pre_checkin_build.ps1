@@ -34,7 +34,7 @@ if (-not (test-path env:VSINSTALLDIR)) {
 
 $msbuild="$env:FrameworkDir$env:FrameworkVersion\msbuild.exe"
 # TODO: Make warnings get treated like errors in these builds.
-$msbuild_options="/verbosity:m /nologo /filelogger /target:rebuild"
+$msbuild_options="/verbosity:m /nologo /filelogger /target:rebuild /consoleloggerparameters:verbosity=m"
 $msbuild_sln="amp_algorithms.sln"
 $msbuild_dir = split-path -parent $MyInvocation.MyCommand.Definition
 $msbuild_int ="$msbuild_dir\Intermediate"
@@ -77,7 +77,7 @@ $BuildElapsedTime = [system.String]::Format("{0:00}:{1:00}.{2:00}", $elapsed.Min
 $StopWatch.Reset();
 $StopWatch.Start()
 
-."$env:VSINSTALLDIR\Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe" "$msbuild_dir\Win32\Release\amp_algorithms.dll" "$msbuild_dir\Win32\Release\amp_stl_algorithms.dll"
+."$env:VSINSTALLDIR\Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe" "$msbuild_dir\Win32\Release\amp_algorithms.dll" "$msbuild_dir\Win32\Release\amp_stl_algorithms.dll" | select-string -pattern "Failed"
 
 $StopWatch.Stop();
 echo "================================================================================"
