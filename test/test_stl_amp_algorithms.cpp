@@ -205,72 +205,94 @@ namespace tests
             Assert::IsTrue(res);
         }
 
-        // TODO: Break this up into smaller tests?
+        TEST_METHOD(stl_random_access_iterator_default_ctor)
+        {
+            array_view_iterator<int> iter1; 
+            auto iter2 = array_view_iterator<double>();
+		}
 
-        TEST_METHOD(stl_random_access_iterator)
+        TEST_METHOD(stl_random_access_iterator_copy_assignment_comparison)
         {
             std::vector<int> v1(16);
             array_view<int> a1(16, v1);
 
-            // can be default constructed.
-            array_view_iterator<int> iter1; 
-            auto iter2 = array_view_iterator<double>();
+			// Copy constructor and assignment
+            array_view_iterator<int> iter1 = begin(a1);
+            array_view_iterator<int> iter2(iter1);
+            array_view_iterator<int> iter3 = iter2;
 
-            // can be copy constructed
-            array_view_iterator<int> iter3 = begin(a1);
-            array_view_iterator<int> iter4(iter3);
-            array_view_iterator<int> iter5 = iter4;
+			// Equality/inequality comparisons
+			Assert::IsTrue(begin(a1) == iter1);  
+			Assert::IsTrue(begin(a1) == iter2);  
+			Assert::IsTrue(begin(a1) == iter3);
+			iter1++;
+			Assert::IsFalse(begin(a1) == iter1);
+		}
 
-            // assignment
-            iter5 = iter3;
+        TEST_METHOD(stl_random_access_iterator_dereference)
+        {
+            std::vector<int> v1(16);
+            array_view<int> a1(16, v1);
+            array_view_iterator<int> iter = begin(a1);
 
-            // equality/inequality comparisons
-            bool res = iter3 == iter5;
-            Assert::IsTrue(res);
-            iter3++;
-            res = iter3 != iter4;
-            Assert::IsTrue(res);
-
-            // dereference
-            *iter3 = 10;
+			// dereference
+			iter++;
+            *iter = 10;
             Assert::AreEqual(10, a1[1]);
 
-            // offset derference operator;
-            iter3[2] = 5;
+            // offset dereference operator
+            iter[2] = 5;
             Assert::AreEqual(5, a1[1 + 2]);
+		}
 
-            // increment, decrement, + , -, +=, -=
-            auto iter6 = iter3;
-            auto iter7 = iter3;
-            iter6++;
-            iter6 = iter6 + 1;
-            iter7 += 2;
-            Assert::IsTrue(iter6 == iter7);
-            --iter6;
-            --iter6;
-            iter7 = iter7 - 2;
-            Assert::IsTrue(iter6 == iter7);
-            iter7 = iter7 - 1;
-            iter6 -= 1;
-            Assert::IsTrue(iter6 == iter7);
+        TEST_METHOD(stl_random_access_iterator_increment_decrement)
+        {
+            std::vector<int> v1(16);
+            array_view<int> a1(16, v1);
+            array_view_iterator<int> iter1 = begin(a1);
+            array_view_iterator<int> iter2 = begin(a1);
 
-            // <, >, <= >=
-            iter6 = iter3;
-            iter7 = iter3 + 1;
-            Assert::IsTrue(iter6 < iter7);
-            Assert::IsTrue(iter6 <= iter7);
-            Assert::IsTrue(iter7 > iter6);
-            Assert::IsTrue(iter7 >= iter6);
+            iter1++;
+            iter1 = iter1 + 1;
+            iter2 += 2;
+            Assert::IsTrue(iter1 == iter2);
 
-            // *i++
-            iter6 = begin(a1);
-            *iter6 = 3;
+            --iter1;
+            --iter1;
+            iter2 = iter2 - 2;
+            Assert::IsTrue(iter1 == iter2);
+
+            iter2 = iter2 - 1;
+            iter1 -= 1;
+            Assert::IsTrue(iter1 == iter2);
+		}
+
+        TEST_METHOD(stl_random_access_iterator_equality)
+        {
+            std::vector<int> v1(16);
+            array_view<int> a1(16, v1);
+            array_view_iterator<int> iter1 = begin(a1);
+            array_view_iterator<int> iter2 = begin(a1) + 1;
+
+            Assert::IsTrue(iter1 < iter2);
+            Assert::IsTrue(iter1 <= iter2);
+            Assert::IsTrue(iter2 > iter1);
+            Assert::IsTrue(iter2 >= iter1);
+		}
+
+        TEST_METHOD(stl_random_access_iterator_increment)
+		{
+            std::vector<int> v1(16);
+            array_view<int> a1(16, v1);
+            array_view_iterator<int> iter = begin(a1);
+
+			*iter = 3;
             Assert::AreEqual(3, a1[0]);
-            int x1 = *iter6++;
+            int x1 = *iter++;
             Assert::AreEqual(3, x1);
-            *iter6++ = 7;
+            *iter++ = 7;
             Assert::AreEqual(7, a1[1]);
-        }
+		}
 
         // TODO: Break this up into smaller tests?
 
