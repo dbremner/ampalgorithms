@@ -5,6 +5,9 @@
     <ClInclude Include="inc\amp_stl_algorithms.h" />
     <ClInclude Include="inc\xx_amp_stl_algorithms_impl.h" />
     <ClInclude Include="inc\xx_amp_stl_algorithms_impl_inl.h" />
+    <ClInclude Include="test\stdafx.h">
+      <Filter>Tests</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Tests">
@@ -13,6 +16,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="test\test_stl_amp_algorithms.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="test\stdafx.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
   </ItemGroup>

@@ -18,14 +18,9 @@
 *
 * This file contains the test driver
 *---------------------------------------------------------------------------*/
-#define NOMINMAX
+#include "stdafx.h"
 
-#include <vector>
-#include <algorithm>
-#include <iostream>
 #include <amp_algorithms.h>
-#include <CppUnitTest.h>
-
 #include "test_amp.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
