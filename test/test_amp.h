@@ -16,7 +16,7 @@
 * 
 * C++ AMP standard algorithm library.
 *
-* This file contains the test driver
+* This file contains the additional utilities to support unit tests.
 *---------------------------------------------------------------------------*/
 
 #pragma once

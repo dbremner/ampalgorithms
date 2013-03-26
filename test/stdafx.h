@@ -16,7 +16,6 @@
 * 
 * C++ AMP standard algorithm library.
 *
-* This file contains the C++ AMP standard algorithms
 *---------------------------------------------------------------------------*/
 #define NOMINMAX
 
@@ -24,4 +23,5 @@
 #include <algorithm>
 #include <array>
 #include <iostream>
+#include <numeric>
 #include <CppUnitTest.h>
