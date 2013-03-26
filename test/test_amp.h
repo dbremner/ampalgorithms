@@ -131,3 +131,32 @@ inline bool compare(const T &v1, const T &v2)
     }
     return true;
 }
+
+// Compare array_view with other STL containers.
+template<typename T>
+size_t size(const array_view<T>& arr)
+{
+    return arr.extent.size();
+}
+
+template<typename T>
+size_t size(const std::vector<T>& arr)
+{
+    return arr.size();
+}
+
+template <typename T1, typename T2>
+bool are_equal(const T1& expected, const T2& actual)
+{    
+    const size_t element_count = distance(begin(expected), end(expected));
+
+    if (element_count != distance(begin(actual), end(actual)))
+        return false;
+
+    for (int i = 0; i < int(element_count); ++i)
+    {
+        if (expected[i] != actual[i])
+            return false;
+    }
+    return true;
+}

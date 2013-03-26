@@ -27,5 +27,8 @@
     <ClCompile Include="test\stdafx.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
+    <ClCompile Include="test\test_amp.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

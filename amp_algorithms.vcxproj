@@ -190,6 +190,7 @@
     </ClCompile>
     <ClCompile Include="test\test_amp_algorithms.cpp" />
     <ClCompile Include="test\test_amp_algorithms_scan.cpp" />
+    <ClCompile Include="test\test_amp.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
