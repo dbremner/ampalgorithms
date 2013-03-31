@@ -23,17 +23,16 @@
 
 #include <amp.h>
 #include <assert.h>
-#include <amp_indexable_view.h>
 #include <sstream>
 #include <d3d11.h>
 #include <d3dcsx.h>
 #include <wrl\client.h>
-
 #pragma comment(lib, "d3dcsx")
+
+#include <amp_indexable_view.h>
 
 namespace amp_algorithms
 {
-
     namespace _details
     {
         inline concurrency::accelerator_view auto_select_target()
@@ -42,9 +41,10 @@ namespace amp_algorithms
             return auto_select_accelerator_view;
         }
 
-    //----------------------------------------------------------------------------
-    // parallel_for_each implementation
-    //----------------------------------------------------------------------------
+		//----------------------------------------------------------------------------
+		// parallel_for_each implementation
+		//----------------------------------------------------------------------------
+
         template <int _Rank, typename _Kernel_type>
         void parallel_for_each(const concurrency::accelerator_view &_Accl_view, const concurrency::extent<_Rank>& _Compute_domain, const _Kernel_type &_Kernel)
         {

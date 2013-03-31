@@ -22,9 +22,10 @@
 #pragma once
 
 #include <amp.h>
+#include <wrl\client.h>
+
 #include <xx_amp_algorithms_impl.h>
 #include <amp_indexable_view.h>
-#include <wrl\client.h>
 
 namespace amp_algorithms
 {

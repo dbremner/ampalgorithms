@@ -17,6 +17,7 @@
 * C++ AMP standard algorithm library.
 *
 *---------------------------------------------------------------------------*/
+
 #define NOMINMAX
 
 #include <vector>
