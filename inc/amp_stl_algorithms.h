@@ -23,7 +23,8 @@
 #include <xx_amp_algorithms_impl.h>
 #include <amp_iterators.h>
 
-// TODO: Get all the groups of functions into some sort of logical order in this file and the impl file.
+// TODO: Get the tests, header and internal implementations into the same logical order.
+
 namespace amp_stl_algorithms
 {
     //----------------------------------------------------------------------------
@@ -93,11 +94,9 @@ namespace amp_stl_algorithms
     // equal
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2>
     bool equal( ConstRandomAccessIterator1 first1, ConstRandomAccessIterator1 last1, ConstRandomAccessIterator2 first2 );
 
-    // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2, typename BinaryPredicate>
     bool equal( ConstRandomAccessIterator1 first1, 
         ConstRandomAccessIterator1 last1, 
@@ -114,9 +113,8 @@ namespace amp_stl_algorithms
     template<typename ConstRandomAccessIterator, typename UnaryPredicate>
     ConstRandomAccessIterator find_if(ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate p );
 
-    // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator, typename UnaryPredicate>
-    ConstRandomAccessIterator find_if_not( ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate q );
+    ConstRandomAccessIterator find_if_not( ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate p );
 
     // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2>
@@ -131,7 +129,7 @@ namespace amp_stl_algorithms
         ConstRandomAccessIterator1 last1,
         ConstRandomAccessIterator2 first2, 
         ConstRandomAccessIterator2 last2, 
-        Predicate pred);
+        Predicate p);
 
     // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2>
@@ -146,7 +144,7 @@ namespace amp_stl_algorithms
         ConstRandomAccessIterator1 last1,
         ConstRandomAccessIterator2 first2, 
         ConstRandomAccessIterator2 last2, 
-        Predicate pred);
+        Predicate p);
 
     // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator>
@@ -154,7 +152,7 @@ namespace amp_stl_algorithms
 
     // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator, typename Predicate>
-    ConstRandomAccessIterator adjacent_find (ConstRandomAccessIterator first,  ConstRandomAccessIterator last, Predicate pred);
+    ConstRandomAccessIterator adjacent_find (ConstRandomAccessIterator first,  ConstRandomAccessIterator last, Predicate p);
 
     //----------------------------------------------------------------------------
     // search, search_n
@@ -173,7 +171,7 @@ namespace amp_stl_algorithms
         ConstRandomAccessIterator1 last1,
         ConstRandomAccessIterator2 first2, 
         ConstRandomAccessIterator2 last2, 
-        Predicate pred);
+        Predicate p);
 
     // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator, typename Size, typename Type>
@@ -188,13 +186,12 @@ namespace amp_stl_algorithms
         ConstRandomAccessIterator last,
         Size count, 
         const Type& val, 
-        Predicate pred);
+        Predicate p);
 
     //----------------------------------------------------------------------------
     // copy, copy_if, copy_n, copy_backward
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator, typename RandomAccessIterator>
     RandomAccessIterator copy( ConstRandomAccessIterator first,  ConstRandomAccessIterator last, RandomAccessIterator dest_beg );
 
@@ -202,12 +199,12 @@ namespace amp_stl_algorithms
     RandomAccessIterator copy_if( ConstRandomAccessIterator first,  
         ConstRandomAccessIterator last,
         RandomAccessIterator dest,
-        UnaryPredicate pred);
+        UnaryPredicate p);
 
-    // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator, typename Size, typename RandomAccessIterator>
     RandomAccessIterator copy_n(ConstRandomAccessIterator first, Size count, RandomAccessIterator result);
 
+    // TODO: does copy_backward really make any sense on a data-parallel context?
     // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator, typename RandomAccessIterator>
     RandomAccessIterator copy_backward( ConstRandomAccessIterator first,
@@ -224,6 +221,7 @@ namespace amp_stl_algorithms
         ConstRandomAccessIterator last,
         RandomAccessIterator d_first ); 
 
+    // TODO: does move_backward really make any sense on a data-parallel context?
     // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator, typename RandomAccessIterator>
     RandomAccessIterator move_backward( ConstRandomAccessIterator first,
@@ -240,6 +238,7 @@ namespace amp_stl_algorithms
     template<typename RandomAccessIterator, typename Size, typename T>
     void fill_n( RandomAccessIterator first, Size count, const T& value );
 
+    // TODO: This differs only by return type. Probably better to implement the one that returns the end iterator than void.
     /*
     template<typename RandomAccessIterator, typename Size, typename T>
     RandomAccessIterator fill_n( RandomAccessIterator first, Size count, const T& value );*/
@@ -271,6 +270,7 @@ namespace amp_stl_algorithms
     template<typename RandomAccessIterator, typename Size, typename Generator>
     void generate_n( RandomAccessIterator first, Size count, Generator g );
 
+    // TODO: This differs only by return type. Probably better to implement the one that returns the end iterator than void.
     /*
     template<typename RandomAccessIterator, typename Size, typename Generator>
     RandomAccessIterator generate_n( RandomAccessIterator first, Size count, Generator g );*/
@@ -279,58 +279,51 @@ namespace amp_stl_algorithms
     // remove, remove_if, remove_copy, remove_copy_if
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
     template<typename RandomAccessIterator, typename T>
     RandomAccessIterator remove( RandomAccessIterator first, RandomAccessIterator last, const T& value );
 
     template<typename RandomAccessIterator, typename UnaryPredicate>
     RandomAccessIterator remove_if( RandomAccessIterator first, RandomAccessIterator last, UnaryPredicate p );
 
-    // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator,typename RandomAccessIterator, typename T>
     RandomAccessIterator remove_copy( ConstRandomAccessIterator first,
         ConstRandomAccessIterator last,
-        RandomAccessIterator d_first,
+        RandomAccessIterator dest_first,
         const T& value );
 
-    // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator,typename RandomAccessIterator, typename UnaryPredicate>
     RandomAccessIterator remove_copy_if( ConstRandomAccessIterator first,
         ConstRandomAccessIterator last,
-        RandomAccessIterator d_first,
+        RandomAccessIterator dest_first,
         UnaryPredicate p );
 
     //----------------------------------------------------------------------------
     // replace, replace_if, replace_copy, replace_copy_if
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
     template<typename RandomAccessIterator, typename T>
     void replace( RandomAccessIterator first, 
         RandomAccessIterator last,
         const T& old_value, 
         const T& new_value );
 
-    // NOT IMPLEMENTED
     template<typename RandomAccessIterator, typename UnaryPredicate, typename T>
     void replace_if( RandomAccessIterator first, 
         RandomAccessIterator last,
         UnaryPredicate p, 
         const T& new_value ); 
 
-    // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator,typename RandomAccessIterator, typename T>
     RandomAccessIterator replace_copy( ConstRandomAccessIterator first,
         ConstRandomAccessIterator last,
-        RandomAccessIterator d_first,
+        RandomAccessIterator dest_first,
         const T& old_value,
         const T& new_value );
 
-    // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator,typename RandomAccessIterator, typename UnaryPredicate, typename T>
     RandomAccessIterator replace_copy_if( ConstRandomAccessIterator first,
         ConstRandomAccessIterator last,
-        RandomAccessIterator d_first,
+        RandomAccessIterator dest_first,
         UnaryPredicate p,
         const T& new_value ); 
 
@@ -339,35 +332,30 @@ namespace amp_stl_algorithms
     //----------------------------------------------------------------------------
 
     template<typename T>
-    void swap( T& a, T& b ) restrict(cpu,amp);
+    void swap( T& a, T& b ) restrict(cpu, amp);
 
-    // NOT IMPLEMENTED
-    template<typename T, size_t N>
-    void swap( T (&a)[N], T (&b)[N]) restrict(cpu,amp);
+    template<typename T, int N>
+    void swap( T (&a)[N], T (&b)[N]) restrict(cpu, amp);
 
-    // NOT IMPLEMENTED
     template<typename RandomAccessIterator1, typename RandomAccessIterator2>
     RandomAccessIterator2 swap_ranges( RandomAccessIterator1 first1,
         RandomAccessIterator1 last1, 
-        RandomAccessIterator2 first2 );
+        RandomAccessIterator2 first2 ) restrict(amp);
 
-    // NOT IMPLEMENTED
     template<typename RandomAccessIterator1, typename RandomAccessIterator2>
-    void iter_swap( RandomAccessIterator1 a, RandomAccessIterator2 b ) restrict(cpu,amp);
+    void iter_swap( RandomAccessIterator1 a, RandomAccessIterator2 b ) restrict(cpu, amp);
 
     //----------------------------------------------------------------------------
     // reverse, reverse_copy
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
     template<typename RandomAccessIterator>
     void reverse( RandomAccessIterator first, RandomAccessIterator last );
 
-    // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator, typename RandomAccessIterator>
     RandomAccessIterator reverse_copy( ConstRandomAccessIterator first, 
         ConstRandomAccessIterator last, 
-        RandomAccessIterator result);
+        RandomAccessIterator dest_first);
 
     //----------------------------------------------------------------------------
     // rotate, rotate_copy
@@ -822,7 +810,6 @@ namespace amp_stl_algorithms
     // iota
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
     template<typename RandomAccessIterator, typename T>
     void iota( RandomAccessIterator first, RandomAccessIterator last, T value );
 

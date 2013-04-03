@@ -20,8 +20,10 @@
 *---------------------------------------------------------------------------*/
 #pragma once
 
-#include <amp_stl_algorithms.h>
 #include <functional>
+#include <numeric>
+
+#include <amp_stl_algorithms.h>
 #include <amp_algorithms.h>
 
 namespace amp_stl_algorithms
@@ -39,6 +41,10 @@ namespace amp_stl_algorithms
             return base_view.section(concurrency::index<1>(start), concurrency::extent<1>(distance));
         }		
     }
+
+    // TODO: Get the tests, header and internal implementations into the same logical order.
+    // TODO: Lots of the algorithms that typically do a small amount of work per thread should use tiling to save the runtime overhead of having to do this. 
+    // TODO: Should be more consistent with parameter names begin/end or first/last, result/d_first or dest_first
 
     //----------------------------------------------------------------------------
     // for_each_no_return, for_each
@@ -197,12 +203,12 @@ namespace amp_stl_algorithms
         );
     }
 
-
-    // Non-standard, OutputIterator must yield an int referenece, where the result will be
+    // Non-standard, OutputIterator must yield an int reference, where the result will be
     // stored. This allows the function to eschew synchronization
     template<typename ConstRandomAccessIterator, typename UnaryPredicate, typename OutputIterator >
     void any_of(ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate p,  OutputIterator dest)
     {
+        // TODO: Shouldn't this be tiled for slightly better performance?
         auto section_view = _details::create_section(dest, 1);
         amp_stl_algorithms::for_each_no_return(
             first, last, 
@@ -239,14 +245,26 @@ namespace amp_stl_algorithms
     }
 
     //----------------------------------------------------------------------------
-    // copy_if
+    // copy, copy_if
     //----------------------------------------------------------------------------
+
+    template<typename ConstRandomAccessIterator, typename RandomAccessIterator>
+    RandomAccessIterator copy( ConstRandomAccessIterator first,  ConstRandomAccessIterator last, RandomAccessIterator dest_first )
+    {
+        typedef typename std::iterator_traits<ConstRandomAccessIterator>::difference_type diff_type;
+        const diff_type element_count = std::distance(first, last);
+		if (element_count <= 0)
+			return dest_first;
+        auto src_view = _details::create_section(first, element_count);
+        concurrency::copy(src_view, dest_first);
+        return dest_first + element_count;
+    }
 
     template<typename ConstRandomAccessIterator, typename RandomAccessIterator, typename UnaryPredicate>
     RandomAccessIterator copy_if(ConstRandomAccessIterator first,  
         ConstRandomAccessIterator last,
         RandomAccessIterator dest_first,
-        UnaryPredicate pred)
+        UnaryPredicate p)
     {
         typedef typename std::iterator_traits<ConstRandomAccessIterator>::difference_type diff_type;
 
@@ -257,14 +275,14 @@ namespace amp_stl_algorithms
 
         concurrency::array<unsigned int> map(element_count + 1);
         concurrency::array_view<unsigned int> map_vw(map);
-        concurrency::tiled_extent<tile_size> computeDomain = concurrency::extent<1>(element_count).tile<tile_size>().pad();
-        concurrency::parallel_for_each(computeDomain,
-            [src_view, map_vw, pred, element_count](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+        concurrency::tiled_extent<tile_size> compute_domain = concurrency::extent<1>(element_count).tile<tile_size>().pad();
+        concurrency::parallel_for_each(compute_domain,
+            [src_view, map_vw, p, element_count](concurrency::tiled_index<tile_size> tidx) restrict(amp)
         {
             const int i = tidx.global[0];
             if (i < element_count)
             {
-                map_vw[i] = static_cast<unsigned int>(pred(src_view[i]));
+                map_vw[i] = static_cast<unsigned int>(p(src_view[i]));
             }
         });
 
@@ -272,7 +290,7 @@ namespace amp_stl_algorithms
         amp_algorithms::scan s(element_count + 1);
         s.scan_exclusive(map, map);
         dest_view.discard_data();
-        concurrency::parallel_for_each(computeDomain,
+        concurrency::parallel_for_each(compute_domain,
             [src_view, map_vw, dest_view, element_count](concurrency::tiled_index<tile_size> tidx) restrict(amp)
         {
             const int i = tidx.global[0];
@@ -287,8 +305,16 @@ namespace amp_stl_algorithms
         return dest_first + remaining_elements;
     }
 
+    template<typename ConstRandomAccessIterator, typename Size, typename RandomAccessIterator>
+    RandomAccessIterator copy_n(ConstRandomAccessIterator first, Size count, RandomAccessIterator dest_first)
+    {
+		if (count <= 0)
+			return dest_first;
+        return amp_stl_algorithms::copy(first, (first + count), dest_first);
+    }
+
     //----------------------------------------------------------------------------
-    // count
+    // count, count_if
     //----------------------------------------------------------------------------
 
     template<typename ConstRandomAccessIterator, typename T >
@@ -318,6 +344,8 @@ namespace amp_stl_algorithms
         diff_type element_count = std::distance(first, last);
         auto section_view = _details::create_section(first, element_count);
 
+        // TODO: Seems the global memory access isn't coherent. Can it be improved.
+		// TODO: Would a reduction be more efficient than using an atomic operation here?
         concurrency::parallel_for_each(
             concurrency::extent<1>(num_threads),
             [section_view,element_count,p,count_av] (concurrency::index<1> idx) restrict (amp) 
@@ -343,7 +371,61 @@ namespace amp_stl_algorithms
     }
 
     //----------------------------------------------------------------------------
-    // find_if
+    // equal
+    //----------------------------------------------------------------------------
+
+    template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2, typename BinaryPredicate>
+    bool equal( ConstRandomAccessIterator1 first1, 
+        ConstRandomAccessIterator1 last1, 
+        ConstRandomAccessIterator2 first2, 
+        BinaryPredicate p )
+    {
+        typedef std::iterator_traits<ConstRandomAccessIterator1>::difference_type diff_type;
+        diff_type element_count = std::distance(first1, last1);
+        if (element_count <= 0) 
+            return true;
+        
+        const int tile_size = 512;
+        static const int num_threads = 10 * 1024;
+        auto section1_view = _details::create_section(first1, element_count);
+        auto section2_view = _details::create_section(first2, element_count);
+
+        diff_type unequal_count = 0;
+        concurrency::array_view<diff_type> unequal_count_av(1, &unequal_count);
+
+        // TODO: Seems the global memory access isn't coherent. Can it be improved.
+		// TODO: Would a reduction be more efficient than using an atomic operation here?
+        concurrency::parallel_for_each(
+            tiled_extent<tile_size>(concurrency::extent<1>(num_threads)).pad(),
+            [section1_view, section2_view, element_count, p, unequal_count_av] (concurrency::tiled_index<tile_size> tidx) restrict (amp) 
+        {
+            int idx = tidx.global[0];
+			diff_type i = idx;
+            for (; i < element_count; i += num_threads)
+            {
+                if (!p(section1_view[i], section2_view[i]))
+                {
+                    break;
+                }
+            }
+            if (i < element_count)
+            {
+                concurrency::atomic_fetch_add(&unequal_count_av(0), 1);
+            }
+        });
+        return (unequal_count_av[0] == 0);
+    }
+
+    template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2>
+    bool equal( ConstRandomAccessIterator1 first1, ConstRandomAccessIterator1 last1, ConstRandomAccessIterator2 first2 )
+    {
+        typedef std::iterator_traits<ConstRandomAccessIterator1>::value_type T;
+
+        return amp_stl_algorithms::equal(first1, last1, first2, [=](const T& v1, const T& v2) restrict(amp) { return (v1 == v2); });
+    }
+
+    //----------------------------------------------------------------------------
+    // find_if, find, find_if_not
     //----------------------------------------------------------------------------
 
     template<typename ConstRandomAccessIterator, typename UnaryPredicate>
@@ -374,15 +456,47 @@ namespace amp_stl_algorithms
         return first + result_position;
     }
 
-    //----------------------------------------------------------------------------
-    // find
-    //----------------------------------------------------------------------------
+    template<typename ConstRandomAccessIterator, typename UnaryPredicate>
+    ConstRandomAccessIterator find_if_not( ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate p )
+    {
+        typedef std::iterator_traits<ConstRandomAccessIterator>::value_type T;
+
+        return amp_stl_algorithms::find_if(first, last, [p](const T& v) restrict(amp) { return !p(v); });
+    }
 
     template<typename ConstRandomAccessIterator, typename T>
     ConstRandomAccessIterator find( ConstRandomAccessIterator first, ConstRandomAccessIterator last, const T& value )
     {
         return amp_stl_algorithms::find_if(first, last, [=] (const decltype(*first)& curr_val) restrict(amp) {
             return curr_val == value;
+        });
+    }
+
+    //----------------------------------------------------------------------------
+    // iota
+    //----------------------------------------------------------------------------
+
+    template<typename RandomAccessIterator, typename T>
+    void iota( RandomAccessIterator first, RandomAccessIterator last, T value)
+    {
+        typedef std::iterator_traits<RandomAccessIterator>::difference_type difference_type;
+        const int tile_size = 512;
+
+        difference_type element_count = std::distance(first, last);
+        if (element_count <= 0) 
+            return;
+
+		// TODO: This looks like it is in violation with the standard, which requires that the value needs to support 
+		//       only ++value. i.e. the default ctor or subtraction, multiplication might not be available. We should 
+		//       consider if there is a better alternative.
+        auto inc = T();
+        inc = ++inc - T();
+        auto section_view = _details::create_section(first, element_count);
+
+        concurrency::parallel_for_each(concurrency::tiled_extent<tile_size>(section_view.extent).pad(), [=](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+        {
+            int idx = tidx.global[0];
+            section_view[idx] = value + (T(idx) * inc);  // Hum... Is this numerically equivalent to incrementing?
         });
     }
 
@@ -410,9 +524,15 @@ namespace amp_stl_algorithms
     // remove, remove_if
     //----------------------------------------------------------------------------
 
+    template<typename RandomAccessIterator, typename T>
+    RandomAccessIterator remove( RandomAccessIterator first, RandomAccessIterator last, const T& value )
+    {
+        return amp_stl_algorithms::remove_if(first, last, [=](const T& v) restrict(amp) { return (v == value) ? 1 : 0; });
+    }
+
     // TODO: Is is possible to remove elements in place and save having to copy?
     template<typename RandomAccessIterator, typename UnaryPredicate>
-    RandomAccessIterator remove_if(RandomAccessIterator first, RandomAccessIterator last, UnaryPredicate pred)
+    RandomAccessIterator remove_if(RandomAccessIterator first, RandomAccessIterator last, UnaryPredicate p)
     {
         typedef typename std::iterator_traits<RandomAccessIterator>::difference_type diff_type;
         typedef typename std::iterator_traits<RandomAccessIterator>::value_type T;
@@ -425,9 +545,9 @@ namespace amp_stl_algorithms
 
         //  Here copy_if() is used with the predicate inverted
         auto last_element =  amp_stl_algorithms::copy_if(first, last, begin(tmp_view), 
-            [pred](const T& i) restrict(amp)
+            [p](const T& i) restrict(amp)
         {
-            return static_cast<unsigned int>(!pred(i));
+            return static_cast<unsigned int>(!p(i));
         });
         const int remaining_elements = static_cast<int>(std::distance(begin(tmp_view), last_element));
         if (remaining_elements > 0)
@@ -436,4 +556,230 @@ namespace amp_stl_algorithms
         }
         return first + remaining_elements;
     }
+
+    template<typename ConstRandomAccessIterator,typename RandomAccessIterator, typename T>
+    RandomAccessIterator remove_copy( ConstRandomAccessIterator first,
+        ConstRandomAccessIterator last,
+        RandomAccessIterator dest_first,
+        const T& value )
+    {
+        typedef typename std::iterator_traits<RandomAccessIterator>::value_type T;
+        return amp_stl_algorithms::copy_if(first, last, dest_first, [=](T& v) restrict(amp) { return (v != value); });
+    }
+
+    template<typename ConstRandomAccessIterator,typename RandomAccessIterator, typename UnaryPredicate>
+    RandomAccessIterator remove_copy_if( ConstRandomAccessIterator first,
+        ConstRandomAccessIterator last,
+        RandomAccessIterator dest_first,
+        UnaryPredicate p )
+    {
+        typedef typename std::iterator_traits<RandomAccessIterator>::value_type T;
+        return amp_stl_algorithms::copy_if(first, last, dest_first, [=](T& v) restrict(amp) { return !p(v); });
+    }
+
+    //----------------------------------------------------------------------------
+    // replace, replace_if, replace_copy, replace_copy_if
+    //----------------------------------------------------------------------------
+
+    template<typename RandomAccessIterator, typename T>
+    void replace( RandomAccessIterator first, 
+        RandomAccessIterator last,
+        const T& old_value, 
+        const T& new_value )
+    {
+        typedef std::iterator_traits<RandomAccessIterator>::value_type T;
+
+        amp_stl_algorithms::replace_if(first, last, [=](const T& v) restrict(amp) { return (v == old_value); }, new_value);
+    }
+
+    template<typename RandomAccessIterator, typename UnaryPredicate, typename T>
+    void replace_if( RandomAccessIterator first, 
+        RandomAccessIterator last,
+        UnaryPredicate p, 
+        const T& new_value )
+    {
+        typedef std::iterator_traits<RandomAccessIterator>::difference_type difference_type;
+        const int tile_size = 512;
+
+        difference_type element_count = std::distance(first, last);
+        if (element_count <= 0) 
+            return;
+
+        auto src_view = _details::create_section(first, element_count);
+
+        concurrency::parallel_for_each(concurrency::tiled_extent<tile_size>(src_view.extent).pad(), 
+            [element_count, new_value, src_view, p](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+        {
+            int idx = tidx.global[0];
+            if ((idx < element_count) && p(src_view[idx]))
+            {
+                src_view[idx] = new_value;
+            }
+        });
+    }
+
+    template<typename ConstRandomAccessIterator,typename RandomAccessIterator, typename T>
+    RandomAccessIterator replace_copy( ConstRandomAccessIterator first,
+        ConstRandomAccessIterator last,
+        RandomAccessIterator dest_first,
+        const T& old_value,
+        const T& new_value )
+    {
+        return amp_stl_algorithms::replace_copy_if(first, last, dest_first, [=](const T& v) restrict(amp) { return (v == old_value); }, new_value);
+    }
+
+    template<typename ConstRandomAccessIterator,typename RandomAccessIterator, typename UnaryPredicate, typename T>
+    RandomAccessIterator replace_copy_if( ConstRandomAccessIterator first,
+        ConstRandomAccessIterator last,
+        RandomAccessIterator dest_first,
+        UnaryPredicate p,
+        const T& new_value )
+    {
+        typedef std::iterator_traits<RandomAccessIterator>::difference_type difference_type;
+        const int tile_size = 512;
+
+        difference_type element_count = std::distance(first, last);
+        if (element_count <= 0) 
+            return dest_first;
+
+        auto src_view = _details::create_section(first, element_count);
+        auto dest_view = _details::create_section(dest_first, element_count);
+
+		int last_changed_idx = 0;
+        array_view<int> last_changed_idx_av(1, &last_changed_idx);
+
+        concurrency::parallel_for_each(concurrency::tiled_extent<tile_size>(src_view.extent).pad(), 
+            [element_count, new_value, src_view, dest_view, last_changed_idx_av, p](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+        {
+            int idx = tidx.global[0];
+            if (idx < element_count)
+            {
+				if (p(src_view[idx]))
+				{
+					dest_view[idx] = new_value;
+					atomic_fetch_max(&last_changed_idx_av(0), idx + 1);
+				}
+				else
+				{
+					dest_view[idx] = src_view[idx];
+				}
+            }
+        });
+
+        return dest_first + last_changed_idx_av[0];
+    }
+
+    //----------------------------------------------------------------------------
+    // swap, swap<T, N>, swap_ranges, iter_swap
+    //----------------------------------------------------------------------------
+
+    template<typename T>
+    void swap( T& a, T& b ) restrict(cpu, amp)
+    {
+        T tmp = a;
+        a = b;
+        b = tmp;
+    }
+
+    template<typename T, int N>
+    void swap( T (&a)[N], T (&b)[N]) restrict(cpu, amp)
+    {
+        for (int i = 0; i < N; ++i)
+        {
+            amp_stl_algorithms::swap(a[i], b[i]);
+        }
+    }
+
+    template<typename RandomAccessIterator1, typename RandomAccessIterator2>
+    RandomAccessIterator2 swap_ranges( RandomAccessIterator1 first1,
+        RandomAccessIterator1 last1, 
+        RandomAccessIterator2 first2 )
+    {
+        typedef std::iterator_traits<RandomAccessIterator1>::difference_type difference_type;
+        typedef std::iterator_traits<RandomAccessIterator1>::value_type T;
+        const int tile_size = 512;
+
+        difference_type element_count = std::distance(first1, last1);
+        if (element_count == 0)
+            return first2;
+
+        concurrency::array_view<T, 1> first1_view = _details::create_section(first1, element_count);
+        concurrency::array_view<T, 1> first2_view = _details::create_section(first2, element_count);
+
+        concurrency::tiled_extent<tile_size> compute_domain = concurrency::extent<1>(element_count >> 1);
+        concurrency::parallel_for_each(compute_domain.pad(), [=] (concurrency::tiled_index<tile_size> tidx) restrict(amp) 
+        {
+            const int idx = tidx.global[0];
+            if (idx < element_count)
+            {
+                amp_stl_algorithms::swap(first1_view[idx], first2_view[idx]);
+            }
+        });
+
+        return first2 + element_count;
+    }
+
+    template<typename RandomAccessIterator1, typename RandomAccessIterator2>
+    void iter_swap( RandomAccessIterator1 a, RandomAccessIterator2 b ) restrict(cpu, amp)
+    {
+        amp_stl_algorithms::swap(*a, *b);
+    }
+
+    //----------------------------------------------------------------------------
+    // reverse, reverse_copy
+    //----------------------------------------------------------------------------
+
+    template<typename RandomAccessIterator>
+    void reverse( RandomAccessIterator first, RandomAccessIterator last )
+    {
+        typedef typename std::iterator_traits<RandomAccessIterator>::difference_type diff_type;
+        const int tile_size = 512;
+
+        const diff_type element_count = std::distance(first, last);
+        if (element_count <= 1) 
+            return;
+
+        auto src_view = _details::create_section(first, element_count);
+        const int last_element = element_count - 1;
+
+        concurrency::tiled_extent<tile_size> compute_domain = concurrency::extent<1>(element_count >> 1);
+        concurrency::parallel_for_each(compute_domain.pad(), [=] (concurrency::tiled_index<tile_size> tidx) restrict(amp) 
+        {
+            const int idx = tidx.global[0];
+            if (idx < element_count)
+            {
+                amp_stl_algorithms::swap(src_view[idx], src_view[last_element - idx]);
+            }
+        });
+    }
+
+    template<typename ConstRandomAccessIterator, typename RandomAccessIterator>
+    RandomAccessIterator reverse_copy( ConstRandomAccessIterator first, 
+        ConstRandomAccessIterator last, 
+        RandomAccessIterator dest_first)
+    {
+        typedef typename std::iterator_traits<RandomAccessIterator>::difference_type diff_type;
+        const int tile_size = 512;
+
+        const diff_type element_count = std::distance(first, last);
+        if (element_count <= 0) 
+            return dest_first;
+
+        auto src_view = _details::create_section(first, element_count);
+        auto dest_view = _details::create_section(dest_first, element_count);
+        const int last_element = element_count - 1;
+
+        concurrency::tiled_extent<tile_size> compute_domain = concurrency::extent<1>(element_count);
+        concurrency::parallel_for_each(compute_domain.pad(), [=] (concurrency::tiled_index<tile_size> tidx) restrict(amp) 
+        {
+            const int idx = tidx.global[0];
+            if (idx < element_count)
+            {
+                dest_view[idx] = src_view[last_element - idx];
+            }
+        });
+
+        return dest_first + element_count;
+    }
+
 }// namespace amp_stl_algorithms

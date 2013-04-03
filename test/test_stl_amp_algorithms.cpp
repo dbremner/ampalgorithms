@@ -16,7 +16,7 @@
 * 
 * C++ AMP standard algorithm library.
 *
-* This file contains the test driver
+* This file contains the unit tests.
 *---------------------------------------------------------------------------*/
 #include "stdafx.h"
 
@@ -27,21 +27,10 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace concurrency;
 using namespace amp_stl_algorithms;
 
-//  Define these classes to pick up poorly specified namespaces and types in library code.
-//  This makes the test code more like a real library client which may define conflicting classes.
-//class extent { };
-
-//  Define these namespaces and classes to pick up poorly specified namespaces and types in library code.
-//  This makes the test code more like a real library client which may define conflicting namespaces etc.
-namespace details { };
-namespace _details { };
-namespace direct3d { };
-namespace fast_math { };
-namespace graphics { };
-namespace precise_math { };
-
 namespace tests
 {
+    // TODO: Get the tests, header and internal implementations into the same logical order.
+
     TEST_CLASS(stl_algorithms_tests)
     {
         TEST_METHOD(stl_for_each_no_return)
@@ -58,6 +47,10 @@ namespace tests
             Assert::AreEqual(1024 * 2, sum);
         }
 
+        //----------------------------------------------------------------------------
+        // find, find_if, find_if_not, find_end, find_first_of, adjacent_find
+        //----------------------------------------------------------------------------
+
         TEST_METHOD(stl_find)
         {
             static const int numbers[] = { 1, 3, 6, 3, 2, 2 };
@@ -71,6 +64,38 @@ namespace tests
             iter = amp_stl_algorithms::find(begin(av), end(av), 17);
             Assert::IsTrue(end(av) == iter);
         }
+
+        TEST_METHOD(stl_find_if)
+        {
+            static const int numbers[] = { 1, 3, 6, 3, 2, 2 };
+            static const int n = sizeof(numbers)/sizeof(numbers[0]);
+
+            array_view<const int> av(concurrency::extent<1>(n), numbers);
+            auto iter = amp_stl_algorithms::find_if(begin(av), end(av), [=](int v) restrict(amp) { return v == 3; });
+            int position = std::distance(begin(av), iter);
+            Assert::AreEqual(1, position);
+
+            iter = amp_stl_algorithms::find_if(begin(av), end(av), [=](int v) restrict(amp) { return v == 17; });
+            Assert::IsTrue(end(av) == iter);
+        }
+
+        TEST_METHOD(stl_find_if_not)
+        {
+            static const int numbers[] = { 1, 3, 6, 3, 2, 2 };
+            static const int n = sizeof(numbers)/sizeof(numbers[0]);
+
+            array_view<const int> av(concurrency::extent<1>(n), numbers);
+            auto iter = amp_stl_algorithms::find_if_not(begin(av), end(av), [=](int v) restrict(amp) { return v != 3; });
+            int position = std::distance(begin(av), iter);
+            Assert::AreEqual(1, position);
+
+            iter = amp_stl_algorithms::find_if_not(begin(av), end(av), [=](int v) restrict(amp) { return v != 17; });
+            Assert::IsTrue(end(av) == iter);
+        }
+
+        //----------------------------------------------------------------------------
+        // all_of, any_of, none_of
+        //----------------------------------------------------------------------------
 
         TEST_METHOD(stl_none_of)
         {
@@ -106,6 +131,30 @@ namespace tests
             Assert::IsFalse(r1);
             bool r2 = amp_stl_algorithms::all_of(begin(av), end(av), [] (int v) restrict(amp) -> bool { return v>5; });
             Assert::IsFalse(r2);
+        }
+
+        //----------------------------------------------------------------------------
+        // copy, copy_if, copy_n, copy_backward
+        //----------------------------------------------------------------------------
+
+        TEST_METHOD(stl_copy)
+        {
+            test_copy(1024);
+        }
+
+        void test_copy(const int size)
+        {
+            std::vector<int> vec(size);
+            std::iota(begin(vec), end(vec), 1);
+            array_view<int> av(size, vec);
+
+            std::vector<int> result(size, 0);
+            array_view<int> result_av(size, result);
+
+            auto result_end = amp_stl_algorithms::copy(begin(av), end(av), begin(result));
+
+            Assert::IsTrue(are_equal(av, result));
+            Assert::AreEqual(result_av[size - 1], *--result_end);
         }
 
         TEST_METHOD(stl_copy_if)
@@ -173,9 +222,30 @@ namespace tests
             }
         }
 
+        TEST_METHOD(stl_copy_n)
+        {
+            const int size = 1023;
+            std::vector<int> vec(size);
+            std::iota(begin(vec), end(vec), 1);
+            array_view<int> av(size, vec);
+
+            std::vector<int> result(size, 0);
+            array_view<int> result_av(size, result);
+
+            auto result_end = amp_stl_algorithms::copy_n(begin(av), 512, begin(result));
+
+            Assert::IsTrue(are_equal(av.section(0, 512), result_av.section(0, 512)));
+            Assert::IsFalse(are_equal(av.section(512, 1), result_av.section(512, 2)));
+            Assert::AreEqual(512, int(std::distance(begin(result), result_end)));
+        }
+
+        //----------------------------------------------------------------------------
+        // count, count_if
+        //----------------------------------------------------------------------------
+
         TEST_METHOD(stl_count)
         {
-            static const int numbers[] = {1 , 3, 6, 3, 2, 2, 7, 8, 2, 9, 2, 19, 2};
+            static const int numbers[] = {1, 3, 6, 3, 2, 2, 7, 8, 2, 9, 2, 19, 2};
             static const int n = sizeof(numbers)/sizeof(numbers[0]);
             array_view<const int> av(concurrency::extent<1>(n), numbers);
             auto r1 = amp_stl_algorithms::count(begin(av), end(av), 2);
@@ -183,6 +253,61 @@ namespace tests
             auto r2 = amp_stl_algorithms::count(begin(av), end(av), 17);
             Assert::AreEqual(0, r2);
         }
+
+        TEST_METHOD(stl_count_if)
+        {
+            static const int numbers[] = {1, 3, 6, 3, 2, 2, 7, 8, 2, 9, 2, 19, 2};
+            static const int n = sizeof(numbers)/sizeof(numbers[0]);
+            array_view<const int> av(concurrency::extent<1>(n), numbers);
+            auto r1 = amp_stl_algorithms::count_if(begin(av), end(av), [=](const int& v) restrict(amp) { return (v == 2); });
+            Assert::AreEqual(5, r1);
+            auto r2 = amp_stl_algorithms::count_if(begin(av), end(av), [=](const int& v) restrict(amp) { return (v == 17); });
+            Assert::AreEqual(0, r2);
+        }
+
+        //----------------------------------------------------------------------------
+        // equal
+        //----------------------------------------------------------------------------
+
+        TEST_METHOD(stl_equal)
+        {
+            std::vector<int> vec1(1024);
+            std::iota(begin(vec1), end(vec1), 1);
+            array_view<int> av1(1024, vec1);
+            std::vector<int> vec2(1024);
+            std::iota(begin(vec2), end(vec2), 1);
+            array_view<int> av2(1024, vec2);
+
+            Assert::IsTrue(amp_stl_algorithms::equal(begin(av1), end(av1), begin(av2)));
+
+            av2[512] = 1;
+
+            Assert::IsFalse(amp_stl_algorithms::equal(begin(av1), end(av1), begin(av2)));
+
+            av1 = av1.section(0, 512);
+
+            Assert::IsTrue(amp_stl_algorithms::equal(begin(av1), end(av1), begin(av2)));
+        }
+
+        TEST_METHOD(stl_equal_pred)
+        {
+            std::vector<int> vec1(1024);
+            std::iota(begin(vec1), end(vec1), 1);
+            array_view<int> av1(1024, vec1);
+            std::vector<int> vec2(1024);
+            std::iota(begin(vec2), end(vec2), 1);
+            array_view<int> av2(1024, vec2);
+
+            auto pred = [=](int& v1, int& v2) restrict(amp) { return ((v1 + 1) == v2); };
+            Assert::IsFalse(amp_stl_algorithms::equal(begin(av1), end(av1), begin(av2), pred));
+
+            std::iota(begin(vec2), end(vec2), 2);
+            av2.refresh();           
+
+            Assert::IsTrue(amp_stl_algorithms::equal(begin(av1), end(av1), begin(av2), pred));
+        }
+
+        // TODO: These iterator tests are in the wrong place, move them.
 
         TEST_METHOD(stl_begin_end_array_view)
         {
@@ -204,25 +329,25 @@ namespace tests
         {
             array_view_iterator<int> iter1; 
             auto iter2 = array_view_iterator<double>();
-		}
+        }
 
         TEST_METHOD(stl_random_access_iterator_copy_assignment_comparison)
         {
             std::vector<int> v1(16);
             array_view<int> a1(16, v1);
 
-			// Copy constructor and assignment
+            // Copy constructor and assignment
             array_view_iterator<int> iter1 = begin(a1);
             array_view_iterator<int> iter2(iter1);
             array_view_iterator<int> iter3 = iter2;
 
-			// Equality/inequality comparisons
-			Assert::IsTrue(begin(a1) == iter1);  
-			Assert::IsTrue(begin(a1) == iter2);  
-			Assert::IsTrue(begin(a1) == iter3);
-			iter1++;
-			Assert::IsFalse(begin(a1) == iter1);
-		}
+            // Equality/inequality comparisons
+            Assert::IsTrue(begin(a1) == iter1);  
+            Assert::IsTrue(begin(a1) == iter2);  
+            Assert::IsTrue(begin(a1) == iter3);
+            iter1++;
+            Assert::IsFalse(begin(a1) == iter1);
+        }
 
         TEST_METHOD(stl_random_access_iterator_dereference)
         {
@@ -230,15 +355,15 @@ namespace tests
             array_view<int> a1(16, v1);
             array_view_iterator<int> iter = begin(a1);
 
-			// dereference
-			iter++;
+            // dereference
+            iter++;
             *iter = 10;
             Assert::AreEqual(10, a1[1]);
 
             // offset dereference operator
             iter[2] = 5;
             Assert::AreEqual(5, a1[1 + 2]);
-		}
+        }
 
         TEST_METHOD(stl_random_access_iterator_increment_decrement)
         {
@@ -260,7 +385,7 @@ namespace tests
             iter2 = iter2 - 1;
             iter1 -= 1;
             Assert::IsTrue(iter1 == iter2);
-		}
+        }
 
         TEST_METHOD(stl_random_access_iterator_equality)
         {
@@ -273,21 +398,21 @@ namespace tests
             Assert::IsTrue(iter1 <= iter2);
             Assert::IsTrue(iter2 > iter1);
             Assert::IsTrue(iter2 >= iter1);
-		}
+        }
 
         TEST_METHOD(stl_random_access_iterator_increment)
-		{
+        {
             std::vector<int> v1(16);
             array_view<int> a1(16, v1);
             array_view_iterator<int> iter = begin(a1);
 
-			*iter = 3;
+            *iter = 3;
             Assert::AreEqual(3, a1[0]);
             int x1 = *iter++;
             Assert::AreEqual(3, x1);
             *iter++ = 7;
             Assert::AreEqual(7, a1[1]);
-		}
+        }
 
         // TODO: Break this up into smaller tests?
 
@@ -369,6 +494,10 @@ namespace tests
             }
         }
 
+        //----------------------------------------------------------------------------
+        // generate, generate_n
+        //----------------------------------------------------------------------------
+        
         TEST_METHOD(stl_generate)
         {
             std::vector<int> vec(1024);
@@ -404,6 +533,10 @@ namespace tests
                 Assert::AreEqual(616, element);
             }
         }
+
+        //----------------------------------------------------------------------------
+        // transform
+        //----------------------------------------------------------------------------
 
         TEST_METHOD(stl_unary_transform)
         {
@@ -456,6 +589,10 @@ namespace tests
             }
         }
 
+        //----------------------------------------------------------------------------
+        // fill, fill_n
+        //----------------------------------------------------------------------------
+
         TEST_METHOD(stl_fill)
         {
             std::vector<int> vec(1024);
@@ -488,6 +625,29 @@ namespace tests
             }
         }
 
+        //----------------------------------------------------------------------------
+        // iota
+        //----------------------------------------------------------------------------
+
+        TEST_METHOD(stl_iota)
+        {
+            const int size = 1024;
+            std::vector<int> vec(size);
+            array_view<int> av(size, vec);
+            av.discard_data();
+
+            amp_stl_algorithms::iota(begin(av), end(av), 0);
+
+            for (unsigned i = 0; i < av.extent.size(); ++i)
+            {
+                Assert::AreEqual(int(i), av[i]);
+            }
+        }
+
+        //----------------------------------------------------------------------------
+        // reduce
+        //----------------------------------------------------------------------------
+
         TEST_METHOD(stl_reduce_sum)
         {
             static const int numbers[] = {1, 3, 6, 3, 2, 2, 7, 8, 2, 9, 2, 19, 2};
@@ -506,6 +666,26 @@ namespace tests
                 return (a < b) ? b : a;
             });
             Assert::AreEqual(19, result);
+        }
+
+        //----------------------------------------------------------------------------
+        // remove, remove_if, remove_copy, remove_copy_if
+        //----------------------------------------------------------------------------
+
+        TEST_METHOD(stl_remove)
+        {
+            const int size = 10;
+            std::array<int, (size - 1)> expected = { 0, 2, 3, 4, 5, 6, 7, 8, 9 };
+            std::vector<int> vec(size);
+            std::iota(begin(vec), end(vec), 0);
+            array_view<int> av(size, vec);
+ 
+            auto expected_end = amp_stl_algorithms::remove(begin(av), end(av), 1);
+            av = av.section(0, std::distance(begin(av), expected_end));
+
+            Assert::AreEqual(unsigned(size - 1), av.extent.size());
+            Assert::IsTrue(are_equal(expected, av));
+            Assert::AreEqual(9, *--expected_end);
         }
 
         TEST_METHOD(stl_remove_if)
@@ -568,5 +748,288 @@ namespace tests
                 Assert::AreEqual(expected[i], first[i]);
             }
         }
+
+        TEST_METHOD(stl_remove_copy)
+        {
+            const int size = 10;
+            std::array<int, 9> expected = { 0, 2, 3, 4, 5, 6, 7, 8, 9 };
+            std::vector<int> vec(size);
+            std::iota(begin(vec), end(vec), 0);
+            array_view<int> av(size, vec);
+            std::vector<int> result(size, 0);
+            array_view<int> result_av(size, result);
+
+            auto expected_end = amp_stl_algorithms::remove_copy(begin(av), end(av), begin(result_av), 1);
+
+            Assert::AreEqual(int(expected.size()), std::distance(begin(result_av), expected_end));
+            Assert::IsTrue(are_equal(expected, result_av.section(0, int(expected.size()))));
+        }
+
+        TEST_METHOD(stl_remove_copy_if)
+        {
+            const int size = 10;
+            std::array<int, (6)> expected = { 0, 1, 2, 3, 4, 5 };
+            std::vector<int> vec(size);
+            std::iota(begin(vec), end(vec), 0);
+            array_view<int> av(size, vec);
+            std::vector<int> result(size, 0);
+            array_view<int> result_av(size, result);
+
+            auto expected_end = amp_stl_algorithms::remove_copy_if(begin(av), end(av), begin(result_av), [=](int& v) restrict(amp) { return (v > 5); });
+
+            Assert::AreEqual(int(expected.size()), std::distance(begin(result_av), expected_end));
+            Assert::IsTrue(are_equal(expected, result_av.section(0, int(expected.size()))));
+        }
+
+        //----------------------------------------------------------------------------
+        // replace, replace_if, replace_copy, replace_copy_if
+        //----------------------------------------------------------------------------
+        
+        TEST_METHOD(stl_replace)
+        {
+            const int size = 10;
+            std::array<int, size> expected = { 0, -1, 2, 3, 4, 5, 6, 7, 8, 9 };
+            std::vector<int> vec(size);
+            std::iota(begin(vec), end(vec), 0);
+            array_view<int> av(size, vec);
+
+            amp_stl_algorithms::replace(begin(av), end(av), 1, -1);
+
+            Assert::IsTrue(are_equal(expected, av));
+        }
+
+        TEST_METHOD(stl_replace_if)
+        {
+            const int size = 10;
+            std::array<int, size> expected = { 0, -1, 2, -1, 4, -1, 6, -1, 8, -1 };
+            std::vector<int> vec(size);
+            std::iota(begin(vec), end(vec), 0);
+            array_view<int> av(size, vec);
+
+            amp_stl_algorithms::replace_if(begin(av), end(av), [=](int v) restrict(amp) { return (v % 2 != 0); }, -1);
+
+            Assert::IsTrue(are_equal(expected, av));
+        }
+
+        TEST_METHOD(stl_replace_copy)
+        {
+            const int size = 10;
+            std::array<int, size> expected = { 0, -1, 2, 3, 4, 5, 6, 7, 8, 9 };
+            std::vector<int> vec(size);
+            std::iota(begin(vec), end(vec), 0);
+            array_view<int> av(size, vec);
+            std::vector<int> result(size, -2);
+            array_view<int> result_av(size, result);
+
+            auto result_end = amp_stl_algorithms::replace_copy(begin(av), end(av), begin(result_av), 1, -1);
+
+            result_av.synchronize();
+            Assert::IsTrue(are_equal(expected, result_av));
+            Assert::AreEqual(2, std::distance(begin(result_av), result_end));
+        }
+
+        TEST_METHOD(stl_replace_copy_if)
+        {
+            const int size = 10;
+            std::array<int, size> expected = { 0, -1, 2, -1, 4, -1, 6, -1, 8, -1 };
+            std::vector<int> vec(size);
+            std::iota(begin(vec), end(vec), 0);
+            array_view<int> av(size, vec);
+            std::vector<int> result(size, -2);
+            array_view<int> result_av(size, result);
+
+            auto result_end = amp_stl_algorithms::replace_copy_if(begin(av), end(av), begin(result_av), 
+				[=](int v) restrict(amp) { return (v % 2 != 0); }, -1);
+
+            Assert::IsTrue(are_equal(expected, result_av));
+            Assert::AreEqual(10, std::distance(begin(result_av), result_end));
+		}
+
+        TEST_METHOD(stl_replace_copy_if_2)
+		{
+			const int size = 10;
+            std::array<int, size> expected = { -1, -1, -1, -1, -1, 5, 6, 7, 8, 9 };
+            std::vector<int> vec(size);
+            std::iota(begin(vec), end(vec), 0);
+            array_view<int> av(size, vec);
+            std::vector<int> result(size, -2);
+            array_view<int> result_av(size, result);
+
+            auto result_end = amp_stl_algorithms::replace_copy_if(begin(av), end(av), begin(result_av), 
+				[=](int v) restrict(amp) { return (v < 5); }, -1);
+
+			Assert::IsTrue(are_equal(expected, result_av));
+            Assert::AreEqual(5, std::distance(begin(result_av), result_end));
+        }
+
+        //----------------------------------------------------------------------------
+        // swap, swap<T, N>, swap_ranges, iter_swap
+        //----------------------------------------------------------------------------
+
+        TEST_METHOD(stl_swap_cpu)
+        {
+            int a = 1;
+            int b = 2;
+
+            amp_stl_algorithms::swap(a, b);
+
+            Assert::AreEqual(2, a);
+            Assert::AreEqual(1, b);
+        }
+
+        TEST_METHOD(stl_swap_amp)
+        {
+            const int size = 2;
+            std::vector<int> vec(size);
+            std::iota(begin(vec), end(vec), 1);
+            array_view<int> av(2, vec);
+
+            parallel_for_each(concurrency::extent<1>(1), [=](concurrency::index<1> idx) restrict(amp)
+            {
+               amp_stl_algorithms::swap(av[idx], av[idx + 1]);
+            });
+
+            Assert::AreEqual(2, av[0]);
+            Assert::AreEqual(1, av[1]);
+        }
+
+        TEST_METHOD(stl_swap_n_cpu)
+        {
+            const int size = 10;
+            int arr1[size];
+            int arr2[size];
+            std::iota(arr1, arr1 + size, 0);
+            std::iota(arr2, arr2 + size, -9);
+
+            amp_stl_algorithms::swap<int, 10>(arr1, arr2);
+
+            for (int i = 0; i < size; ++i)
+            {
+                Assert::AreEqual(i, arr2[i]);
+                Assert::AreEqual((-9 + i), arr1[i]);
+            }
+        }
+
+		
+        TEST_METHOD(stl_swap_n_amp)
+        {
+            std::array<int, 10> expected = { 6, 7, 8, 9, 10, 1, 2, 3, 4, 5 };
+
+            std::vector<int> vec(10);
+            std::iota(begin(vec), end(vec), 1);
+            array_view<int> av(10, vec);
+
+            parallel_for_each(concurrency::tiled_extent<5>(concurrency::extent<1>(5)), 
+				[=](concurrency::tiled_index<5> tidx) restrict(amp)
+            {
+				tile_static int arr1[5];
+				tile_static int arr2[5];
+
+				int idx = tidx.global[0];
+				int i = tidx.local[0];
+			
+				arr1[i] = av[i];
+				arr2[i] = av[i + 5];
+
+				tidx.barrier.wait();
+
+				if (i == 0)
+				{
+					amp_stl_algorithms::swap<int, 5>(arr1, arr2);
+				}
+
+				tidx.barrier.wait();
+
+				av[i] = arr1[i];
+				av[i + 5] = arr2[i];
+
+				tidx.barrier.wait();
+			});
+
+			av.synchronize();
+            Assert::IsTrue(are_equal(expected, av));
+        }
+		
+        TEST_METHOD(stl_swap_ranges)
+        {
+            const int size = 10;
+            std::array<int, size> expected = { 0, 6, 7, 8, 4, 5, 1, 2, 3, 9 };
+            std::vector<int> vec(size);
+            std::iota(begin(vec), end(vec), 0);
+            array_view<int> av(size, vec);
+
+            auto expected_end = amp_stl_algorithms::swap_ranges(begin(av) + 1, begin(av) + 4, begin(av) + 6);
+
+            Assert::IsTrue(are_equal(expected, av));
+            Assert::AreEqual(0, std::distance(begin(av) + 6 + 3, expected_end));
+            Assert::AreEqual(3, *--expected_end);
+        }
+
+        TEST_METHOD(stl_swap_iter)
+        {
+            const int size = 2;
+            std::vector<int> vec(size);
+            std::iota(begin(vec), end(vec), 1);
+            array_view<int> av(2, vec);
+
+            parallel_for_each(concurrency::extent<1>(1), [=](concurrency::index<1> idx) restrict(amp)
+            {
+                amp_stl_algorithms::iter_swap(begin(av), begin(av) + 1);
+            });
+
+            Assert::AreEqual(2, av[0]);
+            Assert::AreEqual(1, av[1]);
+        }
+
+        //----------------------------------------------------------------------------
+        // reverse, reverse_copy
+        //----------------------------------------------------------------------------
+
+        TEST_METHOD(stl_reverse)
+        {
+            test_reverse(1);
+            test_reverse(1023);
+            test_reverse(1024);
+        }
+
+        void test_reverse(const int size)
+        {
+            std::vector<int> vec(size);
+            std::iota(begin(vec), end(vec), 0);
+            array_view<int> av(size, vec);
+
+            amp_stl_algorithms::reverse(begin(av), end(av));
+
+            for (int i = 0; i < int(vec.size()); ++i)
+            {
+                Assert::AreEqual((size - 1 - i), av[i]);
+            }
+        }
+
+        TEST_METHOD(stl_reverse_copy)
+        {
+            test_reverse_copy(1);
+            test_reverse_copy(1023);
+            test_reverse_copy(1024);
+        }
+
+        void test_reverse_copy(const int size)
+        {
+            std::vector<int> vec(size);
+            std::iota(begin(vec), end(vec), 0);
+            array_view<int> av(size, vec);
+
+            std::vector<int> result(size, 0);
+            concurrency::array_view<int> result_av(size, result);
+
+            auto result_end = amp_stl_algorithms::reverse_copy(begin(av), end(av), begin(result_av));
+
+            for (int i = 0; i < int(vec.size()); ++i)
+            {
+                Assert::AreEqual((size - 1 - i), result_av[i]);
+            }
+
+            Assert::AreEqual(result_av[size - 1], *--result_end);
+        }
     };
-};
+};// namespace tests
