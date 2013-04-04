@@ -55,14 +55,15 @@ namespace amp_stl_algorithms
     {	
         typedef std::iterator_traits<ConstRandomAccessIterator>::difference_type difference_type;
 
-        difference_type distance = std::distance(first, last);
-        if (distance <= 0) 
+        difference_type element_count = std::distance(first, last);
+        if (element_count <= 0) 
         {
             return;
         }
 
-        auto section_view = _details::create_section(first, distance);
-        concurrency::parallel_for_each(concurrency::extent<1>(distance), [f,section_view] (concurrency::index<1> idx) restrict(amp) {
+        auto section_view = _details::create_section(first, element_count);
+        concurrency::parallel_for_each(concurrency::extent<1>(element_count), [f,section_view] (concurrency::index<1> idx) restrict(amp)
+		{
             f(section_view[idx]);
         });
     }
@@ -95,8 +96,9 @@ namespace amp_stl_algorithms
     void generate_n(RandomAccessIterator begin, Size count, Generator g)
     {
         if (count <= 0) 
+        {
             return;
-
+        }
         auto section_view = _details::create_section(begin, count);
 
         concurrency::parallel_for_each(section_view.extent, [g,section_view] (concurrency::index<1> idx) restrict(amp) {
@@ -109,9 +111,9 @@ namespace amp_stl_algorithms
     {
         typedef std::iterator_traits<RandomAccessIterator>::difference_type difference_type;
 
-        difference_type distance = std::distance(begin, end);
+        difference_type element_count = std::distance(begin, end);
 
-        amp_stl_algorithms::generate_n(begin, distance, g);
+        amp_stl_algorithms::generate_n(begin, element_count, g);
     }
 
     //----------------------------------------------------------------------------
@@ -145,12 +147,13 @@ namespace amp_stl_algorithms
     {
         typedef std::iterator_traits<ConstRandomAccessIterator>::difference_type difference_type;
 
-        difference_type distance = std::distance(begin1, end1);
-        if (distance <= 0) 
+        difference_type element_count = std::distance(begin1, end1);
+        if (element_count <= 0)
+		{
             return result_begin;
-
-        auto input_view = _details::create_section(begin1, distance);
-        auto output_view = _details::create_section(result_begin, distance);
+        }
+        auto input_view = _details::create_section(begin1, element_count);
+        auto output_view = _details::create_section(result_begin, element_count);
 
         concurrency::parallel_for_each(output_view.extent, [func,input_view,output_view] (concurrency::index<1> idx) restrict(amp) {
             output_view[idx] = func(input_view[idx]);
@@ -175,13 +178,14 @@ namespace amp_stl_algorithms
     {
         typedef std::iterator_traits<ConstRandomAccessIterator1>::difference_type difference_type;
 
-        difference_type distance = std::distance(begin1, end1);
-        if (distance <= 0) 
+        difference_type element_count = std::distance(begin1, end1);
+        if (element_count <= 0)
+        {
             return result_begin;
-
-        auto input1_view = _details::create_section(begin1, distance);
-        auto input2_view = _details::create_section(begin2, distance);
-        auto output_view = _details::create_section(result_begin, distance);
+        }
+        auto input1_view = _details::create_section(begin1, element_count);
+        auto input2_view = _details::create_section(begin2, element_count);
+        auto output_view = _details::create_section(result_begin, element_count);
 
         concurrency::parallel_for_each(output_view.extent, [func,input1_view,input2_view,output_view] (concurrency::index<1> idx) restrict(amp) {
             output_view[idx] = func(input1_view[idx], input2_view[idx]);
@@ -222,8 +226,7 @@ namespace amp_stl_algorithms
                     concurrency::atomic_exchange(accumulator, 1);
                 }
             }
-        }
-        );
+        });
     }
 
     // Standard, builds of top of the non-standard async version above, and adds a sync to
@@ -268,8 +271,12 @@ namespace amp_stl_algorithms
     {
         typedef typename std::iterator_traits<ConstRandomAccessIterator>::difference_type diff_type;
 
-        const int tile_size = 512;
+        static const int tile_size = 512;
         const diff_type element_count = std::distance(first, last);
+        if (element_count <= 0)
+        {
+            return dest_first;
+        }
         auto src_view = _details::create_section(first, element_count);
         auto dest_view = _details::create_section(dest_first, element_count);
 
@@ -279,10 +286,10 @@ namespace amp_stl_algorithms
         concurrency::parallel_for_each(compute_domain,
             [src_view, map_vw, p, element_count](concurrency::tiled_index<tile_size> tidx) restrict(amp)
         {
-            const int i = tidx.global[0];
-            if (i < element_count)
+            const int idx = tidx.global[0];
+            if (idx < element_count)
             {
-                map_vw[i] = static_cast<unsigned int>(p(src_view[i]));
+                map_vw[idx] = static_cast<unsigned int>(p(src_view[idx]));
             }
         });
 
@@ -291,12 +298,12 @@ namespace amp_stl_algorithms
         s.scan_exclusive(map, map);
         dest_view.discard_data();
         concurrency::parallel_for_each(compute_domain,
-            [src_view, map_vw, dest_view, element_count](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+            [=](concurrency::tiled_index<tile_size> tidx) restrict(amp)
         {
-            const int i = tidx.global[0];
-            if ((i < element_count) && (map_vw[i] != map_vw[i + 1]))
+            const int idx = tidx.global[0];
+            if ((map_vw[idx] != map_vw[idx + 1]) && (idx < element_count))
             {
-                dest_view[map_vw[i]] = src_view[i];
+                dest_view[map_vw[idx]] = src_view[idx];
             }
         });
 
@@ -308,9 +315,8 @@ namespace amp_stl_algorithms
     template<typename ConstRandomAccessIterator, typename Size, typename RandomAccessIterator>
     RandomAccessIterator copy_n(ConstRandomAccessIterator first, Size count, RandomAccessIterator dest_first)
     {
-		if (count <= 0)
-			return dest_first;
-        return amp_stl_algorithms::copy(first, (first + count), dest_first);
+        // copy() will handle the case where count == 0.
+		return amp_stl_algorithms::copy(first, (first + count), dest_first);
     }
 
     //----------------------------------------------------------------------------
@@ -327,10 +333,6 @@ namespace amp_stl_algorithms
         );
     }
 
-    //----------------------------------------------------------------------------
-    // count_if
-    //----------------------------------------------------------------------------
-
     template<typename ConstRandomAccessIterator, typename UnaryPredicate >
     typename std::iterator_traits<ConstRandomAccessIterator>::difference_type
         count_if( ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate p )
@@ -342,6 +344,10 @@ namespace amp_stl_algorithms
         concurrency::array_view<diff_type> count_av(1, &count);
 
         diff_type element_count = std::distance(first, last);
+        if (element_count <= 0)
+        {
+            return 0;
+        }
         auto section_view = _details::create_section(first, element_count);
 
         // TODO: Seems the global memory access isn't coherent. Can it be improved.
@@ -383,8 +389,9 @@ namespace amp_stl_algorithms
         typedef std::iterator_traits<ConstRandomAccessIterator1>::difference_type diff_type;
         diff_type element_count = std::distance(first1, last1);
         if (element_count <= 0) 
+        {
             return true;
-        
+        }
         const int tile_size = 512;
         static const int num_threads = 10 * 1024;
         auto section1_view = _details::create_section(first1, element_count);
@@ -433,26 +440,26 @@ namespace amp_stl_algorithms
     {
         typedef std::iterator_traits<ConstRandomAccessIterator>::difference_type difference_type;
 
-        difference_type distance = std::distance(first, last);
-        if (distance <= 0) 
+        difference_type element_count = std::distance(first, last);
+        if (element_count <= 0) 
         {
             return last;
         }
 
-        difference_type result_position = distance;
-        concurrency::array_view<int> result_av(concurrency::extent<1>(1), &result_position);
+        difference_type result_position = element_count;
+        concurrency::array_view<int> result_position_av(concurrency::extent<1>(1), &result_position);
 
-        auto section_view = _details::create_section(first, distance);
+        auto section_view = _details::create_section(first, element_count);
 
-        concurrency::parallel_for_each(concurrency::extent<1>(distance), [=] (concurrency::index<1> idx) restrict(amp) {
+        concurrency::parallel_for_each(concurrency::extent<1>(element_count), [=] (concurrency::index<1> idx) restrict(amp) {
             int i = idx[0];
             if (p(section_view[idx]))
             {
-                concurrency::atomic_fetch_min(&result_av(0), i);
+                concurrency::atomic_fetch_min(&result_position_av(0), i);
             }
         });
 
-        result_av.synchronize();
+        result_position_av.synchronize();
         return first + result_position;
     }
 
@@ -484,8 +491,9 @@ namespace amp_stl_algorithms
 
         difference_type element_count = std::distance(first, last);
         if (element_count <= 0) 
+        {
             return;
-
+        }
 		// TODO: This looks like it is in violation with the standard, which requires that the value needs to support 
 		//       only ++value. i.e. the default ctor or subtraction, multiplication might not be available. We should 
 		//       consider if there is a better alternative.
@@ -538,6 +546,10 @@ namespace amp_stl_algorithms
         typedef typename std::iterator_traits<RandomAccessIterator>::value_type T;
 
         const diff_type element_count = std::distance(first, last);
+        if (element_count <= 0)
+        {
+            return first;
+        }
         auto src_view = _details::create_section(first, element_count);
 
         concurrency::array<T> tmp(element_count);
@@ -602,9 +614,10 @@ namespace amp_stl_algorithms
         const int tile_size = 512;
 
         difference_type element_count = std::distance(first, last);
-        if (element_count <= 0) 
+        if (element_count <= 0)
+        {
             return;
-
+        }
         auto src_view = _details::create_section(first, element_count);
 
         concurrency::parallel_for_each(concurrency::tiled_extent<tile_size>(src_view.extent).pad(), 
@@ -640,13 +653,14 @@ namespace amp_stl_algorithms
 
         difference_type element_count = std::distance(first, last);
         if (element_count <= 0) 
+        {
             return dest_first;
-
+        }
         auto src_view = _details::create_section(first, element_count);
         auto dest_view = _details::create_section(dest_first, element_count);
 
 		int last_changed_idx = 0;
-        array_view<int> last_changed_idx_av(1, &last_changed_idx);
+        concurrency::array_view<int, 1> last_changed_idx_av(1, &last_changed_idx);
 
         concurrency::parallel_for_each(concurrency::tiled_extent<tile_size>(src_view.extent).pad(), 
             [element_count, new_value, src_view, dest_view, last_changed_idx_av, p](concurrency::tiled_index<tile_size> tidx) restrict(amp)
@@ -657,7 +671,7 @@ namespace amp_stl_algorithms
 				if (p(src_view[idx]))
 				{
 					dest_view[idx] = new_value;
-					atomic_fetch_max(&last_changed_idx_av(0), idx + 1);
+					concurrency::atomic_fetch_max(&last_changed_idx_av(0), idx + 1);
 				}
 				else
 				{
@@ -700,9 +714,10 @@ namespace amp_stl_algorithms
         const int tile_size = 512;
 
         difference_type element_count = std::distance(first1, last1);
-        if (element_count == 0)
+        if (element_count <= 0)
+        {
             return first2;
-
+        }
         concurrency::array_view<T, 1> first1_view = _details::create_section(first1, element_count);
         concurrency::array_view<T, 1> first2_view = _details::create_section(first2, element_count);
 
@@ -737,8 +752,9 @@ namespace amp_stl_algorithms
 
         const diff_type element_count = std::distance(first, last);
         if (element_count <= 1) 
+        {
             return;
-
+        }
         auto src_view = _details::create_section(first, element_count);
         const int last_element = element_count - 1;
 
@@ -763,8 +779,9 @@ namespace amp_stl_algorithms
 
         const diff_type element_count = std::distance(first, last);
         if (element_count <= 0) 
+        {
             return dest_first;
-
+        }
         auto src_view = _details::create_section(first, element_count);
         auto dest_view = _details::create_section(dest_first, element_count);
         const int last_element = element_count - 1;
@@ -781,5 +798,4 @@ namespace amp_stl_algorithms
 
         return dest_first + element_count;
     }
-
 }// namespace amp_stl_algorithms

@@ -30,9 +30,10 @@
 namespace amp_algorithms
 {
     //----------------------------------------------------------------------------
-    // Some common binary functions
+    // Arithmetic operations
     //----------------------------------------------------------------------------
 
+    // TODO: Why is this called sum() when STL has plus()?
     template <typename T>
     class sum
     {
@@ -42,6 +43,14 @@ namespace amp_algorithms
             return (a + b); 
         }
     };
+
+    // TODO: Missing; divides, modulus & negate
+
+    //----------------------------------------------------------------------------
+    // Comparison operations
+    //----------------------------------------------------------------------------
+
+    // TODO: Missing; equal_to, not_equal_to, less, greater_equal & less_equal
 
     template <typename T>
     class max
@@ -63,6 +72,8 @@ namespace amp_algorithms
         }
     };
 
+    // TODO: Move this up to be with the arithmetic operators.
+    // TODO: Why is this called mul() when STL has multiplies()?
     template <typename T>
     class mul
     {
@@ -73,6 +84,11 @@ namespace amp_algorithms
         }
     };
 
+    //----------------------------------------------------------------------------
+    // Arithmetic operations
+    //----------------------------------------------------------------------------
+
+    // TODO: These should be called logical_* for consistency with STL.
     template <typename T>
     class bit_and
     {

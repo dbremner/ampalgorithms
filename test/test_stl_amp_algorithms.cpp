@@ -41,7 +41,7 @@ namespace tests
             int sum = 0;
             array_view<int> av_sum(1, &sum);
             amp_stl_algorithms::for_each_no_return(begin(av), end(av), [av_sum] (int val) restrict(amp) {
-                atomic_fetch_add(&av_sum(0), val);
+                concurrency::atomic_fetch_add(&av_sum(0), val);
             });
             av_sum.synchronize();
             Assert::AreEqual(1024 * 2, sum);

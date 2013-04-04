@@ -149,9 +149,9 @@ size_t size(const std::vector<T>& arr)
 template <typename T1, typename T2>
 bool are_equal(const T1& expected, const T2& actual)
 {    
-    const size_t element_count = distance(begin(expected), end(expected));
+    const size_t element_count = std::distance(begin(expected), end(expected));
 
-    if (element_count != distance(begin(actual), end(actual)))
+    if (element_count != std::distance(begin(actual), end(actual)))
         return false;
 
     for (int i = 0; i < int(element_count); ++i)
