@@ -78,7 +78,7 @@ $StopWatch.Reset();
 $StopWatch.Start()
 
 echo "Showing output from failed tests only:"
-."$env:VSINSTALLDIR\Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe" "$msbuild_dir\Win32\Release\amp_algorithms.dll" "$msbuild_dir\Win32\Release\amp_stl_algorithms.dll" 2>&1 |
+."$env:VSINSTALLDIR\Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe" "$msbuild_dir\Win32\Release\amp_algorithms.dll" "$msbuild_dir\Win32\Release\amp_stl_algorithms.dll" /logger:trx 2>&1 |
 	where { $_ -match @(' *Failed   .*') } | write-host -fore red
 
 $StopWatch.Stop();

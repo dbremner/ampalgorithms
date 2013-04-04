@@ -31,6 +31,19 @@ using namespace amp_algorithms;
 
 namespace amp_algorithms_tests
 {
+	// This isn't a test, it's just a convenient way to determine which accelerator tests ran on.
+	TEST_CLASS(configuration_tests)
+	{
+		TEST_METHOD(amp_accelerator_configuration)
+		{
+			Logger::WriteMessage("Running amp_algorithms_tests on:\n  ");
+			Logger::WriteMessage(accelerator().description.c_str());
+			Logger::WriteMessage("\n  ");
+			Logger::WriteMessage(accelerator().device_path.c_str());
+			Logger::WriteMessage("\n");
+		}
+	};
+
     TEST_CLASS(reduce_tests)
     {
         TEST_METHOD(amp_reduce_double_sum)
