@@ -41,7 +41,7 @@ $msbuild_int ="$msbuild_dir\Intermediate"
 $StopWatch = New-Object system.Diagnostics.Stopwatch
 $StopWatch.Start()
 
-echo "== Clean         ==============================================================="
+write-host "== Clean         ===============================================================" -fore yellow
 
 $paths = @( "$msbuild_dir\Win32", "$msbuild_dir\x64", "$msbuild_dir\Intermediate", "$msbuild_dir\TestResults" )
  
@@ -53,21 +53,21 @@ foreach ($p in $paths) {
 }
 mkdir $msbuild_dir\Intermediate > $null
 
-echo "== x64/Debug     ==============================================================="
+write-host "== x64/Debug     ===============================================================" -fore yellow
 $log="$msbuild_int\x64_Debug.log"
 Invoke-Expression "$msbuild $msbuild_sln /p:platform=x64 /p:configuration=Debug     $msbuild_options /fileloggerparameters:logfile='$log'"
-echo "== Win32/Debug   ==============================================================="
+write-host "== Win32/Debug   ===============================================================" -fore yellow
 $log="$msbuild_int\Win32_Debug.log"
 Invoke-Expression "$msbuild $msbuild_sln /p:platform=Win32 /p:configuration=Debug   $msbuild_options /fileloggerparameters:logfile='$log'"
-echo "== x64/Release   ==============================================================="
+write-host "== x64/Release   ===============================================================" -fore yellow
 $log="$msbuild_int\x64_Release.log"
 Invoke-Expression "$msbuild $msbuild_sln /p:platform=x64 /p:configuration=Release   $msbuild_options /fileloggerparameters:logfile='$log'"
-echo "== Win32/Release ==============================================================="
+write-host "== Win32/Release ===============================================================" -fore yellow
 $log="$msbuild_int\Win32_Release.log"
 Invoke-Expression "$msbuild $msbuild_sln /p:platform=Win32 /p:configuration=Release $msbuild_options /fileloggerparameters:logfile='$log'"
 
 $StopWatch.Stop();
-echo "== Run Tests     ==============================================================="
+write-host "== Run Tests     ===============================================================" -fore yellow
 
 $elapsed = $StopWatch.Elapsed  
 $BuildElapsedTime = [system.String]::Format("{0:00}:{1:00}.{2:00}", $elapsed.Minutes, $elapsed.Seconds, $elapsed.Milliseconds / 10);
@@ -77,14 +77,17 @@ $BuildElapsedTime = [system.String]::Format("{0:00}:{1:00}.{2:00}", $elapsed.Min
 $StopWatch.Reset();
 $StopWatch.Start()
 
-."$env:VSINSTALLDIR\Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe" "$msbuild_dir\Win32\Release\amp_algorithms.dll" "$msbuild_dir\Win32\Release\amp_stl_algorithms.dll" | select-string -pattern "Failed"
+echo "Showing output from failed tests only:"
+."$env:VSINSTALLDIR\Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe" "$msbuild_dir\Win32\Release\amp_algorithms.dll" "$msbuild_dir\Win32\Release\amp_stl_algorithms.dll" 2>&1 |
+	where { $_ -match @(' *Failed   .*') } | write-host -fore red
 
 $StopWatch.Stop();
-echo "================================================================================"
+echo "Tests complete"
+write-host "================================================================================" -fore yellow
 
 $elapsed = $StopWatch.Elapsed  
 $TestsElapsedTime = [system.String]::Format("{0:00}:{1:00}.{2:00}", $elapsed.Minutes, $elapsed.Seconds, $elapsed.Milliseconds / 10);
 
-echo ""
-echo "Build completed in: $BuildElapsedTime"
-echo "Tests completed in: $TestsElapsedTime"
+write-host ""
+write-host "Build completed in: $BuildElapsedTime" -fore yellow
+write-host "Tests completed in: $TestsElapsedTime" -fore yellow
