@@ -43,7 +43,17 @@ namespace amp_algorithms
         }
     };
 
-    // TODO: Missing; divides, modulus & negate
+    template <typename T>
+    class multiplies
+    {
+    public:
+        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return (a * b);
+        }
+    };
+
+    // TODO: Missing; subtract, divides, modulus & negate
 
     //----------------------------------------------------------------------------
     // Comparison operations
@@ -71,23 +81,10 @@ namespace amp_algorithms
         }
     };
 
-    // TODO: Move this up to be with the arithmetic operators.
-    // TODO: Why is this called mul() when STL has multiplies()?
-    template <typename T>
-    class mul
-    {
-    public:
-        T operator()(const T &a, const T &b) const restrict(cpu, amp)
-        {
-            return (a * b);
-        }
-    };
-
     //----------------------------------------------------------------------------
     // Arithmetic operations
     //----------------------------------------------------------------------------
 
-    // TODO: These should be called logical_* for consistency with STL.
     template <typename T>
     class bit_and
     {
