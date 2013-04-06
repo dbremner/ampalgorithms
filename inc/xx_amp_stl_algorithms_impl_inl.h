@@ -525,7 +525,7 @@ namespace amp_stl_algorithms
     template<typename ConstRandomAccessIterator, typename T>
     T reduce( ConstRandomAccessIterator first, ConstRandomAccessIterator last, T init )
     {
-        return amp_stl_algorithms::reduce(first, last, init, amp_algorithms::sum<std::remove_const<typename std::iterator_traits<ConstRandomAccessIterator>::value_type>::type>());
+        return amp_stl_algorithms::reduce(first, last, init, amp_algorithms::plus<std::remove_const<typename std::iterator_traits<ConstRandomAccessIterator>::value_type>::type>());
     }
 
     //----------------------------------------------------------------------------

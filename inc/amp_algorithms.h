@@ -33,9 +33,8 @@ namespace amp_algorithms
     // Arithmetic operations
     //----------------------------------------------------------------------------
 
-    // TODO: Why is this called sum() when STL has plus()?
     template <typename T>
-    class sum
+    class plus
     {
     public:
         T operator()(const T &a, const T &b) const restrict(cpu, amp)
@@ -183,7 +182,7 @@ namespace amp_algorithms
         template <typename T>
         void scan_exclusive(const concurrency::array<T> &input_array, concurrency::array<T> &output_array)
         {
-            scan_exclusive(input_array, output_array, scan_direction::forward, amp_algorithms::sum<T>());
+            scan_exclusive(input_array, output_array, scan_direction::forward, amp_algorithms::plus<T>());
         }
 
         // Performs exclusive multi scan is specified direction

@@ -115,12 +115,12 @@ namespace amp_algorithms_tests
             // 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 -> 
             s.scan_exclusive(input, input);
             // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 -> 
-            s.scan_exclusive(input, input, scan_direction::forward, amp_algorithms::sum<unsigned int>());
+            s.scan_exclusive(input, input, scan_direction::forward, amp_algorithms::plus<unsigned int>());
             // 0, 0, 1, 3, 6, 10, 15, 21, 28, 36 -> 
 
             unsigned int flg = 8; // 001000 in binary, so our segment is in here: 0, 0, 1, | 3, 6, 10, 15, 21, 28, 36
             concurrency::array<unsigned int> flags(1, &flg, ref_view);
-            s.segmented_scan_exclusive(input, input, flags, scan_direction::backward, amp_algorithms::sum<unsigned int>());
+            s.segmented_scan_exclusive(input, input, flags, scan_direction::backward, amp_algorithms::plus<unsigned int>());
             // 1, 1, 0, 116, 110, 100, 85, 64, 36, 0
 
             // Copy out
@@ -170,7 +170,7 @@ namespace amp_algorithms_tests
             Assert::ExpectException<runtime_exception>([&]() {
                 scan s2(elem_count, 1, ref_view);
                 concurrency::array<unsigned int, 2> in2(10, 10);
-                s2.multi_scan_exclusive(in2, in2, scan_direction::forward, amp_algorithms::sum<unsigned int>());
+                s2.multi_scan_exclusive(in2, in2, scan_direction::forward, amp_algorithms::plus<unsigned int>());
             },
                 L"Expected exception for scan object with max_scan_count < scan_count");
 
@@ -237,7 +237,7 @@ namespace amp_algorithms_tests
         template<typename T>
         void test_scan(bool backwards)
         {
-            test_scan_internal<T>(10, amp_algorithms::sum<T>(), "Test scan", backwards, /*in_place=*/ false);
+            test_scan_internal<T>(10, amp_algorithms::plus<T>(), "Test scan", backwards, /*in_place=*/ false);
             test_scan_internal<T>(11, amp_algorithms::max<T>(), "Test scan", backwards, /*in_place=*/ true);
             test_scan_internal<T>(2 * 1024, amp_algorithms::min<T>(), "Test scan", backwards, /*in_place=*/ false);
             test_scan_internal<T>(2 * 1024 + 1, amp_algorithms::mul<T>(), "Test scan", backwards, /*in_place=*/ false);
@@ -246,7 +246,7 @@ namespace amp_algorithms_tests
         template<>
         void test_scan<unsigned int>(bool backwards)
         {
-            test_scan_internal<unsigned int>(10, amp_algorithms::sum<unsigned int>(), "Test scan", backwards, /*in_place=*/ true);
+            test_scan_internal<unsigned int>(10, amp_algorithms::plus<unsigned int>(), "Test scan", backwards, /*in_place=*/ true);
             test_scan_internal<unsigned int>(777, amp_algorithms::mul<unsigned int>(), "Test scan", backwards, /*in_place=*/ false);
         }
 
@@ -261,8 +261,8 @@ namespace amp_algorithms_tests
         template<typename T>
         void test_multiscan(bool backwards)
         {
-            test_scan_internal<T>(144, amp_algorithms::sum<T>(), "Test multiscan", backwards, /*in_place=*/ false, scan_type::multiscan, 12);
-            test_scan_internal<T>(2048, amp_algorithms::sum<T>(), "Test multiscan", backwards, /*in_place=*/ true, scan_type::multiscan, 1024);
+            test_scan_internal<T>(144, amp_algorithms::plus<T>(), "Test multiscan", backwards, /*in_place=*/ false, scan_type::multiscan, 12);
+            test_scan_internal<T>(2048, amp_algorithms::plus<T>(), "Test multiscan", backwards, /*in_place=*/ true, scan_type::multiscan, 1024);
             test_scan_internal<T>(3333, amp_algorithms::max<T>(), "Test multiscan", backwards, /*in_place=*/ false, scan_type::multiscan, 3);
             test_scan_internal<T>(128, amp_algorithms::mul<T>(), "Test multiscan", backwards, /*in_place=*/ true, scan_type::multiscan, 8);
             test_scan_internal<T>(127, amp_algorithms::min<T>(), "Test multiscan", backwards, /*in_place=*/ false, scan_type::multiscan, 3);
@@ -271,8 +271,8 @@ namespace amp_algorithms_tests
         template<>
         void test_multiscan<unsigned int>(bool backwards)
         {
-            test_scan_internal<unsigned int>(144, amp_algorithms::sum<unsigned int>(), "Test multiscan", backwards, /*in_place=*/ false, scan_type::multiscan, 12);
-            test_scan_internal<unsigned int>(2048, amp_algorithms::sum<unsigned int>(), "Test multiscan", backwards, /*in_place=*/ true, scan_type::multiscan, 64);
+            test_scan_internal<unsigned int>(144, amp_algorithms::plus<unsigned int>(), "Test multiscan", backwards, /*in_place=*/ false, scan_type::multiscan, 12);
+            test_scan_internal<unsigned int>(2048, amp_algorithms::plus<unsigned int>(), "Test multiscan", backwards, /*in_place=*/ true, scan_type::multiscan, 64);
             test_scan_internal<unsigned int>(128, amp_algorithms::mul<unsigned int>(), "Test multiscan", backwards, /*in_place=*/ false, scan_type::multiscan, 8);
         }
 
@@ -287,7 +287,7 @@ namespace amp_algorithms_tests
         template<typename T>
         void test_segmented(bool backwards)
         {
-            test_scan_internal<T>(7123127, amp_algorithms::sum<T>(), "Test segmented scan", backwards, /*inplace=*/false, scan_type::segmented);
+            test_scan_internal<T>(7123127, amp_algorithms::plus<T>(), "Test segmented scan", backwards, /*inplace=*/false, scan_type::segmented);
             test_scan_internal<T>(31, amp_algorithms::mul<T>(), "Test segmented scan", backwards, /*inplace=*/true, scan_type::segmented);
             test_scan_internal<T>(222, amp_algorithms::min<T>(), "Test segmented scan", backwards, /*inplace=*/false, scan_type::segmented);
             test_scan_internal<T>(333, amp_algorithms::max<T>(), "Test segmented scan", backwards, /*inplace=*/true, scan_type::segmented);
@@ -296,7 +296,7 @@ namespace amp_algorithms_tests
         template<>
         void test_segmented<unsigned int>(bool backwards)
         {
-            test_scan_internal<unsigned int>(7123127, amp_algorithms::sum<unsigned int>(), "Test segmented scan", backwards, /*inplace=*/false, scan_type::segmented);
+            test_scan_internal<unsigned int>(7123127, amp_algorithms::plus<unsigned int>(), "Test segmented scan", backwards, /*inplace=*/false, scan_type::segmented);
             test_scan_internal<unsigned int>(111, amp_algorithms::mul<unsigned int>(), "Test segmented scan", backwards, /*inplace=*/true, scan_type::segmented);
         }
 
@@ -376,7 +376,7 @@ namespace amp_algorithms_tests
         };
 
         template<typename T>
-        struct get_binary_function_info<amp_algorithms::sum<T>>
+        struct get_binary_function_info<amp_algorithms::plus<T>>
         {
             std::string name() { return "sum"; }
         };

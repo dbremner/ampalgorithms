@@ -33,7 +33,7 @@ namespace amp_algorithms
         };
 
         template <typename T>
-        struct _dx_scan_op_helper<amp_algorithms::sum<T>>
+        struct _dx_scan_op_helper<amp_algorithms::plus<T>>
         {
             static const bool is_op_supported = true;
             static const D3DX11_SCAN_OPCODE dx_op_type = D3DX11_SCAN_OPCODE_ADD;

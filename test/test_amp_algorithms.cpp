@@ -50,7 +50,7 @@ namespace amp_algorithms_tests
         {
             double cpu_result, amp_result;
 
-            test_reduce<double>(1023 * 1029 * 13, amp_algorithms::sum<double>(), cpu_result, amp_result);
+            test_reduce<double>(1023 * 1029 * 13, amp_algorithms::plus<double>(), cpu_result, amp_result);
 
             Assert::AreEqual(cpu_result, amp_result, 0.000001);
         }
@@ -122,14 +122,14 @@ namespace amp_algorithms_tests
 
             // The next 4 lines use the functor_view together with the reduce algorithm to obtain the 
             // standard deviation of a set of numbers.
-            T gpuSum = amp_algorithms::reduce(accelerator().create_view(), inArrView, amp_algorithms::sum<T>());
+            T gpuSum = amp_algorithms::reduce(accelerator().create_view(), inArrView, amp_algorithms::plus<T>());
             T gpuMean = gpuSum / inArrView.extent.size();
 
             auto funcView = make_indexable_view(inArrView.extent, [inArrView, gpuMean](const concurrency::index<1> &idx) restrict(cpu, amp) {
                 return ((inArrView(idx) - gpuMean) * (inArrView(idx) - gpuMean));
             });
 
-            T gpuTotalVariance = amp_algorithms::reduce(funcView, amp_algorithms::sum<T>());
+            T gpuTotalVariance = amp_algorithms::reduce(funcView, amp_algorithms::plus<T>());
             gpuStdDev = static_cast<T>(sqrt(gpuTotalVariance / inArrView.extent.size()));
 
             // Now compute the result on the CPU for verification
