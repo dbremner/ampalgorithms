@@ -32,9 +32,9 @@ namespace tests
 	// This isn't a test, it's just a convenient way to determine which accelerator tests ran on.
 	TEST_CLASS(configuration_tests)
 	{
-		TEST_METHOD(amp_accelerator_configuration)
+		TEST_METHOD(stl_accelerator_configuration)
 		{
-			Logger::WriteMessage("Running amp_algorithms_tests on:\n  ");
+			Logger::WriteMessage("Running stl_algorithms_tests on:\n  ");
 			Logger::WriteMessage(accelerator().description.c_str());
 			Logger::WriteMessage("\n  ");
 			Logger::WriteMessage(accelerator().device_path.c_str());
