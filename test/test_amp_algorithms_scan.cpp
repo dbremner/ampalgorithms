@@ -40,6 +40,11 @@ namespace amp_algorithms_tests
 
     TEST_CLASS(scan_tests)
     {
+		TEST_CLASS_INITIALIZE(initialize_tests)
+		{
+			set_default_accelerator();
+		}
+
         TEST_METHOD(amp_scan_backwards)
         {
             const bool backwards = true;

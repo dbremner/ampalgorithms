@@ -32,9 +32,14 @@ namespace tests
 	// This isn't a test, it's just a convenient way to determine which accelerator tests ran on.
 	TEST_CLASS(configuration_tests)
 	{
+		TEST_CLASS_INITIALIZE(initialize_tests)
+		{
+			set_default_accelerator();
+		}
+
 		TEST_METHOD(stl_accelerator_configuration)
 		{
-			Logger::WriteMessage("Running stl_algorithms_tests on:\n  ");
+			Logger::WriteMessage("Running stl_algorithms_tests on:");
 			Logger::WriteMessage(accelerator().description.c_str());
 			Logger::WriteMessage("\n  ");
 			Logger::WriteMessage(accelerator().device_path.c_str());
@@ -46,6 +51,11 @@ namespace tests
 
     TEST_CLASS(stl_algorithms_tests)
     {
+		TEST_CLASS_INITIALIZE(initialize_tests)
+		{
+			set_default_accelerator();
+		}
+
         TEST_METHOD(stl_for_each_no_return)
         {
             std::vector<int> vec(1024);
@@ -873,6 +883,63 @@ namespace tests
 
 			Assert::IsTrue(are_equal(expected, result_av));
             Assert::AreEqual(5, std::distance(begin(result_av), result_end));
+        }
+
+        //----------------------------------------------------------------------------
+        // is_sorted, is_sorted_until, sort, partial_sort, partial_sort_copy, stable_sort
+        //----------------------------------------------------------------------------
+
+        template <typename T>
+        class abs_less_equal
+        {
+        public:
+            T operator()(const T &a, const T &b) const restrict(cpu, amp)
+            {
+                return (abs(a) <= abs(b));
+            }
+
+        private:
+            static T abs(const T& a)  restrict(cpu, amp) 
+            { 
+                return (a < 0) ? -a : a; 
+            }
+        };
+
+        TEST_METHOD(stl_is_sorted_until)
+        {
+			const int size = 10;
+            std::vector<int> vec(size);
+            std::iota(begin(vec), end(vec), 0);
+            array_view<int> av(size, vec);
+
+            Assert::AreEqual(9, *--amp_stl_algorithms::is_sorted_until(begin(av), end(av), amp_algorithms::less<int>()));
+            Assert::AreEqual(9, *--amp_stl_algorithms::is_sorted_until(begin(av), end(av)));
+            Assert::IsTrue(amp_stl_algorithms::is_sorted(begin(av), end(av), amp_algorithms::less<int>()));
+            Assert::IsTrue(amp_stl_algorithms::is_sorted(begin(av), end(av)));
+
+            av[5] = -4;  // 0, 1, 2, 3, 4, -4, 6, 7, 8, 9
+
+            Assert::AreEqual(9, *--amp_stl_algorithms::is_sorted_until(begin(av), end(av), abs_less_equal<int>()));
+            Assert::AreEqual(4, *--amp_stl_algorithms::is_sorted_until(begin(av), end(av)));
+            Assert::IsTrue(amp_stl_algorithms::is_sorted(begin(av), end(av), abs_less_equal<int>()));
+            Assert::IsFalse(amp_stl_algorithms::is_sorted(begin(av), end(av)));
+            Assert::IsTrue(amp_stl_algorithms::is_sorted(begin(av), begin(av) + 5));
+
+            av[5] = 4;   // 0, 1, 2, 3, 4, 4, 6, 7, 8, 9
+
+            Assert::AreEqual(9, *--amp_stl_algorithms::is_sorted_until(begin(av), end(av), amp_algorithms::less_equal<int>()));
+            Assert::AreEqual(9, *--amp_stl_algorithms::is_sorted_until(begin(av), end(av)));
+            Assert::IsFalse(amp_stl_algorithms::is_sorted(begin(av), end(av), amp_algorithms::less<int>()));
+            Assert::IsTrue(amp_stl_algorithms::is_sorted(begin(av), end(av)));
+
+            av[1] = -1;  // 0, -1, 2, 3, 4, 4, 6, 7, 8, 9
+
+            Assert::AreEqual(9, *--amp_stl_algorithms::is_sorted_until(begin(av), end(av), abs_less_equal<int>()));
+            Assert::AreEqual(0, *--amp_stl_algorithms::is_sorted_until(begin(av), end(av), amp_algorithms::less_equal<int>()));
+            Assert::AreEqual(0, *--amp_stl_algorithms::is_sorted_until(begin(av), end(av)));
+            Assert::IsFalse(amp_stl_algorithms::is_sorted(begin(av), end(av), amp_algorithms::less_equal<int>()));
+            Assert::IsFalse(amp_stl_algorithms::is_sorted(begin(av), end(av)));
+            Assert::IsTrue(amp_stl_algorithms::is_sorted(begin(av), begin(av) + 1));
         }
 
         //----------------------------------------------------------------------------

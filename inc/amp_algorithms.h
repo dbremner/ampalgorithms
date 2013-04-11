@@ -44,6 +44,16 @@ namespace amp_algorithms
     };
 
     template <typename T>
+    class minus
+    {
+    public:
+        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return (a - b); 
+        }
+    };
+
+    template <typename T>
     class multiplies
     {
     public:
@@ -53,13 +63,99 @@ namespace amp_algorithms
         }
     };
 
-    // TODO: Missing; subtract, divides, modulus & negate
+    template <typename T>
+    class divides
+    {
+    public:
+        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return (a / b);
+        }
+    };
+
+    template <typename T>
+    class modulus
+    {
+    public:
+        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return (a % b);
+        }
+    };
+
+    template <typename T>
+    class negates
+    {
+    public:
+        T operator()(const T &a) const restrict(cpu, amp)
+        {
+            return (-a);
+        }
+    };
 
     //----------------------------------------------------------------------------
     // Comparison operations
     //----------------------------------------------------------------------------
 
-    // TODO: Missing; equal_to, not_equal_to, less, greater_equal & less_equal
+    template <typename T>
+    class equal_to
+    {
+    public:
+        bool operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return (a == b);
+        }
+    };
+
+    template <typename T>
+    class not_equal_to
+    {
+    public:
+        bool operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return (a != b);
+        }
+    };
+
+    template <typename T>
+    class greater
+    {
+    public:
+        bool operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return (a > b);
+        }
+    };
+
+    template <typename T>
+    class less
+    {
+    public:
+        bool operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return (a < b);
+        }
+    };
+
+    template <typename T>
+    class greater_equal
+    {
+    public:
+        bool operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return (a >= b);
+        }
+    };
+
+    template <typename T>
+    class less_equal
+    {
+    public:
+        bool operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return (a <= b);
+        }
+    };
 
     template <typename T>
     class max
@@ -82,7 +178,7 @@ namespace amp_algorithms
     };
 
     //----------------------------------------------------------------------------
-    // Arithmetic operations
+    // Bitwise operations
     //----------------------------------------------------------------------------
 
     template <typename T>
@@ -114,6 +210,37 @@ namespace amp_algorithms
             return (a ^ b);
         }
     };
+
+    //----------------------------------------------------------------------------
+    // Padded tile read and write functions.
+    //----------------------------------------------------------------------------
+
+    template <typename T, int N>
+    inline T padded_read(const concurrency::array_view<T, N> arr, const concurrency::index<N> idx) restrict(cpu, amp)
+    {
+        return arr.extent.contains(idx) ? arr[idx] : T();
+    }
+
+    template <typename T>
+    inline T padded_read(const concurrency::array_view<T, 1> arr, const int idx) restrict(cpu, amp)
+    {
+        return padded_read<T, 1>(arr, concurrency::index<1>(idx));
+    }
+
+    template <typename T, int N>
+    inline void padded_write(const concurrency::array_view<T, N> arr, const concurrency::index<N> idx, const T& value) restrict(cpu, amp)
+    {
+        if (arr.extent.contains(idx))
+        {
+            arr[idx] = value;
+        }
+    }
+
+    template <typename T>
+    inline void padded_write(const concurrency::array_view<T, 1> arr, const int idx, const T& value) restrict(cpu, amp)
+    {
+        padded_write<T, 1>(arr, concurrency::index<1>(idx), value);
+    }
 
     //----------------------------------------------------------------------------
     // reduce

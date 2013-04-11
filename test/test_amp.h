@@ -35,7 +35,8 @@ using namespace concurrency;
 using namespace amp_algorithms;
 
 //  Define these namespaces to pick up poorly specified namespaces and types in library code.
-//  This makes the test code more like a real library client which may define conflicting namespaces .
+//  This makes the test code more like a real library client which may define conflicting namespaces.
+
 namespace details { };
 namespace _details { };
 namespace direct3d { };
@@ -45,9 +46,27 @@ namespace precise_math { };
 
 //  Define these classes to pick up poorly specified namespaces and types in library code.
 //  This makes the test code more like a real library client which may define conflicting classes.
+
 class extent { };
 class index { };
 class array { };
+
+//	Set this to use the REF accelerator for all tests. This is useful if tests fail on a particular machine as
+//	this may be a driver bug.
+
+//#define USE_REF
+
+inline void set_default_accelerator()
+{
+#if defined(USE_REF)
+	bool set_ok = accelerator::set_default(accelerator::direct3d_ref);
+
+	if (!set_ok)
+	{
+		Logger::WriteMessage("Unable to set default accelerator to REF.");
+	}
+#endif
+}
 
 // Helper functions to generate test data of random numbers.
 template <typename T>

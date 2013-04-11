@@ -227,7 +227,7 @@ namespace amp_stl_algorithms
                 }
             }
         });
-    }
+        }
 
     // Standard, builds of top of the non-standard async version above, and adds a sync to
     // materialize the result.
@@ -297,11 +297,24 @@ namespace amp_stl_algorithms
         amp_algorithms::scan s(element_count + 1);
         s.scan_exclusive(map, map);
         dest_view.discard_data();
-        concurrency::parallel_for_each(compute_domain,
-            [=](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+        concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<tile_size> tidx) restrict(amp)
         {
             const int idx = tidx.global[0];
-            if ((map_vw[idx] != map_vw[idx + 1]) && (idx < element_count))
+            const int i = tidx.local[0];
+            tile_static unsigned local_buffer[tile_size + 1];
+
+			// TODO: Lukasz - Since map is created locally in this function, wouldn't it be better to pad the container instead of padding on read?
+
+            // Use tile memory so that each value is only read once from global memory.
+            local_buffer[i] = padded_read(map_vw, idx);
+            if (i == (tile_size - 1))
+            {
+                local_buffer[i + 1] = padded_read(map_vw, (idx + 1));
+            }
+
+            tidx.barrier.wait_with_all_memory_fence();
+
+            if ((local_buffer[i] != local_buffer[i + 1]) && (idx < element_count))
             {
                 dest_view[map_vw[idx]] = src_view[idx];
             }
@@ -316,7 +329,7 @@ namespace amp_stl_algorithms
     RandomAccessIterator copy_n(ConstRandomAccessIterator first, Size count, RandomAccessIterator dest_first)
     {
         // copy() will handle the case where count == 0.
-		return amp_stl_algorithms::copy(first, (first + count), dest_first);
+        return amp_stl_algorithms::copy(first, (first + count), dest_first);
     }
 
     //----------------------------------------------------------------------------
@@ -614,7 +627,7 @@ namespace amp_stl_algorithms
         const int tile_size = 512;
 
         difference_type element_count = std::distance(first, last);
-        if (element_count <= 0)
+        if (element_count <= 0) 
         {
             return;
         }
@@ -797,5 +810,71 @@ namespace amp_stl_algorithms
         });
 
         return dest_first + element_count;
+    }
+
+    //----------------------------------------------------------------------------
+    // is_sorted, is_sorted_until, sort, partial_sort, partial_sort_copy, stable_sort
+    //----------------------------------------------------------------------------
+
+    template<typename ConstRandomAccessIterator, typename Compare>
+    ConstRandomAccessIterator is_sorted_until( ConstRandomAccessIterator first, ConstRandomAccessIterator last, Compare comp )
+    {
+        typedef typename std::iterator_traits<ConstRandomAccessIterator>::difference_type diff_type;
+
+        static const int tile_size = 512;
+        const diff_type element_count = std::distance(first, last);
+        if (element_count <= 1)
+        {
+            return last;
+        }
+        auto input_view = _details::create_section(first, element_count);
+        // TODO: Here we have one idx. Might be better to have one index per tile and then do a further reduction?
+		int last_sorted_idx = element_count;
+        concurrency::array_view<int, 1> last_sorted_idx_av(1, &last_sorted_idx);
+
+        concurrency::tiled_extent<tile_size> compute_domain = concurrency::extent<1>(element_count).tile<tile_size>().pad();
+        concurrency::parallel_for_each(compute_domain,
+            [=](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+        {
+            const int idx = tidx.global[0];
+            const int i = tidx.local[0];
+            tile_static unsigned local_buffer[tile_size + 1];
+
+            local_buffer[i] = padded_read(input_view, idx);
+            if (i == (tile_size - 1))
+            {
+                local_buffer[i + 1] = padded_read(input_view, (idx + 1));
+            }
+
+            tidx.barrier.wait_with_all_memory_fence();
+
+            if ((idx < element_count) && !comp(local_buffer[i], local_buffer[i + 1]) )
+            {
+                concurrency::atomic_fetch_min(&last_sorted_idx_av(0), idx + 1);
+            }
+        });
+
+        last_sorted_idx_av.synchronize();
+        return first + last_sorted_idx_av[0];
+    }
+
+    template<typename ConstRandomAccessIterator>
+    bool is_sorted( ConstRandomAccessIterator first, ConstRandomAccessIterator last )
+    {
+        typedef typename std::iterator_traits<ConstRandomAccessIterator>::difference_type T;
+        return (amp_stl_algorithms::is_sorted_until(first, last, amp_algorithms::less_equal<T>()) == last);
+    }
+
+    template<typename ConstRandomAccessIterator, typename Compare>
+    bool is_sorted( ConstRandomAccessIterator first, ConstRandomAccessIterator last, Compare comp )
+    {
+        return (amp_stl_algorithms::is_sorted_until(first, last, comp) == last);
+    }
+
+    template<typename ConstRandomAccessIterator>
+    ConstRandomAccessIterator is_sorted_until( ConstRandomAccessIterator first, ConstRandomAccessIterator last )
+    {
+        typedef typename std::iterator_traits<ConstRandomAccessIterator>::difference_type T;
+        return amp_stl_algorithms::is_sorted_until(first, last, amp_algorithms::less_equal<T>());
     }
 }// namespace amp_stl_algorithms
