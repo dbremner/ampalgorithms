@@ -31,114 +31,114 @@ using namespace amp_algorithms;
 
 namespace amp_algorithms_tests
 {
-	// This isn't a test, it's just a convenient way to determine which accelerator tests ran on.
-	TEST_CLASS(configuration_tests)
-	{
-		TEST_CLASS_INITIALIZE(initialize_tests)
-		{
-			set_default_accelerator();
-		}
+    // This isn't a test, it's just a convenient way to determine which accelerator tests ran on.
+    TEST_CLASS(configuration_tests)
+    {
+        TEST_CLASS_INITIALIZE(initialize_tests)
+        {
+            set_default_accelerator();
+        }
 
-		TEST_METHOD(amp_accelerator_configuration)
-		{
-			Logger::WriteMessage("Running amp_algorithms_tests on:");
-			Logger::WriteMessage(accelerator().description.c_str());
-			Logger::WriteMessage("\n  ");
-			Logger::WriteMessage(accelerator().device_path.c_str());
-			Logger::WriteMessage("\n");
-		}
-	};
+        TEST_METHOD(amp_accelerator_configuration)
+        {
+            Logger::WriteMessage("Running amp_algorithms_tests on:");
+            Logger::WriteMessage(accelerator().description.c_str());
+            Logger::WriteMessage("\n  ");
+            Logger::WriteMessage(accelerator().device_path.c_str());
+            Logger::WriteMessage("\n");
+        }
+    };
 
-	TEST_CLASS(padded_read_write_tests)
-	{
-		TEST_CLASS_INITIALIZE(initialize_tests)
-		{
-			set_default_accelerator();
-		}
+    TEST_CLASS(padded_read_write_tests)
+    {
+        TEST_CLASS_INITIALIZE(initialize_tests)
+        {
+            set_default_accelerator();
+        }
 
-		TEST_METHOD(amp_padded_read)
-		{
-			std::array<int, 10> vec = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-			array_view<int, 1> av(10, vec);
+        TEST_METHOD(amp_padded_read)
+        {
+            std::array<int, 10> vec = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+            array_view<int, 1> av(10, vec);
 
-			Assert::AreEqual(1, padded_read(av, concurrency::index<1>(1)));
-			Assert::AreEqual(int(), padded_read(av, concurrency::index<1>(20)));
-		}
+            Assert::AreEqual(1, padded_read(av, concurrency::index<1>(1)));
+            Assert::AreEqual(int(), padded_read(av, concurrency::index<1>(20)));
+        }
 
-		TEST_METHOD(amp_padded_write)
-		{
-			std::array<int, 10> vec = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-			array_view<int, 1> av(5, vec);
+        TEST_METHOD(amp_padded_write)
+        {
+            std::array<int, 10> vec = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+            array_view<int, 1> av(5, vec);
 
-			padded_write(av, concurrency::index<1>(1), 11);
-			Assert::AreEqual(11, av[1]);
-			padded_write(av, concurrency::index<1>(1), 11);
-			Assert::AreEqual(int(), av[7]);
-		}
-	};
+            padded_write(av, concurrency::index<1>(1), 11);
+            Assert::AreEqual(11, av[1]);
+            padded_write(av, concurrency::index<1>(1), 11);
+            Assert::AreEqual(int(), av[7]);
+        }
+    };
 
-	TEST_CLASS(operator_tests)
-	{
-		TEST_CLASS_INITIALIZE(initialize_tests)
-		{
-			set_default_accelerator();
-		}
+    TEST_CLASS(operator_tests)
+    {
+        TEST_CLASS_INITIALIZE(initialize_tests)
+        {
+            set_default_accelerator();
+        }
 
-		TEST_METHOD(amp_arithmetic_operators)
-		{
-			compare_operators(std::plus<int>(), amp_algorithms::plus<int>());
-			compare_operators(std::minus<int>(), amp_algorithms::minus<int>());
+        TEST_METHOD(amp_arithmetic_operators)
+        {
+            compare_operators(std::plus<int>(), amp_algorithms::plus<int>());
+            compare_operators(std::minus<int>(), amp_algorithms::minus<int>());
 
-			compare_operators(std::multiplies<int>(), amp_algorithms::multiplies<int>());
-			compare_operators(std::divides<int>(), amp_algorithms::divides<int>());
-			compare_operators(std::modulus<int>(), amp_algorithms::modulus<int>());
+            compare_operators(std::multiplies<int>(), amp_algorithms::multiplies<int>());
+            compare_operators(std::divides<int>(), amp_algorithms::divides<int>());
+            compare_operators(std::modulus<int>(), amp_algorithms::modulus<int>());
 
-			Assert::AreEqual(2, amp_algorithms::negates<int>()(-2));
-			Assert::AreEqual(-2, amp_algorithms::negates<int>()(2));
-			Assert::AreEqual(0, amp_algorithms::negates<int>()(0));
-		}
+            Assert::AreEqual(2, amp_algorithms::negates<int>()(-2));
+            Assert::AreEqual(-2, amp_algorithms::negates<int>()(2));
+            Assert::AreEqual(0, amp_algorithms::negates<int>()(0));
+        }
 
-		TEST_METHOD(amp_comparison_operators)
-		{
-			compare_operators(std::equal_to<int>(), amp_algorithms::equal_to<int>());
-			compare_operators(std::not_equal_to<int>(), amp_algorithms::not_equal_to<int>());
+        TEST_METHOD(amp_comparison_operators)
+        {
+            compare_operators(std::equal_to<int>(), amp_algorithms::equal_to<int>());
+            compare_operators(std::not_equal_to<int>(), amp_algorithms::not_equal_to<int>());
 
-			compare_operators(std::greater<int>(), amp_algorithms::greater<int>());
-			compare_operators(std::less<int>(), amp_algorithms::less<int>());
-			compare_operators(std::greater_equal<int>(), amp_algorithms::greater_equal<int>());
-			compare_operators(std::less_equal<int>(), amp_algorithms::less_equal<int>());
+            compare_operators(std::greater<int>(), amp_algorithms::greater<int>());
+            compare_operators(std::less<int>(), amp_algorithms::less<int>());
+            compare_operators(std::greater_equal<int>(), amp_algorithms::greater_equal<int>());
+            compare_operators(std::less_equal<int>(), amp_algorithms::less_equal<int>());
 
-			compare_operators(std::min<int>, amp_algorithms::min<int>());
-			compare_operators(std::max<int>, amp_algorithms::max<int>());
-		}
+            compare_operators(std::min<int>, amp_algorithms::min<int>());
+            compare_operators(std::max<int>, amp_algorithms::max<int>());
+        }
 
-		TEST_METHOD(amp_bitwise_operators)
-		{
-			compare_operators(std::bit_and<int>(), amp_algorithms::bit_and<int>());
-			compare_operators(std::bit_or<int>(), amp_algorithms::bit_or<int>());
-			compare_operators(std::bit_xor<int>(), amp_algorithms::bit_xor<int>());
-		}
+        TEST_METHOD(amp_bitwise_operators)
+        {
+            compare_operators(std::bit_and<int>(), amp_algorithms::bit_and<int>());
+            compare_operators(std::bit_or<int>(), amp_algorithms::bit_or<int>());
+            compare_operators(std::bit_xor<int>(), amp_algorithms::bit_xor<int>());
+        }
 
-		template<typename StlFunc, typename AmpFunc>
-		void compare_operators(StlFunc stl_func, AmpFunc amp_func)
-		{
-			std::array<int, 10> vec = { 100, 100, 150, 300, 1000, -50, 11, 12, -12, 33 };
+        template<typename StlFunc, typename AmpFunc>
+        void compare_operators(StlFunc stl_func, AmpFunc amp_func)
+        {
+            std::array<int, 10> vec = { 100, 100, 150, 300, 1000, -50, 11, 12, -12, 33 };
 
-			for (size_t i(0); i < vec.size() - 1; ++i)
-			{
-				Assert::AreEqual(stl_func(vec[i], vec[i+1]), amp_func(vec[i], vec[i+1]));
-			}
-		}
-	};
+            for (size_t i(0); i < vec.size() - 1; ++i)
+            {
+                Assert::AreEqual(stl_func(vec[i], vec[i+1]), amp_func(vec[i], vec[i+1]));
+            }
+        }
+    };
 
     TEST_CLASS(reduce_tests)
     {
-		TEST_CLASS_INITIALIZE(initialize_tests)
-		{
-			set_default_accelerator();
-		}
+        TEST_CLASS_INITIALIZE(initialize_tests)
+        {
+            set_default_accelerator();
+        }
 
-		TEST_METHOD(amp_reduce_double_sum)
+        TEST_METHOD(amp_reduce_double_sum)
         {
             double cpu_result, amp_result;
 
@@ -185,10 +185,10 @@ namespace amp_algorithms_tests
 
     TEST_CLASS(functor_view_tests)
     {
-		TEST_CLASS_INITIALIZE(initialize_tests)
-		{
-			set_default_accelerator();
-		}
+        TEST_CLASS_INITIALIZE(initialize_tests)
+        {
+            set_default_accelerator();
+        }
 
         TEST_METHOD(amp_functor_view_float)
         {
@@ -249,10 +249,10 @@ namespace amp_algorithms_tests
 
     TEST_CLASS(generate_tests)
     {
-		TEST_CLASS_INITIALIZE(initialize_tests)
-		{
-			set_default_accelerator();
-		}
+        TEST_CLASS_INITIALIZE(initialize_tests)
+        {
+            set_default_accelerator();
+        }
 
         TEST_METHOD(amp_generate_int)
         {
@@ -274,10 +274,10 @@ namespace amp_algorithms_tests
 
     TEST_CLASS(transform_tests)
     {
-		TEST_CLASS_INITIALIZE(initialize_tests)
-		{
-			set_default_accelerator();
-		}
+        TEST_CLASS_INITIALIZE(initialize_tests)
+        {
+            set_default_accelerator();
+        }
 
         TEST_METHOD(amp_transform_unary)
         {
@@ -339,10 +339,10 @@ namespace amp_algorithms_tests
 
     TEST_CLASS(fill_tests)
     {
-		TEST_CLASS_INITIALIZE(initialize_tests)
-		{
-			set_default_accelerator();
-		}
+        TEST_CLASS_INITIALIZE(initialize_tests)
+        {
+            set_default_accelerator();
+        }
 
         TEST_METHOD(amp_fill_int)
         {

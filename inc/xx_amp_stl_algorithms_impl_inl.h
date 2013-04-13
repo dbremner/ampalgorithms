@@ -63,7 +63,7 @@ namespace amp_stl_algorithms
 
         auto section_view = _details::create_section(first, element_count);
         concurrency::parallel_for_each(concurrency::extent<1>(element_count), [f,section_view] (concurrency::index<1> idx) restrict(amp)
-		{
+        {
             f(section_view[idx]);
         });
     }
@@ -149,7 +149,7 @@ namespace amp_stl_algorithms
 
         difference_type element_count = std::distance(begin1, end1);
         if (element_count <= 0)
-		{
+        {
             return result_begin;
         }
         auto input_view = _details::create_section(begin1, element_count);
@@ -256,8 +256,8 @@ namespace amp_stl_algorithms
     {
         typedef typename std::iterator_traits<ConstRandomAccessIterator>::difference_type diff_type;
         const diff_type element_count = std::distance(first, last);
-		if (element_count <= 0)
-			return dest_first;
+        if (element_count <= 0)
+            return dest_first;
         auto src_view = _details::create_section(first, element_count);
         concurrency::copy(src_view, dest_first);
         return dest_first + element_count;
@@ -303,7 +303,7 @@ namespace amp_stl_algorithms
             const int i = tidx.local[0];
             tile_static unsigned local_buffer[tile_size + 1];
 
-			// TODO: Lukasz - Since map is created locally in this function, wouldn't it be better to pad the container instead of padding on read?
+            // TODO: Lukasz - Since map is created locally in this function, wouldn't it be better to pad the container instead of padding on read?
 
             // Use tile memory so that each value is only read once from global memory.
             local_buffer[i] = padded_read(map_vw, idx);
@@ -364,7 +364,7 @@ namespace amp_stl_algorithms
         auto section_view = _details::create_section(first, element_count);
 
         // TODO: Seems the global memory access isn't coherent. Can it be improved.
-		// TODO: Would a reduction be more efficient than using an atomic operation here?
+        // TODO: Would a reduction be more efficient than using an atomic operation here?
         concurrency::parallel_for_each(
             concurrency::extent<1>(num_threads),
             [section_view,element_count,p,count_av] (concurrency::index<1> idx) restrict (amp) 
@@ -414,13 +414,13 @@ namespace amp_stl_algorithms
         concurrency::array_view<diff_type> unequal_count_av(1, &unequal_count);
 
         // TODO: Seems the global memory access isn't coherent. Can it be improved.
-		// TODO: Would a reduction be more efficient than using an atomic operation here?
+        // TODO: Would a reduction be more efficient than using an atomic operation here?
         concurrency::parallel_for_each(
             tiled_extent<tile_size>(concurrency::extent<1>(num_threads)).pad(),
             [section1_view, section2_view, element_count, p, unequal_count_av] (concurrency::tiled_index<tile_size> tidx) restrict (amp) 
         {
             int idx = tidx.global[0];
-			diff_type i = idx;
+            diff_type i = idx;
             for (; i < element_count; i += num_threads)
             {
                 if (!p(section1_view[i], section2_view[i]))
@@ -507,9 +507,9 @@ namespace amp_stl_algorithms
         {
             return;
         }
-		// TODO: This looks like it is in violation with the standard, which requires that the value needs to support 
-		//       only ++value. i.e. the default ctor or subtraction, multiplication might not be available. We should 
-		//       consider if there is a better alternative.
+        // TODO: This looks like it is in violation with the standard, which requires that the value needs to support 
+        //       only ++value. i.e. the default ctor or subtraction, multiplication might not be available. We should 
+        //       consider if there is a better alternative.
         auto inc = T();
         inc = ++inc - T();
         auto section_view = _details::create_section(first, element_count);
@@ -672,7 +672,7 @@ namespace amp_stl_algorithms
         auto src_view = _details::create_section(first, element_count);
         auto dest_view = _details::create_section(dest_first, element_count);
 
-		int last_changed_idx = 0;
+        int last_changed_idx = 0;
         concurrency::array_view<int, 1> last_changed_idx_av(1, &last_changed_idx);
 
         concurrency::parallel_for_each(concurrency::tiled_extent<tile_size>(src_view.extent).pad(), 
@@ -681,15 +681,15 @@ namespace amp_stl_algorithms
             int idx = tidx.global[0];
             if (idx < element_count)
             {
-				if (p(src_view[idx]))
-				{
-					dest_view[idx] = new_value;
-					concurrency::atomic_fetch_max(&last_changed_idx_av(0), idx + 1);
-				}
-				else
-				{
-					dest_view[idx] = src_view[idx];
-				}
+                if (p(src_view[idx]))
+                {
+                    dest_view[idx] = new_value;
+                    concurrency::atomic_fetch_max(&last_changed_idx_av(0), idx + 1);
+                }
+                else
+                {
+                    dest_view[idx] = src_view[idx];
+                }
             }
         });
 
@@ -829,7 +829,7 @@ namespace amp_stl_algorithms
         }
         auto input_view = _details::create_section(first, element_count);
         // TODO: Here we have one idx. Might be better to have one index per tile and then do a further reduction?
-		int last_sorted_idx = element_count;
+        int last_sorted_idx = element_count;
         concurrency::array_view<int, 1> last_sorted_idx_av(1, &last_sorted_idx);
 
         concurrency::tiled_extent<tile_size> compute_domain = concurrency::extent<1>(element_count).tile<tile_size>().pad();
