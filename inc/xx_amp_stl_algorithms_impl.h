@@ -30,18 +30,18 @@ namespace amp_stl_algorithms
     {
         using namespace concurrency;
 
-        void amp_assert(bool cond) restrict(cpu)
+        inline void amp_assert(bool cond) restrict(cpu)
         {
             assert(cond);
         }
 
-        void amp_assert(bool cond) restrict(amp)
+        inline void amp_assert(bool cond) restrict(amp)
         {
             // TODO
         }
 
         template <typename array_type>
-        void assert_arrays_are_same_toplevel_resource(const array_type& a1, const array_type& a2) restrict(cpu,amp)
+        inline void assert_arrays_are_same_toplevel_resource(const array_type& a1, const array_type& a2) restrict(cpu,amp)
         {
             // TODO
         }

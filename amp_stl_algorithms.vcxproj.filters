@@ -15,10 +15,13 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="test\test_stl_amp_algorithms.cpp">
+    <ClCompile Include="test\stdafx.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
-    <ClCompile Include="test\stdafx.cpp">
+    <ClCompile Include="test\examples_stl_amp_algorithms.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="test\test_stl_amp_algorithms.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
   </ItemGroup>

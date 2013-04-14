@@ -506,5 +506,3 @@ namespace amp_algorithms
 } // namespace amp_algorithms
 
 #include <xx_amp_algorithms_impl_inl.h>
-
-

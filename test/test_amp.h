@@ -51,10 +51,8 @@ class extent { };
 class index { };
 class array { };
 
-//	Set this to use the REF accelerator for all tests. This is useful if tests fail on a particular machine as
+//	Set USE_REF to use the REF accelerator for all tests. This is useful if tests fail on a particular machine as
 //	this may be a driver bug.
-
-//#define USE_REF
 
 inline void set_default_accelerator()
 {
