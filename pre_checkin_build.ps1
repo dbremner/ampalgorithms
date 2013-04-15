@@ -1,9 +1,11 @@
+param([string]$arg1 = "")
+
 # Configure VS environment
 
 function script:append-path {
-	$oldPath = get-content Env:\Path;
-	$newPath = $oldPath + ";" + $args;
-	set-content Env:\Path $newPath;
+    $oldPath = get-content Env:\Path;
+    $newPath = $oldPath + ";" + $args;
+    set-content Env:\Path $newPath;
 }
 
 if (-not (test-path env:VSINSTALLDIR)) {
@@ -38,7 +40,7 @@ $msbuild_options="/verbosity:m /nologo /filelogger /target:rebuild /consolelogge
 $msbuild_sln="amp_algorithms.sln"
 $msbuild_dir = split-path -parent $MyInvocation.MyCommand.Definition
 $msbuild_int ="$msbuild_dir\Intermediate"
-$StopWatch = New-Object system.Diagnostics.Stopwatch
+$StopWatch = New-Object System.Diagnostics.Stopwatch
 $StopWatch.Start()
 
 write-host "== Clean         ===============================================================" -fore yellow
@@ -52,7 +54,11 @@ foreach ($p in $paths) {
     }
 }
 mkdir $msbuild_dir\Intermediate > $null
-
+if ($arg1 -eq "/ref")
+{
+    $msbuild_options=$msbuild_options + " /p:USE_REF=USE_REF"
+    write-host "Building with USE_REF defined, unit tests will use REF accelerator." -fore yellow
+}
 write-host "== x64/Debug     ===============================================================" -fore yellow
 $log="$msbuild_int\x64_Debug.log"
 Invoke-Expression "$msbuild $msbuild_sln /p:platform=x64 /p:configuration=Debug     $msbuild_options /fileloggerparameters:logfile='$log'"
@@ -77,12 +83,16 @@ $BuildElapsedTime = [system.String]::Format("{0:00}:{1:00}.{2:00}", $elapsed.Min
 $StopWatch.Reset();
 $StopWatch.Start()
 
-echo "Showing output from failed tests only:"
+if ($arg1 -eq "/ref")
+{
+    write-host "Running tests with REF accelerator, this may take several minutes." -fore yellow
+}
+write-host "Showing output from failed tests only:" -fore yellow
 ."$env:VSINSTALLDIR\Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe" "$msbuild_dir\Win32\Release\amp_algorithms.dll" "$msbuild_dir\Win32\Release\amp_stl_algorithms.dll" /logger:trx 2>&1 |
-	where { $_ -match @(' *Failed   .*') } | write-host -fore red
+    where { $_ -match @(' *Failed   .*') } | write-host -fore red
 
 $StopWatch.Stop();
-echo "Tests complete"
+write-host "Tests complete" -fore green
 write-host "================================================================================" -fore yellow
 
 $elapsed = $StopWatch.Elapsed  
