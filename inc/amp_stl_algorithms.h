@@ -145,7 +145,6 @@ namespace amp_stl_algorithms
         ConstRandomAccessIterator2 first2, 
         ConstRandomAccessIterator2 last2, 
         Predicate p);
-
     // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator>
     ConstRandomAccessIterator adjacent_find (ConstRandomAccessIterator first, ConstRandomAccessIterator last);

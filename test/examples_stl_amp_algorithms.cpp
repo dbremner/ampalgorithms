@@ -35,12 +35,12 @@ namespace examples
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
 #if defined(USE_REF)
-	        bool set_ok = accelerator::set_default(accelerator::direct3d_ref);
+            bool set_ok = accelerator::set_default(accelerator::direct3d_ref);
 
-	        if (!set_ok)
-	        {
-		        Logger::WriteMessage("Unable to set default accelerator to REF.");
-	        }
+            if (!set_ok)
+            {
+                Logger::WriteMessage("Unable to set default accelerator to REF.");
+            }
 #endif
         }
 

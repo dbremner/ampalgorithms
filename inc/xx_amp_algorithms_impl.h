@@ -41,9 +41,9 @@ namespace amp_algorithms
             return auto_select_accelerator_view;
         }
 
-		//----------------------------------------------------------------------------
-		// parallel_for_each implementation
-		//----------------------------------------------------------------------------
+        //----------------------------------------------------------------------------
+        // parallel_for_each implementation
+        //----------------------------------------------------------------------------
 
         template <int _Rank, typename _Kernel_type>
         void parallel_for_each(const concurrency::accelerator_view &_Accl_view, const concurrency::extent<_Rank>& _Compute_domain, const _Kernel_type &_Kernel)
