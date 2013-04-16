@@ -105,7 +105,9 @@
       <AdditionalLibraryDirectories>$(VCInstallDir)UnitTest\lib;</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(FrameworkSdkDir)bin\$(PlatformTarget)\d3dcsx_46.dll" "$(OutDir)"</Command>
+      <Command>copy "$(FrameworkSdkDir)bin\$(PlatformTarget)\d3dcsx_46.dll" "$(OutDir)"
+@echo BUILD SUCCEEDED
+</Command>
       <Message>copy d3dcsx dll</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -124,7 +126,9 @@
       <AdditionalLibraryDirectories>$(VCInstallDir)UnitTest\lib;</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(FrameworkSdkDir)bin\$(PlatformTarget)\d3dcsx_46.dll" "$(OutDir)"</Command>
+      <Command>copy "$(FrameworkSdkDir)bin\$(PlatformTarget)\d3dcsx_46.dll" "$(OutDir)"
+@echo BUILD SUCCEEDED
+</Command>
       <Message>copy d3dcsx dll</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -147,7 +151,9 @@
       <AdditionalLibraryDirectories>$(VCInstallDir)UnitTest\lib;</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(FrameworkSdkDir)bin\$(PlatformTarget)\d3dcsx_46.dll" "$(OutDir)"</Command>
+      <Command>copy "$(FrameworkSdkDir)bin\$(PlatformTarget)\d3dcsx_46.dll" "$(OutDir)"
+@echo BUILD SUCCEEDED
+</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>copy d3dcsx dll</Message>
@@ -172,7 +178,9 @@
       <AdditionalLibraryDirectories>$(VCInstallDir)UnitTest\lib;</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(FrameworkSdkDir)bin\$(PlatformTarget)\d3dcsx_46.dll" "$(OutDir)"</Command>
+      <Command>copy "$(FrameworkSdkDir)bin\$(PlatformTarget)\d3dcsx_46.dll" "$(OutDir)"
+@echo BUILD SUCCEEDED
+</Command>
       <Message>copy d3dcsx dll</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
