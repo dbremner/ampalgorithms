@@ -2,6 +2,9 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "amp_stl_algorithms", "amp_stl_algorithms.vcxproj", "{B1F30CF1-0A13-545A-75F2-7CCF8BA1A18F}"
+	ProjectSection(ProjectDependencies) = postProject
+		{3D74703F-3A58-A860-884D-7B64204109BA} = {3D74703F-3A58-A860-884D-7B64204109BA}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "amp_algorithms", "amp_algorithms.vcxproj", "{3D74703F-3A58-A860-884D-7B64204109BA}"
 EndProject

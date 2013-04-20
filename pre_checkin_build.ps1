@@ -53,15 +53,20 @@ if (-not (test-path env:VSINSTALLDIR))
     Remove-Item $tempFile
 }
 
-## Run build
-
+$vstest = "$env:VSINSTALLDIR\Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe"
 $msbuild="$env:FrameworkDir$env:FrameworkVersion\msbuild.exe"
-# TODO: Make warnings get treated like errors in these builds.
-$msbuild_options="/verbosity:m /nologo /filelogger /target:rebuild /consoleloggerparameters:verbosity=m"
-$msbuild_sln="amp_algorithms.sln"
+
+## Build targets and options
+
 $msbuild_dir = split-path -parent $MyInvocation.MyCommand.Definition
+$msbuild_sln="amp_algorithms.sln"
+$vstest_dlls = @( "$msbuild_dir\Win32\Release\amp_algorithms.dll", "$msbuild_dir\Win32\Release\amp_stl_algorithms.dll" )
+$msbuild_options="/p:WARNINGS_AS_ERRORS=true /verbosity:m /nologo /filelogger /target:rebuild /consoleloggerparameters:verbosity=m"
 $msbuild_int ="$msbuild_dir\Intermediate"
 $StopWatch = New-Object System.Diagnostics.Stopwatch
+
+## Run build
+
 $StopWatch.Start()
 
 ## Clean tree...
@@ -132,8 +137,8 @@ else
     }
     $tests_failed = 0
     write-host "Showing output from failed tests only:" -fore yellow
-    ."$env:VSINSTALLDIR\Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe" "$msbuild_dir\Win32\Release\amp_algorithms.dll" "$msbuild_dir\Win32\Release\amp_stl_algorithms.dll" /logger:trx 2>&1 |
-        where { $_ -match @(' *Failed   .*') } | foreach-object { $tests_failed++; echo $_ } | write-host -fore red 
+    ."$vstest" $vstest_dlls /logger:trx 2>&1 | where { $_ -match @(' *Failed   .*') } | 
+        foreach-object { $tests_failed++; echo $_ } | write-host -fore red 
 
     $StopWatch.Stop();
     if ($tests_failed -gt 0) 
