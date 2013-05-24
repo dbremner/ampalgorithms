@@ -306,10 +306,10 @@ namespace amp_stl_algorithms
             // TODO: Lukasz - Since map is created locally in this function, wouldn't it be better to pad the container instead of padding on read?
 
             // Use tile memory so that each value is only read once from global memory.
-            local_buffer[i] = padded_read(map_vw, idx);
+            local_buffer[i] = amp_algorithms::padded_read(map_vw, idx);
             if (i == (tile_size - 1))
             {
-                local_buffer[i + 1] = padded_read(map_vw, (idx + 1));
+                local_buffer[i + 1] = amp_algorithms::padded_read(map_vw, (idx + 1));
             }
 
             tidx.barrier.wait_with_all_memory_fence();
@@ -480,7 +480,6 @@ namespace amp_stl_algorithms
     ConstRandomAccessIterator find_if_not( ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate p )
     {
         typedef std::iterator_traits<ConstRandomAccessIterator>::value_type T;
-
         return amp_stl_algorithms::find_if(first, last, [p](const T& v) restrict(amp) { return !p(v); });
     }
 
@@ -673,7 +672,7 @@ namespace amp_stl_algorithms
         auto dest_view = _details::create_section(dest_first, element_count);
 
         int last_changed_idx = 0;
-        concurrency::array_view<int, 1> last_changed_idx_av(1, &last_changed_idx);
+        concurrency::array_view<int> last_changed_idx_av(1, &last_changed_idx);
 
         concurrency::parallel_for_each(concurrency::tiled_extent<tile_size>(src_view.extent).pad(), 
             [element_count, new_value, src_view, dest_view, last_changed_idx_av, p](concurrency::tiled_index<tile_size> tidx) restrict(amp)
@@ -731,8 +730,8 @@ namespace amp_stl_algorithms
         {
             return first2;
         }
-        concurrency::array_view<T, 1> first1_view = _details::create_section(first1, element_count);
-        concurrency::array_view<T, 1> first2_view = _details::create_section(first2, element_count);
+        concurrency::array_view<T> first1_view = _details::create_section(first1, element_count);
+        concurrency::array_view<T> first2_view = _details::create_section(first2, element_count);
 
         concurrency::tiled_extent<tile_size> compute_domain = concurrency::extent<1>(element_count >> 1);
         concurrency::parallel_for_each(compute_domain.pad(), [=] (concurrency::tiled_index<tile_size> tidx) restrict(amp) 
@@ -813,6 +812,69 @@ namespace amp_stl_algorithms
     }
 
     //----------------------------------------------------------------------------
+    // adjacent_find
+    //----------------------------------------------------------------------------
+
+    namespace _details
+    {
+        template<typename ConstRandomAccessIterator, typename Predicate>
+        ConstRandomAccessIterator adjacent_find (ConstRandomAccessIterator first, 
+            const typename std::iterator_traits<ConstRandomAccessIterator>::difference_type element_count, Predicate p)
+        {
+            static const int tile_size = 512;
+
+            auto input_view = _details::create_section(first, element_count);
+            // TODO: Here we have one idx. Might be better to have one index per tile and then do a further reduction?
+            int last_sorted_idx = element_count;
+            concurrency::array_view<int> last_sorted_idx_av(1, &last_sorted_idx);
+
+            concurrency::tiled_extent<tile_size> compute_domain = concurrency::extent<1>(element_count).tile<tile_size>().pad();
+            concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+            {
+                const int idx = tidx.global[0];
+                const int i = tidx.local[0];
+                tile_static unsigned local_buffer[tile_size + 1];
+
+                local_buffer[i] = padded_read(input_view, idx);
+                if (i == (tile_size - 1))
+                {
+                    local_buffer[i + 1] = padded_read(input_view, (idx + 1));
+                }
+
+                tidx.barrier.wait_with_all_memory_fence();
+
+                if ((idx < element_count) && p(local_buffer[i], local_buffer[i + 1]) )
+                {
+                    concurrency::atomic_fetch_min(&last_sorted_idx_av(0), idx);
+                }
+            });
+
+            last_sorted_idx_av.synchronize();
+            return first + last_sorted_idx_av[0];
+        }
+    }; // namespace _details
+
+    template<typename ConstRandomAccessIterator, typename Predicate>
+    ConstRandomAccessIterator adjacent_find (ConstRandomAccessIterator first,  ConstRandomAccessIterator last, Predicate p)
+    {
+        typedef typename std::iterator_traits<ConstRandomAccessIterator>::difference_type diff_type;
+
+        const diff_type element_count = std::distance(first, last);
+        if (element_count <= 1)
+        {
+            return last;
+        }
+        return  _details::adjacent_find(first, element_count, p);
+    }
+
+    template<typename ConstRandomAccessIterator>
+    ConstRandomAccessIterator adjacent_find (ConstRandomAccessIterator first, ConstRandomAccessIterator last)
+    {
+        typedef std::iterator_traits<ConstRandomAccessIterator>::value_type T;
+        return amp_stl_algorithms::adjacent_find(first, last, amp_algorithms::equal_to<T>());
+    }
+
+    //----------------------------------------------------------------------------
     // is_sorted, is_sorted_until, sort, partial_sort, partial_sort_copy, stable_sort
     //----------------------------------------------------------------------------
 
@@ -820,48 +882,21 @@ namespace amp_stl_algorithms
     ConstRandomAccessIterator is_sorted_until( ConstRandomAccessIterator first, ConstRandomAccessIterator last, Compare comp )
     {
         typedef typename std::iterator_traits<ConstRandomAccessIterator>::difference_type diff_type;
+        typedef typename std::iterator_traits<ConstRandomAccessIterator>::value_type T;
 
-        static const int tile_size = 512;
         const diff_type element_count = std::distance(first, last);
         if (element_count <= 1)
         {
             return last;
         }
-        auto input_view = _details::create_section(first, element_count);
-        // TODO: Here we have one idx. Might be better to have one index per tile and then do a further reduction?
-        int last_sorted_idx = element_count;
-        concurrency::array_view<int, 1> last_sorted_idx_av(1, &last_sorted_idx);
-
-        concurrency::tiled_extent<tile_size> compute_domain = concurrency::extent<1>(element_count).tile<tile_size>().pad();
-        concurrency::parallel_for_each(compute_domain,
-            [=](concurrency::tiled_index<tile_size> tidx) restrict(amp)
-        {
-            const int idx = tidx.global[0];
-            const int i = tidx.local[0];
-            tile_static unsigned local_buffer[tile_size + 1];
-
-            local_buffer[i] = padded_read(input_view, idx);
-            if (i == (tile_size - 1))
-            {
-                local_buffer[i + 1] = padded_read(input_view, (idx + 1));
-            }
-
-            tidx.barrier.wait_with_all_memory_fence();
-
-            if ((idx < element_count) && !comp(local_buffer[i], local_buffer[i + 1]) )
-            {
-                concurrency::atomic_fetch_min(&last_sorted_idx_av(0), idx + 1);
-            }
-        });
-
-        last_sorted_idx_av.synchronize();
-        return first + last_sorted_idx_av[0];
+        return _details::adjacent_find(first, element_count, 
+            [=](const T& a, const T& b) restrict(amp) { return !comp(a, b); }) + 1;
     }
 
     template<typename ConstRandomAccessIterator>
     bool is_sorted( ConstRandomAccessIterator first, ConstRandomAccessIterator last )
     {
-        typedef typename std::iterator_traits<ConstRandomAccessIterator>::difference_type T;
+        typedef typename std::iterator_traits<ConstRandomAccessIterator>::value_type T;
         return (amp_stl_algorithms::is_sorted_until(first, last, amp_algorithms::less_equal<T>()) == last);
     }
 
@@ -874,7 +909,67 @@ namespace amp_stl_algorithms
     template<typename ConstRandomAccessIterator>
     ConstRandomAccessIterator is_sorted_until( ConstRandomAccessIterator first, ConstRandomAccessIterator last )
     {
-        typedef typename std::iterator_traits<ConstRandomAccessIterator>::difference_type T;
+        typedef typename std::iterator_traits<ConstRandomAccessIterator>::value_type T;
         return amp_stl_algorithms::is_sorted_until(first, last, amp_algorithms::less_equal<T>());
+    }
+
+    //----------------------------------------------------------------------------
+    // adjacent_difference
+    //----------------------------------------------------------------------------
+
+    template<typename ConstRandomAccessIterator,typename RandomAccessIterator, typename BinaryOperation>
+    RandomAccessIterator adjacent_difference( ConstRandomAccessIterator first, 
+        ConstRandomAccessIterator last, 
+        RandomAccessIterator dest_first,
+        BinaryOperation p )
+    {
+        typedef typename std::iterator_traits<ConstRandomAccessIterator>::difference_type diff_type;
+        typedef typename std::iterator_traits<ConstRandomAccessIterator>::value_type T;
+
+        const diff_type element_count = std::distance(first, last);
+        if (element_count <= 1)
+        {
+            return dest_first;
+        }
+
+        static const int tile_size = 512;
+        auto input_view = _details::create_section(first, element_count);
+        auto output_view = _details::create_section(dest_first, element_count);
+
+        concurrency::tiled_extent<tile_size> compute_domain = concurrency::extent<1>(element_count).tile<tile_size>().pad();
+        concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+        {
+            const int idx = tidx.global[0];
+            const int i = tidx.local[0];
+            tile_static T local_buffer[tile_size + 1];
+
+            local_buffer[i] = padded_read(input_view, idx - 1);
+            if (i == (tile_size - 1))
+            {
+                local_buffer[tile_size] = padded_read(input_view, idx);
+            }
+
+            tidx.barrier.wait_with_all_memory_fence();
+             
+            if (idx == 0)
+            {
+                output_view[0] = input_view[0];
+            }
+            else
+            {
+                padded_write(output_view, idx, p(local_buffer[i + 1], local_buffer[i]));
+            }
+        });
+
+        return dest_first + element_count;
+    }
+
+    template<typename ConstRandomAccessIterator,typename RandomAccessIterator>
+    RandomAccessIterator adjacent_difference( ConstRandomAccessIterator first, 
+        ConstRandomAccessIterator last, 
+        RandomAccessIterator dest_first )
+    {
+        typedef typename std::iterator_traits<ConstRandomAccessIterator>::value_type T;
+        return amp_stl_algorithms::adjacent_difference(first, last, dest_first, amp_algorithms::minus<T>());
     }
 }// namespace amp_stl_algorithms

@@ -59,7 +59,7 @@ namespace amp_algorithms_tests
         TEST_METHOD(amp_padded_read)
         {
             std::array<int, 10> vec = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-            array_view<int, 1> av(10, vec);
+            array_view<int> av(10, vec);
 
             Assert::AreEqual(1, padded_read(av, concurrency::index<1>(1)));
             Assert::AreEqual(int(), padded_read(av, concurrency::index<1>(20)));
@@ -68,7 +68,7 @@ namespace amp_algorithms_tests
         TEST_METHOD(amp_padded_write)
         {
             std::array<int, 10> vec = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-            array_view<int, 1> av(5, vec);
+            array_view<int> av(5, vec);
 
             padded_write(av, concurrency::index<1>(1), 11);
             Assert::AreEqual(11, av[1]);

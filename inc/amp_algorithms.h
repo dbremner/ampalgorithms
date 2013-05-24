@@ -222,7 +222,7 @@ namespace amp_algorithms
     }
 
     template <typename T>
-    inline T padded_read(const concurrency::array_view<T, 1> arr, const int idx) restrict(cpu, amp)
+    inline T padded_read(const concurrency::array_view<T> arr, const int idx) restrict(cpu, amp)
     {
         return padded_read<T, 1>(arr, concurrency::index<1>(idx));
     }
@@ -237,7 +237,7 @@ namespace amp_algorithms
     }
 
     template <typename T>
-    inline void padded_write(const concurrency::array_view<T, 1> arr, const int idx, const T& value) restrict(cpu, amp)
+    inline void padded_write(const concurrency::array_view<T> arr, const int idx, const T& value) restrict(cpu, amp)
     {
         padded_write<T, 1>(arr, concurrency::index<1>(idx), value);
     }

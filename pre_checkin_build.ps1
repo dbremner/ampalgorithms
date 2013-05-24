@@ -128,7 +128,7 @@ else
 
     ## Run tests...
 
-    $StopWatch.Reset();
+$StopWatch.Reset();
     $StopWatch.Start();
 
     if ($arg1 -eq "/ref")
@@ -140,7 +140,7 @@ else
     ."$vstest" $vstest_dlls /logger:trx 2>&1 | where { $_ -match @(' *Failed   .*') } | 
         foreach-object { $tests_failed++; echo $_ } | write-host -fore red 
 
-    $StopWatch.Stop();
+$StopWatch.Stop();
     if ($tests_failed -gt 0) 
     {
         write-host "$tests_failed Tests FAILED!"-fore red
@@ -150,7 +150,7 @@ else
         write-host "Tests complete." -fore green
     }
 
-    $elapsed = $StopWatch.Elapsed  
+$elapsed = $StopWatch.Elapsed  
     $TestsElapsedTime = [System.String]::Format("{0:00}:{1:00}.{2:00}", $elapsed.Minutes, $elapsed.Seconds, $elapsed.Milliseconds / 10);
 }
 
@@ -159,5 +159,5 @@ write-host ""
 write-host "Build completed in: $BuildElapsedTime" -fore yellow
 if ( $TestsElapsedTime -ne "" )
 {
-    write-host "Tests completed in: $TestsElapsedTime" -fore yellow
+write-host "Tests completed in: $TestsElapsedTime" -fore yellow
 }

@@ -29,32 +29,32 @@ using namespace amp_stl_algorithms;
 
 namespace tests
 {
-	// This isn't a test, it's just a convenient way to determine which accelerator tests ran on.
-	TEST_CLASS(configuration_tests)
-	{
-		TEST_CLASS_INITIALIZE(initialize_tests)
-		{
-			set_default_accelerator();
-		}
+    // This isn't a test, it's just a convenient way to determine which accelerator tests ran on.
+    TEST_CLASS(configuration_tests)
+    {
+        TEST_CLASS_INITIALIZE(initialize_tests)
+        {
+            set_default_accelerator();
+        }
 
-		TEST_METHOD(stl_accelerator_configuration)
-		{
-			Logger::WriteMessage("Running stl_algorithms_tests on:");
-			Logger::WriteMessage(accelerator().description.c_str());
-			Logger::WriteMessage("\n  ");
-			Logger::WriteMessage(accelerator().device_path.c_str());
-			Logger::WriteMessage("\n");
-		}
-	};
-	
-	// TODO: Get the tests, header and internal implementations into the same logical order.
+        TEST_METHOD(stl_accelerator_configuration)
+        {
+            Logger::WriteMessage("Running stl_algorithms_tests on:");
+            Logger::WriteMessage(accelerator().description.c_str());
+            Logger::WriteMessage("\n  ");
+            Logger::WriteMessage(accelerator().device_path.c_str());
+            Logger::WriteMessage("\n");
+        }
+    };
+    
+    // TODO: Get the tests, header and internal implementations into the same logical order.
 
     TEST_CLASS(stl_algorithms_tests)
     {
-		TEST_CLASS_INITIALIZE(initialize_tests)
-		{
-			set_default_accelerator();
-		}
+        TEST_CLASS_INITIALIZE(initialize_tests)
+        {
+            set_default_accelerator();
+        }
 
         TEST_METHOD(stl_for_each_no_return)
         {
@@ -851,7 +851,7 @@ namespace tests
             Assert::AreEqual(2, std::distance(begin(result_av), result_end));
         }
 
-        TEST_METHOD(stl_replace_copy_if)
+        TEST_METHOD(stl_replace_copy_if_odd_numbers)
         {
             const int size = 10;
             std::array<int, size> expected = { 0, -1, 2, -1, 4, -1, 6, -1, 8, -1 };
@@ -862,15 +862,15 @@ namespace tests
             array_view<int> result_av(size, result);
 
             auto result_end = amp_stl_algorithms::replace_copy_if(begin(av), end(av), begin(result_av), 
-				[=](int v) restrict(amp) { return (v % 2 != 0); }, -1);
+                [=](int v) restrict(amp) { return (v % 2 != 0); }, -1);
 
             Assert::IsTrue(are_equal(expected, result_av));
             Assert::AreEqual(10, std::distance(begin(result_av), result_end));
-		}
+        }
 
-        TEST_METHOD(stl_replace_copy_if_2)
-		{
-			const int size = 10;
+        TEST_METHOD(stl_replace_copy_if_lower_half)
+        {
+            const int size = 10;
             std::array<int, size> expected = { -1, -1, -1, -1, -1, 5, 6, 7, 8, 9 };
             std::vector<int> vec(size);
             std::iota(begin(vec), end(vec), 0);
@@ -879,15 +879,42 @@ namespace tests
             array_view<int> result_av(size, result);
 
             auto result_end = amp_stl_algorithms::replace_copy_if(begin(av), end(av), begin(result_av), 
-				[=](int v) restrict(amp) { return (v < 5); }, -1);
+                [=](int v) restrict(amp) { return (v < 5); }, -1);
 
-			Assert::IsTrue(are_equal(expected, result_av));
+            Assert::IsTrue(are_equal(expected, result_av));
             Assert::AreEqual(5, std::distance(begin(result_av), result_end));
+        }
+
+        //----------------------------------------------------------------------------
+        // adjacent_find
+        //----------------------------------------------------------------------------
+
+        TEST_METHOD(stl_adjacent_find)
+        {
+            const int size = 10;
+            std::vector<int> vec(size);
+            std::iota(begin(vec), end(vec), 0);
+            array_view<int> av(size, vec);
+
+            Assert::AreEqual(0, std::distance(begin(av), amp_stl_algorithms::adjacent_find(begin(av), begin(av))));
+            Assert::AreEqual(1, std::distance(begin(av), amp_stl_algorithms::adjacent_find(begin(av), begin(av)+1)));
+
+            Assert::AreEqual(10, std::distance(begin(av), amp_stl_algorithms::adjacent_find(begin(av), end(av))));
+
+            av[5] = 4;   // 0, 1, 2, 3, 4, 4, 6, 7, 8, 9
+
+            Assert::AreEqual(4, std::distance(begin(av), amp_stl_algorithms::adjacent_find(begin(av), end(av))));
+
+            av[0] = 1;   // 1, 1, 2, 3, 4, 4, 6, 7, 8, 9
+
+            Assert::AreEqual(0, std::distance(begin(av), amp_stl_algorithms::adjacent_find(begin(av), end(av))));
         }
 
         //----------------------------------------------------------------------------
         // is_sorted, is_sorted_until, sort, partial_sort, partial_sort_copy, stable_sort
         //----------------------------------------------------------------------------
+
+        // Special comparison operator for testing purposes.
 
         template <typename T>
         class abs_less_equal
@@ -905,12 +932,15 @@ namespace tests
             }
         };
 
-        TEST_METHOD(stl_is_sorted_until)
+        TEST_METHOD(stl_is_sorted)
         {
-			const int size = 10;
+            const int size = 10;
             std::vector<int> vec(size);
             std::iota(begin(vec), end(vec), 0);
             array_view<int> av(size, vec);
+
+            Assert::AreEqual(0, std::distance(begin(av), amp_stl_algorithms::is_sorted_until(begin(av), begin(av))));
+            Assert::AreEqual(1, std::distance(begin(av), amp_stl_algorithms::is_sorted_until(begin(av), begin(av)+1)));
 
             Assert::AreEqual(9, *--amp_stl_algorithms::is_sorted_until(begin(av), end(av), amp_algorithms::less<int>()));
             Assert::AreEqual(9, *--amp_stl_algorithms::is_sorted_until(begin(av), end(av)));
@@ -989,8 +1019,7 @@ namespace tests
                 Assert::AreEqual((-9 + i), arr1[i]);
             }
         }
-
-		
+      
         TEST_METHOD(stl_swap_n_amp)
         {
             std::array<int, 10> expected = { 6, 7, 8, 9, 10, 1, 2, 3, 4, 5 };
@@ -1000,36 +1029,36 @@ namespace tests
             array_view<int> av(10, vec);
 
             parallel_for_each(concurrency::tiled_extent<5>(concurrency::extent<1>(5)), 
-				[=](concurrency::tiled_index<5> tidx) restrict(amp)
+                [=](concurrency::tiled_index<5> tidx) restrict(amp)
             {
-				tile_static int arr1[5];
-				tile_static int arr2[5];
+                tile_static int arr1[5];
+                tile_static int arr2[5];
 
-				int idx = tidx.global[0];
-				int i = tidx.local[0];
-			
-				arr1[i] = av[i];
-				arr2[i] = av[i + 5];
+                int idx = tidx.global[0];
+                int i = tidx.local[0];
+            
+                arr1[i] = av[i];
+                arr2[i] = av[i + 5];
 
-				tidx.barrier.wait();
+                tidx.barrier.wait();
 
-				if (i == 0)
-				{
-					amp_stl_algorithms::swap<int, 5>(arr1, arr2);
-				}
+                if (i == 0)
+                {
+                    amp_stl_algorithms::swap<int, 5>(arr1, arr2);
+                }
 
-				tidx.barrier.wait();
+                tidx.barrier.wait();
 
-				av[i] = arr1[i];
-				av[i + 5] = arr2[i];
+                av[i] = arr1[i];
+                av[i + 5] = arr2[i];
 
-				tidx.barrier.wait();
-			});
+                tidx.barrier.wait();
+            });
 
-			av.synchronize();
+            av.synchronize();
             Assert::IsTrue(are_equal(expected, av));
         }
-		
+        
         TEST_METHOD(stl_swap_ranges)
         {
             const int size = 10;
@@ -1110,6 +1139,95 @@ namespace tests
             }
 
             Assert::AreEqual(result_av[size - 1], *--result_end);
+        }
+
+        //----------------------------------------------------------------------------
+        // adjacent_difference
+        //----------------------------------------------------------------------------
+
+        TEST_METHOD(stl_adjacent_difference)
+        {
+            const int size = 10;
+            std::vector<int> vec(size);
+            std::iota(begin(vec), end(vec), 0);
+            array_view<int> av(size, vec);
+            std::vector<int> result(size, 0);
+            array_view<int> result_av(size, result);
+            std::array<int, size> expected; 
+            std::fill(begin(expected), end(expected), -1);
+
+            // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+
+            std::adjacent_difference(begin(vec), end(vec), begin(expected));
+
+            auto result_last = amp_stl_algorithms::adjacent_difference(begin(av), end(av), begin(result_av));
+
+            Assert::AreEqual(size, std::distance(begin(result_av), result_last));
+            result_av.synchronize();
+            Assert::IsTrue(are_equal(expected, result));
+
+            // 0, 1, 2, 3, 5, 5, 6, 7, 8, 9
+
+            vec[4] = 5; 
+            av.refresh();
+            std::adjacent_difference(begin(vec), end(vec), begin(expected));
+
+            amp_stl_algorithms::adjacent_difference(begin(av), end(av), begin(result_av));
+
+            Assert::IsTrue(are_equal(expected, result_av));
+
+            // 1, 1, 2, 3, 5, 5, 6, 7, 8, 9
+
+            vec[0] = 1; 
+            av.refresh();
+            std::adjacent_difference(begin(vec), end(vec), begin(expected));
+
+            amp_stl_algorithms::adjacent_difference(begin(av), end(av), begin(result_av));
+
+            Assert::IsTrue(are_equal(expected, result_av));
+
+            // 1, 1, 2, 3, 5, 5, 6, 3, 8, 9
+
+            vec[7] = 3;  
+            av.refresh();
+            std::adjacent_difference(begin(vec), end(vec), begin(expected), std::plus<int>());
+
+            amp_stl_algorithms::adjacent_difference(begin(av), end(av), begin(result_av), plus<int>());
+
+            Assert::IsTrue(are_equal(expected, result_av));
+
+            // Empty
+
+            result_last = amp_stl_algorithms::adjacent_difference(begin(av), begin(av), begin(result_av));
+
+            Assert::AreEqual(0, std::distance(begin(result_av), result_last));
+
+            // 1
+
+            std::adjacent_difference(begin(vec), begin(vec) + 1, begin(expected));
+
+            result_last = amp_stl_algorithms::adjacent_difference(begin(av), begin(av) + 1, begin(result_av));
+
+            Assert::AreEqual(expected[0], result_av[0]);
+        }
+
+        TEST_METHOD(stl_adjacent_difference_multi_tile)
+        {
+            const int size = 1024;
+            std::vector<int> vec(size);
+            generate_data(vec);
+            array_view<int> av(size, vec);
+            std::vector<int> result(size, 0);
+            array_view<int> result_av(size, result);
+            std::array<int, size> expected; 
+            std::fill(begin(expected), end(expected), -1);
+
+            std::adjacent_difference(begin(vec), end(vec), begin(expected));
+
+            auto result_last = amp_stl_algorithms::adjacent_difference(begin(av), end(av), begin(result_av));
+
+            Assert::AreEqual(size, std::distance(begin(result_av), result_last));
+            Assert::IsTrue(are_equal(expected, result_av));
         }
     };
 };// namespace tests

@@ -16,7 +16,7 @@
 * 
 * C++ AMP standard algorithm library.
 *
-* This file contains example code fragments in the form of unit tests.
+* This file contains the unit tests.
 *---------------------------------------------------------------------------*/
 #include "stdafx.h"
 
@@ -47,17 +47,17 @@ namespace examples
         TEST_METHOD(stl_example_1)
         {
             {
-                //array<float> data(1024 * 1024);
-                //array_view<float, 1> data_av(data);
+                array<float> data(1024 * 1024);
+                array_view<float> data_av(data);
 
-                //amp_stl_algorithms::iota(begin(data_av), end(data_av), 1.0f);
-                //auto last = amp_stl_algorithms::remove_if(begin(data_av), end(data_av), 
-                //    [=](const float& v) restrict(amp) { return int(v) % 2 == 1; });
-                //float total = amp_stl_algorithms::accumulate(begin(data_av), last, 0.0f);
+                amp_stl_algorithms::iota(begin(data_av), end(data_av), 1.0f);
+                auto last = amp_stl_algorithms::remove_if(begin(data_av), end(data_av), 
+                    [=](const float& v) restrict(amp) { return int(v) % 2 == 1; });
+                float total = amp_stl_algorithms::reduce(begin(data_av), last, 0.0f);
 
-                //std::stringstream str;
-                //str << "AAL: Sum of all even numbers in the input array = " << total;
-                //Logger::WriteMessage(str.str().c_str());
+                std::stringstream str;
+                str << "AAL: Sum of all even numbers in the input array = " << total;
+                Logger::WriteMessage(str.str().c_str());
             }
 
             {

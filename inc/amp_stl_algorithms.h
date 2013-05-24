@@ -145,11 +145,10 @@ namespace amp_stl_algorithms
         ConstRandomAccessIterator2 first2, 
         ConstRandomAccessIterator2 last2, 
         Predicate p);
-    // NOT IMPLEMENTED
+
     template<typename ConstRandomAccessIterator>
     ConstRandomAccessIterator adjacent_find (ConstRandomAccessIterator first, ConstRandomAccessIterator last);
 
-    // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator, typename Predicate>
     ConstRandomAccessIterator adjacent_find (ConstRandomAccessIterator first,  ConstRandomAccessIterator last, Predicate p);
 
@@ -444,19 +443,15 @@ namespace amp_stl_algorithms
     // is_sorted, is_sorted_until, sort, partial_sort, partial_sort_copy, stable_sort
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator>
     bool is_sorted( ConstRandomAccessIterator first, ConstRandomAccessIterator last );
 
-    // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator, typename Compare>
     bool is_sorted( ConstRandomAccessIterator first, ConstRandomAccessIterator last, Compare comp ); 
 
-    // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator>
     ConstRandomAccessIterator is_sorted_until( ConstRandomAccessIterator first, ConstRandomAccessIterator last );
 
-    // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator, typename Compare>
     ConstRandomAccessIterator is_sorted_until( ConstRandomAccessIterator first, ConstRandomAccessIterator last, Compare comp ); 
 
@@ -722,8 +717,8 @@ namespace amp_stl_algorithms
     template<typename T, typename Compare>
     const T& max( const T& a, const T& b, Compare comp ) restrict (cpu,amp);
 
-#ifdef max
-#error amp_stl_algorithms encountered a definition of the macro max
+#ifdef min
+#error amp_stl_algorithms encountered a definition of the macro min
 #endif
 
     template<typename T> 
@@ -853,17 +848,15 @@ namespace amp_stl_algorithms
     // adjacent_difference
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator,typename RandomAccessIterator>
     RandomAccessIterator adjacent_difference( ConstRandomAccessIterator first, 
         ConstRandomAccessIterator last, 
-        RandomAccessIterator d_first ); 
+        RandomAccessIterator dest_first ); 
 
-    // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator,typename RandomAccessIterator, typename BinaryOperation>
     RandomAccessIterator adjacent_difference( ConstRandomAccessIterator first, 
         ConstRandomAccessIterator last, 
-        RandomAccessIterator d_first,
+        RandomAccessIterator dest_first,
         BinaryOperation op );
 
     //----------------------------------------------------------------------------
