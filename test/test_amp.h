@@ -1,4 +1,4 @@
-/*----------------------------------------------------------------------------
+ /*----------------------------------------------------------------------------
 * Copyright © Microsoft Corp.
 *
 * Licensed under the Apache License, Version 2.0 (the "License"); you may not 
@@ -29,30 +29,29 @@
 #include <CppUnitTest.h>
 
 #include <amp_algorithms.h>
+#include <amp_stl_algorithms.h>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace concurrency;
 using namespace amp_algorithms;
+using namespace amp_stl_algorithms;
 
-//  Define these namespaces to pick up poorly specified namespaces and types in library code.
+//  Define these namespaces and types to pick up poorly specified namespaces and types in library code.
 //  This makes the test code more like a real library client which may define conflicting namespaces.
 
 namespace details { };
 namespace _details { };
 namespace direct3d { };
-namespace fast_math { };
 namespace graphics { };
+namespace fast_math { };
 namespace precise_math { };
-
-//  Define these classes to pick up poorly specified namespaces and types in library code.
-//  This makes the test code more like a real library client which may define conflicting classes.
 
 class extent { };
 class index { };
 class array { };
 
 //	Set USE_REF to use the REF accelerator for all tests. This is useful if tests fail on a particular machine as
-//	this may be a driver bug.
+//	failure may be due to a driver bug.
 
 inline void set_default_accelerator()
 {
@@ -115,14 +114,7 @@ inline bool are_almost_equal(T v1, T v2, const T maxAbsoluteDiff, const T maxRel
         diff = fabs(v2 - v1) / fabs(v2);
     }
 
-    if (diff < maxRelativeDiff) // relative comparison
-    {
-        return true;
-    }
-    else 
-    {
-        return false;
-    }
+    return (diff < maxRelativeDiff); // relative comparison
 }
 
 // Compare two floats and return true if they are close to each other.
@@ -170,7 +162,7 @@ bool are_equal(const T1& expected, const T2& actual)
 
     if (element_count != std::distance(begin(actual), end(actual)))
         return false;
-
+    
     for (int i = 0; i < int(element_count); ++i)
     {
         if (expected[i] != actual[i])

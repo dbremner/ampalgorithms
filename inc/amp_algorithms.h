@@ -19,6 +19,9 @@
 * This file contains the C++ AMP algorithms
 *---------------------------------------------------------------------------*/
 
+// TODO: Here the functions are defined here. In the STL implementation they are defined in the main header file 
+// and just declared in the public one. Is this by design?
+
 #pragma once
 
 #include <amp.h>
@@ -210,6 +213,39 @@ namespace amp_algorithms
             return (a ^ b);
         }
     };
+
+    //----------------------------------------------------------------------------
+    // Logical operations
+    //----------------------------------------------------------------------------
+
+    template<class T>
+    class logical_not
+    {
+        bool operator()(const T& a) const restrict(cpu, amp)
+        {
+            return (!a);
+        }
+    };
+
+    template<class T>
+    class logical_and
+    {
+        bool operator()(const T& a, const T& b) const restrict(cpu, amp)
+        {
+            return (a && b);
+        }
+    };
+
+    template<class T>
+    class logical_or
+    {
+        bool operator()(const T& a, const T& b) const restrict(cpu, amp)
+        {
+            return (a || b);
+        }
+    };
+
+    // TODO: Implement not1() and not2() if appropriate.
 
     //----------------------------------------------------------------------------
     // Padded tile read and write functions.
