@@ -140,6 +140,11 @@ namespace amp_algorithms_tests
 
         TEST_METHOD(amp_reduce_double_sum)
         {
+            if (!accelerator().get_supports_double_precision())
+            {
+                Assert::Fail(L"Accelerator does not support double precision, skipping test.");
+            }
+
             double cpu_result, amp_result;
 
             test_reduce<double>(1023 * 1029 * 13, amp_algorithms::plus<double>(), cpu_result, amp_result);
