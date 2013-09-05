@@ -18,6 +18,7 @@
 #
 # This file contains the C++ AMP standard algorithms
 #---------------------------------------------------------------------------
+
 # Configure VS environment
 
 function script:append-path 
@@ -65,6 +66,28 @@ $msbuild_options="/p:WARNINGS_AS_ERRORS=true /verbosity:m /nologo /filelogger /t
 $msbuild_int ="$msbuild_dir\Intermediate"
 $StopWatch = New-Object System.Diagnostics.Stopwatch
 
+## Process arguments
+
+write-output ""
+
+if ($args -contains "/ref")
+{
+    $msbuild_options=$msbuild_options + " /p:USE_REF=USE_REF"
+    write-host "Building with USE_REF defined, unit tests will use REF accelerator." -fore yellow
+}
+
+$configs = @( "Debug", "Release" )
+$platforms = @( "x64", "Win32" )
+$output_paths = @( "$msbuild_dir\Win32", "$msbuild_dir\x64", "$msbuild_dir\Intermediate", "$msbuild_dir\TestResults" )
+
+if ($args -contains "/test")
+{
+    write-host "Building only Win32/Release." -fore yellow
+    $configs = @( "Release" )
+    $platforms = @( "Win32" )
+    $output_paths = @( "$msbuild_dir\Win32", "$msbuild_dir\Intermediate", "$msbuild_dir\TestResults" )
+}
+
 ## Run build
 
 $StopWatch.Start()
@@ -73,9 +96,7 @@ $StopWatch.Start()
 
 write-host "== Clean         ===============================================================" -fore yellow
 
-$paths = @( "$msbuild_dir\Win32", "$msbuild_dir\x64", "$msbuild_dir\Intermediate", "$msbuild_dir\TestResults" )
- 
-foreach ($p in $paths) 
+foreach ($p in $output_paths) 
 {
     if (test-path $p) 
     { 
@@ -86,15 +107,6 @@ foreach ($p in $paths)
 mkdir $msbuild_dir\Intermediate > $null
 
 ## Build all targets...
-
-if ($args -contains "/ref")
-{
-    $msbuild_options=$msbuild_options + " /p:USE_REF=USE_REF"
-    write-host "Building with USE_REF defined, unit tests will use REF accelerator." -fore yellow
-}
-
-$configs = @( "Debug", "Release" )
-$platforms = @( "x64", "Win32" )
 
 $builds_ok = 0
 $builds_run = 0
@@ -128,21 +140,22 @@ else
 
     ## Run tests...
 
-$StopWatch.Reset();
+    $StopWatch.Reset();
     $StopWatch.Start();
 
-    if ($arg1 -eq "/ref")
+    if ($args -contains "/ref")
     {
         write-host "Running tests with REF accelerator, this may take several minutes." -fore yellow
     }
     $tests_failed = 0
     write-host "Showing output from failed tests only:" -fore yellow
-    ."$vstest" $vstest_dlls /logger:trx 2>&1 | where { $_ -match @(' *Failed   .*') } | 
+    ."$vstest" $vstest_dlls /logger:trx 2>&1 | where { $_ -match @(' *(Failed|Assert failed\.) +.*') } | 
         foreach-object { $tests_failed++; echo $_ } | write-host -fore red 
 
-$StopWatch.Stop();
+    $StopWatch.Stop();
     if ($tests_failed -gt 0) 
     {
+        $tests_failed = $tests_failed / 2
         write-host "$tests_failed Tests FAILED!"-fore red
     }
     else
@@ -150,14 +163,13 @@ $StopWatch.Stop();
         write-host "Tests complete." -fore green
     }
 
-$elapsed = $StopWatch.Elapsed  
+    $elapsed = $StopWatch.Elapsed  
     $TestsElapsedTime = [System.String]::Format("{0:00}:{1:00}.{2:00}", $elapsed.Minutes, $elapsed.Seconds, $elapsed.Milliseconds / 10);
 }
 
 write-host "================================================================================" -fore yellow
-write-host ""
-write-host "Build completed in: $BuildElapsedTime" -fore yellow
+write-host "`nBuild completed in: $BuildElapsedTime" -fore yellow
 if ( $TestsElapsedTime -ne "" )
 {
-write-host "Tests completed in: $TestsElapsedTime" -fore yellow
+    write-host "Tests completed in: $TestsElapsedTime" -fore yellow
 }
