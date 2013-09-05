@@ -221,6 +221,7 @@ namespace amp_algorithms
     template<class T>
     class logical_not
     {
+    public:
         bool operator()(const T& a) const restrict(cpu, amp)
         {
             return (!a);
@@ -230,6 +231,7 @@ namespace amp_algorithms
     template<class T>
     class logical_and
     {
+    public:
         bool operator()(const T& a, const T& b) const restrict(cpu, amp)
         {
             return (a && b);
@@ -239,12 +241,12 @@ namespace amp_algorithms
     template<class T>
     class logical_or
     {
+    public:
         bool operator()(const T& a, const T& b) const restrict(cpu, amp)
         {
             return (a || b);
         }
     };
-
     // TODO: Implement not1() and not2() if appropriate.
 
     //----------------------------------------------------------------------------

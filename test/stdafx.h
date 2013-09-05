@@ -25,4 +25,6 @@
 #include <array>
 #include <iostream>
 #include <numeric>
+#include <functional>
+
 #include <CppUnitTest.h>

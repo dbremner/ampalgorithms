@@ -28,6 +28,7 @@
 #include <iostream>
 #include <CppUnitTest.h>
 
+
 #include <amp_algorithms.h>
 #include <amp_stl_algorithms.h>
 

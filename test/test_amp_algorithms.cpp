@@ -119,14 +119,53 @@ namespace amp_algorithms_tests
             compare_operators(std::bit_xor<int>(), amp_algorithms::bit_xor<int>());
         }
 
+        TEST_METHOD(amp_logical_operators)
+        {
+            std::array<unsigned, 4> tests = { 0xF0, 0xFF, 0x0A, 0x00 };
+
+            for (auto& v : tests)
+            {
+                Assert::AreEqual(std::logical_not<unsigned>()(v), amp_algorithms::logical_not<unsigned>()(v));
+            }
+            compare_logical_operators(std::logical_and<unsigned>(), amp_algorithms::logical_and<unsigned>());
+            compare_logical_operators(std::logical_or<unsigned>(), amp_algorithms::logical_or<unsigned>());
+        }
+
         template<typename StlFunc, typename AmpFunc>
         void compare_operators(StlFunc stl_func, AmpFunc amp_func)
         {
-            std::array<int, 10> vec = { 100, 100, 150, 300, 1000, -50, 11, 12, -12, 33 };
+            typedef std::pair<int, int> test_pair;
 
-            for (size_t i(0); i < vec.size() - 1; ++i)
+            std::array<test_pair, 5> tests = { 
+                test_pair(100, 100), 
+                test_pair(150, 300), 
+                test_pair(1000, -50), 
+                test_pair(11, 12), 
+                test_pair(-12, 33) 
+            };
+
+            for (auto& p : tests)
             {
-                Assert::AreEqual(stl_func(vec[i], vec[i+1]), amp_func(vec[i], vec[i+1]));
+                Assert::AreEqual(stl_func(p.first, p.second), amp_func(p.first, p.second));
+            }
+        }
+
+        template<typename StlFunc, typename AmpFunc>
+        void compare_logical_operators(StlFunc stl_func, AmpFunc amp_func)
+        {
+            typedef std::pair<unsigned int, unsigned int> test_pair;
+
+            std::array<test_pair, 8> tests = { 
+                test_pair(0xF, 0xF), 
+                test_pair(0xFF, 0x0A), 
+                test_pair(0x0A, 0xFF),
+                test_pair(0xFF, 0x00),
+                test_pair(0x00, 0x00)
+            };
+
+            for (auto& p : tests)
+            {
+                Assert::AreEqual(stl_func(p.first, p.second), amp_func(p.first, p.second));
             }
         }
     };
