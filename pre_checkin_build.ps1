@@ -149,14 +149,15 @@ else
     }
     $tests_failed = 0
     write-host "Showing output from failed tests only:" -fore yellow
-    ."$vstest" $vstest_dlls /logger:trx 2>&1 | where { $_ -match @(' *(Failed|Assert failed\.) +.*') } | 
-        foreach-object { $tests_failed++; echo $_ } | write-host -fore red 
+    ."$vstest" $vstest_dlls /logger:trx 2>&1 | 
+        %{ if ( $_ -match @('^Failed +')) { $tests_failed++ } ; $_ } | 
+        where { $_ -match @('^(Failed +| +Assert failed\.)') } | 
+        write-host -fore red 
 
     $StopWatch.Stop();
     if ($tests_failed -gt 0) 
     {
-        $tests_failed = $tests_failed / 2
-        write-host "$tests_failed Tests FAILED!"-fore red
+        write-host "`n$tests_failed Tests FAILED!"-fore red
     }
     else
     {
