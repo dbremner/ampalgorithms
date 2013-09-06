@@ -73,5 +73,31 @@ namespace examples
                 Logger::WriteMessage(str.str().c_str());
             }
         }
+
+        // Calculate the volume of a set of randomly generated tetrahedrons each with one vertex at (0, 0, 0)
+        TEST_METHOD(stl_example_map_reduce)
+        {
+            typedef struct
+            {
+                float x1, y1, z1;
+                float x2, y2, z2;
+                float x3, y3, z3;
+            } triangle;
+
+            std::vector<triangle> triangles_cpu(1000);
+
+            array_view<const triangle, 1> triangles_gpu(triangles_cpu.size(), triangles_cpu.data());
+            concurrency::array<float, 1> volumes_gpu(triangles_cpu.size());
+            array_view<float, 1> volumes_gpuvw(volumes_gpu);
+            amp_stl_algorithms::transform(begin(triangles_gpu), end(triangles_gpu), begin(volumes_gpuvw), 
+                [=](const triangle& t) restrict(amp)
+            {
+                return t.x1 * (t.y2 * t.z3 - t.y3 * t.z2)
+                    + t.y1 * (t.z2 * t.x3 - t.x2 * t.z3)
+                    + t.z1 * (t.x2 * t.y3 - t.x3 * t.y2);
+            });
+            float sum = amp_stl_algorithms::reduce(begin(volumes_gpuvw), end(volumes_gpuvw), 0.0f);
+        }
     };
+
 };// namespace examples
