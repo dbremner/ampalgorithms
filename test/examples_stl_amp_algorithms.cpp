@@ -86,8 +86,8 @@ namespace examples
 
             std::vector<triangle> triangles_cpu(1000);
 
-            array_view<const triangle, 1> triangles_gpu(triangles_cpu.size(), triangles_cpu.data());
-            concurrency::array<float, 1> volumes_gpu(triangles_cpu.size());
+            array_view<const triangle, 1> triangles_gpu(static_cast<int>(triangles_cpu.size()), triangles_cpu.data());
+            concurrency::array<float, 1> volumes_gpu(static_cast<int>(triangles_cpu.size()));
             array_view<float, 1> volumes_gpuvw(volumes_gpu);
             amp_stl_algorithms::transform(begin(triangles_gpu), end(triangles_gpu), begin(volumes_gpuvw), 
                 [=](const triangle& t) restrict(amp)

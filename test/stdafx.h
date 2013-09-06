@@ -28,3 +28,4 @@
 #include <functional>
 
 #include <CppUnitTest.h>
+#include <CodeCoverage\CodeCoverage.h>

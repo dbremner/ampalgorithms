@@ -24,13 +24,19 @@
 #include <amp_stl_algorithms.h>
 #include "test_amp.h"
 
+#pragma managed(push, off)
+ExcludeFromCodeCoverage(exclude_test_tool_tests, L"test_tools_tests::*");
+#pragma managed(pop)
+
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace concurrency;
 using namespace amp_stl_algorithms;
+using namespace test_tools;
 
-namespace tests
+// TODO: Filename should match namespace
+namespace test_tools_tests
 {
-    TEST_CLASS(test_tool_tests)
+    TEST_CLASS(equality_tests)
     {
         TEST_METHOD(test_array_view_equality)
         {

@@ -23,11 +23,38 @@
 #include <amp_algorithms.h>
 #include "test_amp.h"
 
+#pragma managed(push, off)
+ExcludeFromCodeCoverage(exclude_amp_algorithms_tests, L"amp_algorithms_tests::*");
+ExcludeFromCodeCoverage(exclude_test_tools, L"test_tools::*")
+ExcludeFromCodeCoverage(exclude_wrl, L"Microsoft::WRL::*")
+#pragma managed(pop)
+
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace concurrency;
 using namespace amp_algorithms;
+using namespace test_tools;
 
 // TODO: Add tests for indexable_view_traits
+
+namespace amp_algorithms_details_tests
+{
+    // This tests an inlined function so don't exclude this from coverage.
+    TEST_CLASS(details_tests)
+    {
+        TEST_METHOD(amp_details_check_hresult)
+        {
+            try
+            {
+                amp_algorithms::_details::_check_hresult(E_FAIL, "Failed!");
+            }
+            catch (runtime_exception& ex)
+            {
+                Assert::AreEqual(E_FAIL, ex.get_error_code());
+                Assert::AreEqual("Failed! 0x80004005.", ex.what());
+            }
+        }
+    };
+};
 
 namespace amp_algorithms_tests
 {
@@ -212,7 +239,7 @@ namespace amp_algorithms_tests
     private:
         template <typename value_type, typename BinaryFunctor>
         void test_reduce(int element_count, BinaryFunctor func, value_type& cpu_result, value_type& amp_result)
-        {
+        {          
             std::vector<value_type> inVec(element_count);
             generate_data(inVec);
 

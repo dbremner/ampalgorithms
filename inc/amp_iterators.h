@@ -135,7 +135,6 @@ namespace amp_stl_algorithms
             return !(*this == other);
         }
 
-
         reference operator*() const restrict(cpu,amp)
         {
             return *deref();

@@ -23,11 +23,18 @@
 #include <amp_stl_algorithms.h>
 #include "test_amp.h"
 
+#pragma managed(push, off)
+ExcludeFromCodeCoverage(exclude_amp_stl_algorithms_tests, L"amp_stl_algorithms_tests::*");
+ExcludeFromCodeCoverage(exclude_test_tools, L"test_tools::*")
+ExcludeFromCodeCoverage(exclude_wrl, L"Microsoft::WRL::*")
+#pragma managed(pop)
+
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace concurrency;
 using namespace amp_stl_algorithms;
+using namespace test_tools;
 
-namespace tests
+namespace amp_stl_algorithms_tests
 {
     // This isn't a test, it's just a convenient way to determine which accelerator tests ran on.
     TEST_CLASS(configuration_tests)
@@ -715,20 +722,20 @@ namespace tests
         {
             // These tests remove all the non-zero elements from the numbers array.
 
-            float numbers0[] = { 1, 1, 1, 1, 1 };
-            test_remove_if(numbers0, numbers0 + (sizeof(numbers0) / sizeof(numbers0[0])));
+            std::array<float, 5> numbers0 = { 1, 1, 1, 1, 1 };
+            test_remove_if(begin(numbers0), end(numbers0));
 
-            float numbers1[] = { 3, 0, 0, 0, 0 };
-            test_remove_if(numbers1, numbers1 + (sizeof(numbers1) / sizeof(numbers1[0])));
+            std::array<float, 5> numbers1 = { 3, 0, 0, 0, 0 };
+            test_remove_if(begin(numbers1), end(numbers1));
 
-            int numbers2[] = { 0, 0, 0, 0, 3 };
-            test_remove_if(numbers2, numbers2 + (sizeof(numbers2) / sizeof(numbers2[0])));
+            std::array<float, 5> numbers2 = { 0, 0, 0, 0, 3 };
+            test_remove_if(begin(numbers2), end(numbers2));
             
-            int numbers3[] =               { -1, 1, 0, 2, 3, 0, 4, 0, 5, 0, 6, 7 };
-            //  Predicate result:             0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0
-            //  Scan result:                  0, 0, 0, 1, 1, 1, 2, 2, 3, 3, 4, 4, 4
-            //  Final result:                -1, 1, 2, 3, 4, 5, 6, 7
-            test_remove_if(numbers3, numbers3 + (sizeof(numbers3) / sizeof(numbers3[0])));
+            std::array<float, 12> numbers3 = { -1, 1, 0, 2, 3, 0, 4, 0, 5, 0, 6, 7 };
+            //  Predicate result:               0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0
+            //  Scan result:                    0, 0, 0, 1, 1, 1, 2, 2, 3, 3, 4, 4, 4
+            //  Final result:                  -1, 1, 2, 3, 4, 5, 6, 7
+            test_remove_if(begin(numbers3), end(numbers3));
             
 #ifdef _DEBUG
             std::vector<int> numbers4(1023);
@@ -749,27 +756,41 @@ namespace tests
 
             std::vector<T> expected(size);
             std::copy(first, last, begin(expected));
-            auto expected_end = std::remove_if(begin(expected), end(expected), [=] (const T i)
+            auto last_elem = std::remove_if(begin(expected), end(expected), [=] (const T i)
             {
                 return (i > 0) ? 1 : 0;
             });
-            expected.resize(std::distance(begin(expected), expected_end));
+            expected.resize(std::distance(begin(expected), last_elem));
 
             // Calculate actual result
 
-            array_view<T> input_av(concurrency::extent<1>(size), &first[0]);
-            auto result_end = amp_stl_algorithms::remove_if(begin(input_av), 
-                end(input_av), [=] (const T i) restrict(amp) 
+            array_view<T> av(concurrency::extent<1>(size), &first[0]);
+            auto result_end = amp_stl_algorithms::remove_if(begin(av), 
+                end(av), [=] (const T i) restrict(amp) 
             { 
                 return (i > 0) ? 1 : 0;
             });
-            input_av.synchronize();
+            av.synchronize();
+            auto actual_size = distance(begin(av), result_end);
 
-            Assert::AreEqual(expected.size(), size_t(distance(begin(input_av), result_end)));
-            for (size_t i = 0; i < expected.size(); ++i)
+            Assert::IsTrue((actual_size != 0) || ((expected.size() == 0) && (actual_size == 0)));
+            if (actual_size == 0)
             {
-                Assert::AreEqual(expected[i], first[i]);
+                return;
             }
+            Assert::IsTrue(are_equal(expected, av.section(0, actual_size))); 
+        }
+
+        TEST_METHOD(stl_remove_if_nop)
+        {
+            const int size = 10;
+            std::array<int, 10> expected = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+            std::vector<int> vec(begin(expected), end(expected));
+            array_view<int> av(size, vec);
+
+            amp_stl_algorithms::remove_if(begin(av), begin(av), [=](int v) restrict(amp) { return (v % 2 != 0); });
+
+            Assert::IsTrue(are_equal(expected, av));
         }
 
         TEST_METHOD(stl_remove_copy)
@@ -830,6 +851,18 @@ namespace tests
             array_view<int> av(size, vec);
 
             amp_stl_algorithms::replace_if(begin(av), end(av), [=](int v) restrict(amp) { return (v % 2 != 0); }, -1);
+
+            Assert::IsTrue(are_equal(expected, av));
+        }
+
+        TEST_METHOD(stl_replace_if_nop)
+        {
+            const int size = 10;
+            std::array<int, 10> expected = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+            std::vector<int> vec(begin(expected), end(expected));
+            array_view<int> av(size, vec);
+
+            amp_stl_algorithms::replace_if(begin(av), begin(av), [=](int v) restrict(amp) { return (v % 2 != 0); }, -1);
 
             Assert::IsTrue(are_equal(expected, av));
         }

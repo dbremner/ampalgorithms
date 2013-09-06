@@ -224,7 +224,7 @@ namespace amp_algorithms
             if (FAILED(_hr))
             { 
                 std::stringstream _out;
-                _out << _exception_msg << " 0x" << std::hex << _hr << std::endl; 
+                _out << _exception_msg << " 0x" << std::hex << _hr << ".";
                 throw runtime_exception(_out.str().c_str(), _hr);
             }
         }
