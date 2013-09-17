@@ -44,7 +44,8 @@ namespace examples
 #endif
         }
 
-        TEST_METHOD(stl_example_1)
+        // TODO: Replace this with SAXPY
+        TEST_METHOD(stl_example_hello_world)
         {
             {
                 array<float> data(1024 * 1024);
@@ -60,6 +61,7 @@ namespace examples
                 Logger::WriteMessage(str.str().c_str());
             }
 
+            // STL Equivalent code.
             {
                 std::vector<float> data(1024 * 1024);
 
@@ -77,26 +79,42 @@ namespace examples
         // Calculate the volume of a set of randomly generated tetrahedrons each with one vertex at (0, 0, 0)
         TEST_METHOD(stl_example_map_reduce)
         {
-            typedef struct
+            struct vertices
             {
                 float x1, y1, z1;
                 float x2, y2, z2;
                 float x3, y3, z3;
-            } triangle;
 
-            std::vector<triangle> triangles_cpu(1000);
+                vertices() { };
 
-            array_view<const triangle, 1> triangles_gpu(static_cast<int>(triangles_cpu.size()), triangles_cpu.data());
-            concurrency::array<float, 1> volumes_gpu(static_cast<int>(triangles_cpu.size()));
-            array_view<float, 1> volumes_gpuvw(volumes_gpu);
-            amp_stl_algorithms::transform(begin(triangles_gpu), end(triangles_gpu), begin(volumes_gpuvw), 
-                [=](const triangle& t) restrict(amp)
+                vertices(std::uniform_real_distribution<float> dist, std::mt19937 gen) : 
+                    x1(dist(gen)), x2(dist(gen)), x3(dist(gen)), 
+                    y1(dist(gen)), y2(dist(gen)), y3(dist(gen)),
+                    z1(dist(gen)), z2(dist(gen)), z3(dist(gen))
+                { };
+            };
+
+            std::random_device rnd_dev;
+            std::mt19937 rnd_gen(rnd_dev());
+            std::uniform_real_distribution<float> rnd_dist(0.5f, 1.5f);
+            std::vector<vertices> tetrahedrons(1000);
+            std::generate(begin(tetrahedrons), end(tetrahedrons), [&rnd_dist, &rnd_gen] { return vertices(rnd_dist, rnd_gen); });
+
+            array_view<const vertices, 1> tetrahedrons_av(static_cast<int>(tetrahedrons.size()), tetrahedrons.data());
+            concurrency::array<float, 1> volumes_arr(static_cast<int>(tetrahedrons.size()));
+            array_view<float, 1> volumes_vw(volumes_arr);
+            amp_stl_algorithms::transform(begin(tetrahedrons_av), end(tetrahedrons_av), begin(volumes_vw), 
+                [=](const vertices& t) restrict(amp)
             {
                 return t.x1 * (t.y2 * t.z3 - t.y3 * t.z2)
-                    + t.y1 * (t.z2 * t.x3 - t.x2 * t.z3)
-                    + t.z1 * (t.x2 * t.y3 - t.x3 * t.y2);
+                     + t.y1 * (t.z2 * t.x3 - t.x2 * t.z3)
+                     + t.z1 * (t.x2 * t.y3 - t.x3 * t.y2);
             });
-            float sum = amp_stl_algorithms::reduce(begin(volumes_gpuvw), end(volumes_gpuvw), 0.0f);
+            float sum = amp_stl_algorithms::reduce(begin(volumes_vw), end(volumes_vw), 0.0f);
+
+            std::stringstream str;
+            str << "STD: Total volume of tetrahedrons = " << sum;
+            Logger::WriteMessage(str.str().c_str());
         }
     };
 

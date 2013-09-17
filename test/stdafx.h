@@ -26,6 +26,7 @@
 #include <iostream>
 #include <numeric>
 #include <functional>
+#include <random>
 
 #include <CppUnitTest.h>
 #include <CodeCoverage\CodeCoverage.h>
