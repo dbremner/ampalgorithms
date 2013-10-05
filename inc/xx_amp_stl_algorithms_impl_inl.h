@@ -212,7 +212,7 @@ namespace amp_stl_algorithms
     template<typename ConstRandomAccessIterator, typename UnaryPredicate, typename OutputIterator >
     void any_of(ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate p,  OutputIterator dest)
     {
-        // TODO: Shouldn't this be tiled for slightly better performance?
+        // TODO: Shouldn't any_of be tiled for slightly better performance?
         auto section_view = _details::create_section(dest, 1);
         amp_stl_algorithms::for_each_no_return(
             first, last, 

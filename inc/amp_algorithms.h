@@ -247,12 +247,14 @@ namespace amp_algorithms
             return (a || b);
         }
     };
+
     // TODO: Implement not1() and not2() if appropriate.
 
     //----------------------------------------------------------------------------
     // Padded tile read and write functions.
     //----------------------------------------------------------------------------
 
+    // TODO: Can't these two padded_read templates be collapsed into one with N = 1 ?
     template <typename T, int N>
     inline T padded_read(const concurrency::array_view<T, N> arr, const concurrency::index<N> idx) restrict(cpu, amp)
     {
@@ -265,6 +267,7 @@ namespace amp_algorithms
         return padded_read<T, 1>(arr, concurrency::index<1>(idx));
     }
 
+    // TODO: Can't these two padded_write templates be collapsed into one with N = 1 ?
     template <typename T, int N>
     inline void padded_write(const concurrency::array_view<T, N> arr, const concurrency::index<N> idx, const T& value) restrict(cpu, amp)
     {
@@ -541,6 +544,62 @@ namespace amp_algorithms
     {
         ::amp_algorithms::generate(output_view, [value] () restrict(amp) { return value; });
     }
+
+    //----------------------------------------------------------------------------
+    // radix_sort
+    //----------------------------------------------------------------------------
+    // http://www.cse.uconn.edu/~huang/fall12_5304/Presentation_Final/GPU_Sorting.pdf
+    // http://www.heterogeneouscompute.org/wordpress/wp-content/uploads/2011/06/RadixSort.pdf
+    // http://www.intel.com/content/www/us/en/research/intel-labs-radix-sort-mic-report.html
+    // http://www.cs.virginia.edu/~dgm4d/papers/RadixSortTR.pdf
+    // http://xxx.lanl.gov/pdf/1008.2849
+    // http://www.rebe.rau.ro/RePEc/rau/jisomg/WI12/JISOM-WI12-A11.pdf
+
+    // TODO: Move this to the impl file?
+    namespace _details
+    {
+        template <typename T>
+        void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<T>& input_view, const unsigned int digit_width)
+        {
+        }
+    }
+
+    inline void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<int>& input_view, const unsigned int digit_width)
+    {
+        ::amp_algorithms::_details::radix_sort<int>(accl_view, input_view, digit_width);
+    }
+
+    inline void radix_sort(concurrency::array_view<int>& input_view, const unsigned int digit_width)
+    {
+        ::amp_algorithms::_details::radix_sort<int>(_details::auto_select_target(), input_view, digit_width);
+    }
+
+    inline void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<unsigned int>& input_view, const unsigned int digit_width)
+    {
+        ::amp_algorithms::_details::radix_sort<unsigned int>(accl_view, input_view, digit_width);
+    }
+
+    inline void radix_sort(concurrency::array_view<unsigned int>& input_view, const unsigned int digit_width)
+    {
+        ::amp_algorithms::_details::radix_sort<unsigned int>(_details::auto_select_target(), input_view, digit_width);
+    }
+
+    //----------------------------------------------------------------------------
+    // merge_sort
+    //----------------------------------------------------------------------------
+
+    template <typename T, typename BinaryOperator>
+    void merge_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<unsigned int>& input_view, BinaryOperator op)
+    {
+
+    }
+
+    template <typename T>
+    void merge_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<unsigned int>& input_view)
+    {
+        ::amp_algorithms::merge_sort(accl_view, input_view, amp_algorithms::less<T>());
+    }
+
 } // namespace amp_algorithms
 
 #include <xx_amp_algorithms_impl_inl.h>

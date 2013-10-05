@@ -21,7 +21,7 @@
 
 #pragma once
 
-#define NOMINMAX
+//#define NOMINMAX
 
 #include <vector>
 #include <algorithm>
@@ -29,8 +29,8 @@
 #include <CppUnitTest.h>
 
 
-#include <amp_algorithms.h>
 #include <amp_stl_algorithms.h>
+#include <amp_algorithms.h>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace concurrency;

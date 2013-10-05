@@ -44,7 +44,7 @@ namespace examples
 #endif
         }
 
-        // TODO: Replace this with SAXPY
+        // TODO: Replace stl_example_hello_world with SAXPY
         TEST_METHOD(stl_example_hello_world)
         {
             {

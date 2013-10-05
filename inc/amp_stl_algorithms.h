@@ -77,12 +77,12 @@ namespace amp_stl_algorithms
     // mismatch
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED mismatch
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2>
     std::pair<ConstRandomAccessIterator1,ConstRandomAccessIterator2>
         mismatch( ConstRandomAccessIterator1 first1, ConstRandomAccessIterator1 last1, ConstRandomAccessIterator2 first2 );
 
-    // NOT IMPLEMENTED
+    // NOT IMPLEMENTED 
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2, typename BinaryPredicate>
     std::pair<ConstRandomAccessIterator1,ConstRandomAccessIterator2>
         mismatch( ConstRandomAccessIterator1 first1,
@@ -116,7 +116,7 @@ namespace amp_stl_algorithms
     template<typename ConstRandomAccessIterator, typename UnaryPredicate>
     ConstRandomAccessIterator find_if_not( ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate p );
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED find_end
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2>
     ConstRandomAccessIterator1 find_end ( ConstRandomAccessIterator1 first1, 
         ConstRandomAccessIterator1 last1,
@@ -131,7 +131,7 @@ namespace amp_stl_algorithms
         ConstRandomAccessIterator2 last2, 
         Predicate p);
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED find_first_of
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2>
     ConstRandomAccessIterator1 find_first_of ( ConstRandomAccessIterator1 first1, 
         ConstRandomAccessIterator1 last1,
@@ -156,14 +156,14 @@ namespace amp_stl_algorithms
     // search, search_n
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED search
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2>
     ConstRandomAccessIterator1 search( ConstRandomAccessIterator1 first1, 
         ConstRandomAccessIterator1 last1, 
         ConstRandomAccessIterator2 first2,
         ConstRandomAccessIterator2 last2);
 
-    // NOT IMPLEMENTED
+    // NOT IMPLEMENTED 
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2, typename Predicate>
     ConstRandomAccessIterator1 search( ConstRandomAccessIterator1 first1, 
         ConstRandomAccessIterator1 last1,
@@ -171,14 +171,14 @@ namespace amp_stl_algorithms
         ConstRandomAccessIterator2 last2, 
         Predicate p);
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED search_n
     template<typename ConstRandomAccessIterator, typename Size, typename Type>
     ConstRandomAccessIterator search_n ( ConstRandomAccessIterator first, 
         ConstRandomAccessIterator last,
         Size count, 
         const Type& val);
 
-    // NOT IMPLEMENTED
+    // NOT IMPLEMENTED 
     template<typename ConstRandomAccessIterator, typename Size, typename Type, typename Predicate>
     ConstRandomAccessIterator search_n ( ConstRandomAccessIterator first, 
         ConstRandomAccessIterator last,
@@ -202,8 +202,7 @@ namespace amp_stl_algorithms
     template<typename ConstRandomAccessIterator, typename Size, typename RandomAccessIterator>
     RandomAccessIterator copy_n(ConstRandomAccessIterator first, Size count, RandomAccessIterator result);
 
-    // TODO: does copy_backward really make any sense on a data-parallel context?
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED copy_backward, does copy_backward really make any sense on a data-parallel context?
     template<typename ConstRandomAccessIterator, typename RandomAccessIterator>
     RandomAccessIterator copy_backward( ConstRandomAccessIterator first,
         ConstRandomAccessIterator last,
@@ -213,14 +212,13 @@ namespace amp_stl_algorithms
     // move, move_backward
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED move
     template<typename ConstRandomAccessIterator, typename RandomAccessIterator>
     RandomAccessIterator move( ConstRandomAccessIterator first,
         ConstRandomAccessIterator last,
         RandomAccessIterator d_first ); 
 
-    // TODO: does move_backward really make any sense on a data-parallel context?
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED move_backward, does move_backward really make any sense on a data-parallel context?
     template<typename ConstRandomAccessIterator, typename RandomAccessIterator>
     RandomAccessIterator move_backward( ConstRandomAccessIterator first,
         ConstRandomAccessIterator last,
@@ -236,7 +234,7 @@ namespace amp_stl_algorithms
     template<typename RandomAccessIterator, typename Size, typename T>
     void fill_n( RandomAccessIterator first, Size count, const T& value );
 
-    // TODO: This differs only by return type. Probably better to implement the one that returns the end iterator than void.
+    // TODO: This fill_n differs only by return type. Probably better to implement the one that returns the end iterator than void.
     /*
     template<typename RandomAccessIterator, typename Size, typename T>
     RandomAccessIterator fill_n( RandomAccessIterator first, Size count, const T& value );*/
@@ -268,7 +266,7 @@ namespace amp_stl_algorithms
     template<typename RandomAccessIterator, typename Size, typename Generator>
     void generate_n( RandomAccessIterator first, Size count, Generator g );
 
-    // TODO: This differs only by return type. Probably better to implement the one that returns the end iterator than void.
+    // TODO: This generate_n differs only by return type. Probably better to implement the one that returns the end iterator than void.
     /*
     template<typename RandomAccessIterator, typename Size, typename Generator>
     RandomAccessIterator generate_n( RandomAccessIterator first, Size count, Generator g );*/
@@ -359,11 +357,11 @@ namespace amp_stl_algorithms
     // rotate, rotate_copy
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED rotate
     template<typename RandomAccessIterator>
     void rotate( RandomAccessIterator first, RandomAccessIterator middle, RandomAccessIterator last);
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED rotate_copy
     template<typename ConstRandomAccessIterator,typename RandomAccessIterator>
     RandomAccessIterator rotate_copy( ConstRandomAccessIterator first, 
         ConstRandomAccessIterator n_first,
@@ -374,23 +372,23 @@ namespace amp_stl_algorithms
     // random_shuffle, shuffle
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED random_shuffle
     template<typename RandomAccessIterator>
     void random_shuffle( RandomAccessIterator first, RandomAccessIterator last );
 
-    // NOT IMPLEMENTED
+    // NOT IMPLEMENTED 
     template<typename RandomAccessIterator, typename RandomNumberGenerator>
     void random_shuffle( RandomAccessIterator first, 
         RandomAccessIterator last,
         RandomNumberGenerator& r );
 
-    // NOT IMPLEMENTED
+    // NOT IMPLEMENTED 
     template<typename RandomAccessIterator, typename RandomNumberGenerator>
     void random_shuffle( RandomAccessIterator first, 
         RandomAccessIterator last, 
         RandomNumberGenerator&& r ); 
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED shuffle
     template<typename RandomAccessIterator, typename UniformRandomNumberGenerator>
     void shuffle( RandomAccessIterator first, 
         RandomAccessIterator last, 
@@ -400,19 +398,19 @@ namespace amp_stl_algorithms
     // unique, unique_copy
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED unique
     template<typename ConstRandomAccessIterator>
     ConstRandomAccessIterator unique( ConstRandomAccessIterator first, ConstRandomAccessIterator last);
 
-    // NOT IMPLEMENTED
+    // NOT IMPLEMENTED 
     template<typename ConstRandomAccessIterator, typename BinaryPredicate>
     ConstRandomAccessIterator unique( ConstRandomAccessIterator first, ConstRandomAccessIterator last, BinaryPredicate comp);
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED unique_copy
     template<typename ConstRandomAccessIterator,typename RandomAccessIterator>
     ConstRandomAccessIterator unique_copy( ConstRandomAccessIterator first, ConstRandomAccessIterator last, RandomAccessIterator d_first ); 
 
-    // NOT IMPLEMENTED
+    // NOT IMPLEMENTED 
     template<typename ConstRandomAccessIterator,typename RandomAccessIterator, typename BinaryPredicate>
     ConstRandomAccessIterator unique_copy( ConstRandomAccessIterator first, 
         ConstRandomAccessIterator last, 
@@ -423,19 +421,19 @@ namespace amp_stl_algorithms
     // is_partitioned, partition, stable_partition, partition_point
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED is_partitioned
     template<typename ConstRandomAccessIterator, typename UnaryPredicate>
     bool is_partitioned( ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate p );
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED partition
     template<typename RandomAccessIterator, typename UnaryPredicate>
     RandomAccessIterator partition( RandomAccessIterator first, RandomAccessIterator last, UnaryPredicate comp);
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED stable_partition
     template<typename RandomAccessIterator, typename UnaryPredicate>
     RandomAccessIterator stable_partition( RandomAccessIterator first, RandomAccessIterator last, UnaryPredicate p );
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED partition_point
     template<typename ConstRandomAccessIterator, typename UnaryPredicate>
     ConstRandomAccessIterator partition_point( ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate p);
 
@@ -455,34 +453,34 @@ namespace amp_stl_algorithms
     template<typename ConstRandomAccessIterator, typename Compare>
     ConstRandomAccessIterator is_sorted_until( ConstRandomAccessIterator first, ConstRandomAccessIterator last, Compare comp ); 
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED sort
     template<typename RandomAccessIterator>
     void sort( RandomAccessIterator first, RandomAccessIterator last );
 
-    // NOT IMPLEMENTED
+    // NOT IMPLEMENTED 
     template<typename RandomAccessIterator, typename Compare>
     void sort( RandomAccessIterator first, RandomAccessIterator last, Compare comp ); 
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED partial_sort
     template<typename RandomAccessIterator>
     void partial_sort( RandomAccessIterator first, 
         RandomAccessIterator middle, 
         RandomAccessIterator last );
 
-    // NOT IMPLEMENTED
+    // NOT IMPLEMENTED 
     template<typename RandomAccessIterator, typename Compare>
     void partial_sort( RandomAccessIterator first, 
         RandomAccessIterator middle,
         RandomAccessIterator last, Compare comp );
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED partial_sort_copy
     template<typename ConstRandomAccessIterator,typename RandomAccessIterator>
     RandomAccessIterator partial_sort_copy( ConstRandomAccessIterator first,
         ConstRandomAccessIterator last,
         RandomAccessIterator d_first, 
         RandomAccessIterator d_last ); 
 
-    // NOT IMPLEMENTED
+    // NOT IMPLEMENTED 
     template<typename ConstRandomAccessIterator,typename RandomAccessIterator, typename Compare>
     RandomAccessIterator partial_sort_copy( ConstRandomAccessIterator first, 
         ConstRandomAccessIterator last,
@@ -490,11 +488,11 @@ namespace amp_stl_algorithms
         RandomAccessIterator d_last,
         Compare comp ); 
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED stable_sort
     template<typename RandomAccessIterator>
     void stable_sort( RandomAccessIterator first, RandomAccessIterator last );
 
-    // NOT IMPLEMENTED
+    // NOT IMPLEMENTED 
     template<typename RandomAccessIterator, typename Compare>
     void stable_sort( RandomAccessIterator first, RandomAccessIterator last, Compare comp ); 
 
@@ -502,13 +500,13 @@ namespace amp_stl_algorithms
     // nth_element
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED nth_element
     template<typename RandomAccessIterator>
     void nth_element( RandomAccessIterator first, 
         RandomAccessIterator nth, 
         RandomAccessIterator last ); 
 
-    // NOT IMPLEMENTED
+    // NOT IMPLEMENTED 
     template<typename RandomAccessIterator, typename Compare>
     void nth_element( RandomAccessIterator first, 
         RandomAccessIterator nth,
@@ -518,19 +516,19 @@ namespace amp_stl_algorithms
     // lower_bound, upper_bound
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED lower_bound
     template<typename ConstRandomAccessIterator, typename T>
     ConstRandomAccessIterator lower_bound( ConstRandomAccessIterator first, 
         ConstRandomAccessIterator last,
         const T& value ); 
 
-    // NOT IMPLEMENTED
+    // NOT IMPLEMENTED 
     template<typename ConstRandomAccessIterator, typename T, typename Compare>
     ConstRandomAccessIterator lower_bound( ConstRandomAccessIterator first, 
         ConstRandomAccessIterator last,
         const T& value, Compare comp ); 
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED upper_bound
     template<typename ConstRandomAccessIterator, typename T>
     ConstRandomAccessIterator upper_bound( ConstRandomAccessIterator first, 
         ConstRandomAccessIterator last,
@@ -546,7 +544,7 @@ namespace amp_stl_algorithms
     // binary_search
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED binary_search
     template<typename ConstRandomAccessIterator, typename T>
     bool binary_search( ConstRandomAccessIterator first, ConstRandomAccessIterator last, const T& value ); 
 
@@ -561,7 +559,7 @@ namespace amp_stl_algorithms
     // equal_range
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED equal_range
     template<typename ConstRandomAccessIterator, typename T>
     std::pair<ConstRandomAccessIterator,ConstRandomAccessIterator> 
         equal_range( ConstRandomAccessIterator first, 
@@ -580,7 +578,7 @@ namespace amp_stl_algorithms
     // merge, inplace_merge
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED merge
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2,typename RandomAccessIterator>
     RandomAccessIterator merge( ConstRandomAccessIterator1 first1, 
         ConstRandomAccessIterator1 fast1,
@@ -597,7 +595,7 @@ namespace amp_stl_algorithms
         RandomAccessIterator result,
         BinaryPredicate comp);
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED inplace_merge
     template<typename RandomAccessIterator>
     void inplace_merge( RandomAccessIterator first,
         RandomAccessIterator middle,
@@ -614,7 +612,7 @@ namespace amp_stl_algorithms
     // includes
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED includes
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2>
     bool includes( ConstRandomAccessIterator1 first1, 
         ConstRandomAccessIterator1 last1,
@@ -633,7 +631,7 @@ namespace amp_stl_algorithms
     // set_difference, set_intersection, set_symetric_distance, set_union
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED set_difference
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2,typename RandomAccessIterator>
     RandomAccessIterator set_difference( ConstRandomAccessIterator1 first1, 
         ConstRandomAccessIterator1 last1,
@@ -650,7 +648,7 @@ namespace amp_stl_algorithms
         RandomAccessIterator d_first, 
         Compare comp ); 
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED set_intersection
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2,typename RandomAccessIterator>
     RandomAccessIterator set_intersection( ConstRandomAccessIterator1 first1, 
         ConstRandomAccessIterator1 last1,
@@ -667,7 +665,7 @@ namespace amp_stl_algorithms
         RandomAccessIterator d_first, 
         Compare comp ); 
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED set_symmetric_difference
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2,typename RandomAccessIterator>
     RandomAccessIterator set_symmetric_difference( ConstRandomAccessIterator1 first1, 
         ConstRandomAccessIterator1 last1,
@@ -684,7 +682,7 @@ namespace amp_stl_algorithms
         RandomAccessIterator d_first, 
         Compare comp); 
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED set_union
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2,typename RandomAccessIterator>
     RandomAccessIterator set_union( ConstRandomAccessIterator1 first1, 
         ConstRandomAccessIterator1 last1,
@@ -753,7 +751,7 @@ namespace amp_stl_algorithms
     // template<typename T, typename Compare>
     // std::pair<T,T> minmax( std::initializer_list ilist, Compare comp ); 
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED max_element
     template<typename ConstRandomAccessIterator> 
     ConstRandomAccessIterator max_element( ConstRandomAccessIterator first, ConstRandomAccessIterator last );
 
@@ -761,15 +759,15 @@ namespace amp_stl_algorithms
     template<typename ConstRandomAccessIterator, typename Compare>
     ConstRandomAccessIterator max_element( ConstRandomAccessIterator first, ConstRandomAccessIterator last, Compare comp ); 
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED min_element
     template<typename ConstRandomAccessIterator> 
     ConstRandomAccessIterator min_element( ConstRandomAccessIterator first, ConstRandomAccessIterator last );
 
-    // NOT IMPLEMENTED
+    // NOT IMPLEMENTED 
     template<typename ConstRandomAccessIterator, typename Compare>
     ConstRandomAccessIterator min_element( ConstRandomAccessIterator first, ConstRandomAccessIterator last, Compare comp ); 
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED minmax_element
     template<typename ConstRandomAccessIterator> 
     std::pair<ConstRandomAccessIterator,ConstRandomAccessIterator> 
         minmax_element( ConstRandomAccessIterator first, ConstRandomAccessIterator last ); 
@@ -783,7 +781,7 @@ namespace amp_stl_algorithms
     // lexographical_compare
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED lexicographical_compare
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2>
     bool lexicographical_compare( ConstRandomAccessIterator1 first1, 
         ConstRandomAccessIterator1 last1,
@@ -823,7 +821,7 @@ namespace amp_stl_algorithms
     // inner_product
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED inner_product
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2, typename T>
     T inner_product( ConstRandomAccessIterator1 first1, 
         ConstRandomAccessIterator1 last1,
@@ -863,7 +861,7 @@ namespace amp_stl_algorithms
     // partial sum
     //----------------------------------------------------------------------------
 
-    // NOT IMPLEMENTED
+    // TODO: NOT IMPLEMENTED partial_sum
     template <typename ConstRandomAccessIterator,typename RandomAccessIterator>
     RandomAccessIterator partial_sum( ConstRandomAccessIterator first, 
         ConstRandomAccessIterator last,
