@@ -127,16 +127,20 @@ namespace amp_algorithms_tests
 
         TEST_METHOD(amp_comparison_operators)
         {
+            // Clear up std::min & std::max overload ambiguity.
+            int const & (*min) (int const &, int const &) = std::min<int>;
+            int const & (*max) (int const &, int const &) = std::max<int>;
+
             compare_operators(std::equal_to<int>(), amp_algorithms::equal_to<int>());
             compare_operators(std::not_equal_to<int>(), amp_algorithms::not_equal_to<int>());
 
             compare_operators(std::greater<int>(), amp_algorithms::greater<int>());
             compare_operators(std::less<int>(), amp_algorithms::less<int>());
             compare_operators(std::greater_equal<int>(), amp_algorithms::greater_equal<int>());
-            compare_operators(std::less_equal<int>(), amp_algorithms::less_equal<int>());
-
-            compare_operators(std::min<int>, amp_algorithms::min<int>());
-            compare_operators(std::max<int>, amp_algorithms::max<int>());
+            compare_operators(std::less_equal<int>(), amp_algorithms::less_equal<int>()); 
+            
+            compare_operators(min, amp_algorithms::min<int>());
+            compare_operators(max, amp_algorithms::max<int>());
         }
 
         TEST_METHOD(amp_bitwise_operators)
