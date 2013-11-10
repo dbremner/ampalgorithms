@@ -137,8 +137,8 @@ namespace amp_algorithms_tests
             compare_operators(std::greater<int>(), amp_algorithms::greater<int>());
             compare_operators(std::less<int>(), amp_algorithms::less<int>());
             compare_operators(std::greater_equal<int>(), amp_algorithms::greater_equal<int>());
-            compare_operators(std::less_equal<int>(), amp_algorithms::less_equal<int>()); 
-            
+            compare_operators(std::less_equal<int>(), amp_algorithms::less_equal<int>());
+
             compare_operators(min, amp_algorithms::min<int>());
             compare_operators(max, amp_algorithms::max<int>());
         }
@@ -208,6 +208,7 @@ namespace amp_algorithms_tests
             set_default_accelerator();
         }
 
+        /*
         TEST_METHOD(amp_reduce_double_sum)
         {
             if (!accelerator().get_supports_double_precision())
@@ -221,6 +222,7 @@ namespace amp_algorithms_tests
 
             Assert::AreEqual(cpu_result, amp_result, 0.000001);
         }
+        */
 
         TEST_METHOD(amp_reduce_int_min)
         {

@@ -37,8 +37,12 @@ namespace amp_algorithms
     {
         inline concurrency::accelerator_view auto_select_target()
         {
+#if _MSC_VER < 1800	
             static concurrency::accelerator_view auto_select_accelerator_view = concurrency::accelerator(concurrency::accelerator::cpu_accelerator).create_view();
             return auto_select_accelerator_view;
+#else
+			return concurrency::accelerator::get_auto_selection_view();
+#endif
         }
 
         //----------------------------------------------------------------------------
@@ -48,6 +52,7 @@ namespace amp_algorithms
         template <int _Rank, typename _Kernel_type>
         void parallel_for_each(const concurrency::accelerator_view &_Accl_view, const concurrency::extent<_Rank>& _Compute_domain, const _Kernel_type &_Kernel)
         {
+#if _MSC_VER < 1800	
             _Host_Scheduling_info _SchedulingInfo = { NULL };
             if (_Accl_view != _details::auto_select_target()) 
             {
@@ -55,11 +60,15 @@ namespace amp_algorithms
             }
 
             concurrency::details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
+#else
+			concurrency::parallel_for_each(_Accl_view, _Compute_domain, _Kernel);
+#endif
         }
 
         template <int _Dim0, int _Dim1, int _Dim2, typename _Kernel_type>
         void parallel_for_each(const concurrency::accelerator_view &_Accl_view, const concurrency::tiled_extent<_Dim0, _Dim1, _Dim2>& _Compute_domain, const _Kernel_type& _Kernel)
         {
+#if _MSC_VER < 1800	
             _Host_Scheduling_info _SchedulingInfo = { NULL };
             if (_Accl_view != _details::auto_select_target()) 
             {
@@ -67,11 +76,15 @@ namespace amp_algorithms
             }
 
             concurrency::details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
+#else
+			concurrency::parallel_for_each(_Accl_view, _Compute_domain, _Kernel);
+#endif
         }
 
         template <int _Dim0, int _Dim1, typename _Kernel_type>
         void parallel_for_each(const concurrency::accelerator_view &_Accl_view, const concurrency::tiled_extent<_Dim0, _Dim1>& _Compute_domain, const _Kernel_type& _Kernel)
         {
+#if _MSC_VER < 1800	
             _Host_Scheduling_info _SchedulingInfo = { NULL };
             if (_Accl_view != _details::auto_select_target()) 
             {
@@ -79,11 +92,15 @@ namespace amp_algorithms
             }
 
             concurrency::details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
+#else
+			concurrency::parallel_for_each(_Accl_view, _Compute_domain, _Kernel);
+#endif
         }
 
         template <int _Dim0, typename _Kernel_type>
         void parallel_for_each(const concurrency::accelerator_view &_Accl_view, const concurrency::tiled_extent<_Dim0>& _Compute_domain, const _Kernel_type& _Kernel)
         {
+#if _MSC_VER < 1800	
             _Host_Scheduling_info _SchedulingInfo = { NULL };
             if (_Accl_view != _details::auto_select_target()) 
             {
@@ -91,6 +108,9 @@ namespace amp_algorithms
             }
 
             concurrency::details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
+#else
+			concurrency::parallel_for_each(_Accl_view, _Compute_domain, _Kernel);
+#endif
         }
 
         //----------------------------------------------------------------------------
