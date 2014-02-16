@@ -108,24 +108,21 @@ namespace amp_algorithms_tests
 
         TEST_METHOD(amp_scan_other)
         {
-            accelerator ref(accelerator::direct3d_ref);
-            accelerator_view ref_view = ref.create_view();
-
             const int elem_count = 10;
             std::vector<unsigned int> in(elem_count, 1);
 
-            concurrency::array<unsigned int> input(concurrency::extent<1>(elem_count), in.begin(), ref_view);
+            concurrency::array<unsigned int> input(concurrency::extent<1>(elem_count), in.begin());
             // use max_scan_size and max_scan_count greater than actual usage
-            scan s(2 * elem_count, elem_count, ref_view);
+            scan s(2 * elem_count, elem_count);
 
-            // 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 -> 
+            // 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ->
             s.scan_exclusive(input, input);
-            // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 -> 
+            // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ->
             s.scan_exclusive(input, input, scan_direction::forward, amp_algorithms::plus<unsigned int>());
             // 0, 0, 1, 3, 6, 10, 15, 21, 28, 36 -> 
 
             unsigned int flg = 8; // 001000 in binary, so our segment is in here: 0, 0, 1, | 3, 6, 10, 15, 21, 28, 36
-            concurrency::array<unsigned int> flags(1, &flg, ref_view);
+            concurrency::array<unsigned int> flags(1, &flg);
             s.segmented_scan_exclusive(input, input, flags, scan_direction::backward, amp_algorithms::plus<unsigned int>());
             // 1, 1, 0, 116, 110, 100, 85, 64, 36, 0
 

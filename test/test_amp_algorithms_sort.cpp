@@ -26,6 +26,7 @@
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace concurrency;
 using namespace amp_algorithms;
+using namespace amp_algorithms::_details;
 using namespace test_tools;
 
 namespace amp_algorithms_tests
@@ -37,20 +38,48 @@ namespace amp_algorithms_tests
             set_default_accelerator();
         }
 
-        TEST_METHOD(amp_sort_radix)
+        TEST_METHOD(aaa_radix_key_value_tests)
         {
-            std::vector<int> input(1024);
-            generate_data(input);
+            std::array<std::pair<int, int>, 16> theories =
+            { 
+                std::make_pair( 3, 3),
+                std::make_pair( 2, 2),
+                std::make_pair( 1, 1),
+                std::make_pair( 6, 2),
+                std::make_pair(10, 2),
+                std::make_pair(11, 3),
+                std::make_pair(13, 1),
+                std::make_pair(16, 0),
+                std::make_pair(15, 3),
+                std::make_pair(10, 2),
+                std::make_pair( 5, 1),
+                std::make_pair(14, 2),
+                std::make_pair( 4, 0),
+                std::make_pair(12, 0),
+                std::make_pair( 7, 3),
+                std::make_pair( 8, 0)
+            };
 
-            std::vector<int> expected(input.size());
-            std::copy(begin(input), end(input), begin(expected));
-            std::sort(begin(expected), end(expected));
+            for (auto t : theories)
+            {
+                Assert::AreEqual(t.second, radix_key_value<int, 2>(t.first, 0));
+            }
+        }
 
-            array_view<int> input_av(int(input.size()), input);
+        TEST_METHOD(aaa_amp_sort_radix)
+        {
+            std::array<unsigned, 16> input = {  3,  2,  1,  6, 10, 11, 13, 16, 15, 10,  5, 14,  4, 12,  9,  8 };
+            //                                  3   2   1   2   2   3   1   0   3   2   1   2   0   0   1   0
+            //std::array<unsigned, 4> expected = { 3, 2, 1, 6 };
+            std::array<int, 4> expected = { 4, 4, 5, 3 };
+            //std::array<unsigned, 4> expected = { 0, 4, 9, 12 };
+            array_view<unsigned> input_av(int(input.size()), input);
 
-            radix_sort(input_av, 4);
+            //radix_sort(input_av);
+            
+            //histogram_tile<unsigned, 2, 8>(input_av, 0);
 
-            //Assert::IsTrue(are_equal(expected, input_av));
+            //Assert::IsTrue(are_equal(expected, input_av.section(0, 4)));
         }
     };
 }; // namespace amp_algorithms_tests

@@ -251,6 +251,54 @@ namespace amp_algorithms
     // TODO: Implement not1() and not2() if appropriate.
 
     //----------------------------------------------------------------------------
+    // Logical operations
+    //----------------------------------------------------------------------------
+
+    static const unsigned int Bit08 = 0x80;
+    static const unsigned int Bit16 = 0x8000;
+    static const unsigned int Bit32 = 0x80000000;
+
+    template<unsigned int N>
+    struct is_power_of_two
+    {
+        enum
+        {
+            result = ((count_bits<N, Bit32>::result == 1) ? TRUE : FALSE)
+        };
+    };
+
+    // While 1 is technically 2^0, for the purposes of calculating 
+    // tile size it isn't useful.
+    template <>
+    struct is_power_of_two<1>
+    {
+        enum { result = FALSE };
+    };
+
+    template<unsigned int N, unsigned int MaxBit>
+    struct count_bits
+    {
+        enum
+        {
+            result = (is_bit_set<N, MaxBit>::result +
+            count_bits<N, (MaxBit >> 1)>::result)
+        };
+    };
+
+    // Ensure that template program terminates.
+    template<unsigned int N>
+    struct count_bits<N, 0>
+    {
+        enum { result = FALSE };
+    };
+
+    template<unsigned int N, int MaxBit>
+    struct is_bit_set
+    {
+        enum { result = (N & MaxBit) ? 1 : 0 };
+    };
+
+    //----------------------------------------------------------------------------
     // Padded tile read and write functions.
     //----------------------------------------------------------------------------
 
@@ -267,7 +315,6 @@ namespace amp_algorithms
         return padded_read<T, 1>(arr, concurrency::index<1>(idx));
     }
 
-    // TODO: Can't these two padded_write templates be collapsed into one with N = 1 ?
     template <typename T, int N>
     inline void padded_write(const concurrency::array_view<T, N> arr, const concurrency::index<N> idx, const T& value) restrict(cpu, amp)
     {
@@ -548,42 +595,173 @@ namespace amp_algorithms
     //----------------------------------------------------------------------------
     // radix_sort
     //----------------------------------------------------------------------------
-    // http://www.cse.uconn.edu/~huang/fall12_5304/Presentation_Final/GPU_Sorting.pdf
     // http://www.heterogeneouscompute.org/wordpress/wp-content/uploads/2011/06/RadixSort.pdf
+    //
     // http://www.intel.com/content/www/us/en/research/intel-labs-radix-sort-mic-report.html
+    // http://www.cse.uconn.edu/~huang/fall12_5304/Presentation_Final/GPU_Sorting.pdf
     // http://www.cs.virginia.edu/~dgm4d/papers/RadixSortTR.pdf
     // http://xxx.lanl.gov/pdf/1008.2849
     // http://www.rebe.rau.ro/RePEc/rau/jisomg/WI12/JISOM-WI12-A11.pdf
 
+    // "Designing Efficient Sorting Algorithms for Manycore GPUs" http://www.nvidia.com/docs/io/67073/nvr-2008-001.pdf
+
+    // "Histogram Calculation in CUDA" http://docs.nvidia.com/cuda/samples/3_Imaging/histogram/doc/histogram.pdf
+
     // TODO: Move this to the impl file?
     namespace _details
     {
-        template <typename T>
-        void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<T>& input_view, const unsigned int digit_width)
+        template<typename T, int key_size>
+        int radix_key_value(const T value, const unsigned key_idx) restrict(amp, cpu)
         {
+            const T mask = (1 << key_size) - 1;
+            return (value & (mask << key_idx)) >> key_idx;
+        }
+
+        // TODO: T is limited to only integer types. Need to modify the template to restrict this.
+        template <typename T, int key_size, int tile_size>
+        void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<T>& input_view)
+        {
+        }
+
+        template <typename T, int key_size, int tile_size>
+        void histogram_tile(const concurrency::array_view<T>& input_view, concurrency::array_view<T>& output_view,
+            const int key_idx)
+        {
+            static const unsigned type_width = sizeof(T) * 8;
+            static_assert((type_width % key_size == 0), "The sort key width must be an exact multiple of the type width."); 
+
+            static const unsigned bin_count = 1 << key_size;
+            static const T bin_mask = bin_count - 1;
+            static const int elements_per_thread = 1;          // TODO: Doesn't have to be a constant?
+
+            // histogram all elements in a block
+            concurrency::array<unsigned> histogram_bins(bin_count);
+
+            concurrency::tiled_extent<tile_size> compute_domain = input_view.get_extent().tile<tile_size>().pad();
+
+            concurrency::parallel_for_each(compute_domain,
+                [=, &histogram_bins](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+            {
+                // Each thread has its own histogram
+                tile_static unsigned bins[tile_size][bin_count];
+                const int gidx = tidx.global[0];
+                const int idx = tidx.local[0];
+                const int start_elem = idx * elements_per_thread;
+
+                // One thread initializes the global histogram bins.
+                if (gidx == 0)
+                {
+                    for (int b = 0; b < bin_count; ++b)
+                    {
+                        histogram_bins(b) = 0;
+                    }
+                }
+
+                // Initialize bins for this thread
+                for (int b = 0; b < bin_count; ++b)
+                {
+                    bins[idx][b] = 0u;
+                }
+
+                // Increment bins for each element.
+                for (int i = start_elem; i < (start_elem + elements_per_thread); ++i)
+                {
+                    if (gidx < input_view.extent[0])
+                        bins[idx][_details::radix_key_value<T, key_size>(input_view[gidx], key_idx)]++;
+                }
+
+                // Wait for all threads to finish incrementing.
+                tidx.barrier.wait();
+
+                // TODO: This could be more efficient. Don't do it all on one thread.
+                // Thread zero merges local histograms.
+                if (idx == 0)
+                {
+                    for (int i = 1; i < tile_size; ++i)
+                    {
+                        merge_bins(bins[0], bins[i], bin_count);
+                    }
+
+                    // TODO: This isn't smart either but it'll get things working.
+
+                    for (int b = 0; b < bin_count; ++b)
+                    {
+                        concurrency::atomic_fetch_add(&histogram_bins(b), bins[0][b]);
+                    }
+                }
+            });
+
+#if _DEBUG
+            {
+                std::vector<unsigned> bins(4);
+                concurrency::copy(histogram_bins, begin(bins));
+            }
+#endif
+            // prefix scan the histogram results to get offsets.
+            // TODO: This scan supports multi-tile. Probably need a simpler version that uses only one tile.
+            concurrency::array<unsigned> histogram_scan(bin_count);
+            amp_algorithms::scan s(2 * bin_count);
+            s.scan_exclusive(histogram_bins, histogram_bins);
+
+#if _DEBUG
+            {
+                std::vector<unsigned> scans(4);
+                concurrency::copy(histogram_bins, begin(scans));
+            }
+#endif
+            // Sort elements for each tile to maximise memory affinity when writing to global memory.
+
+            // reorder the elements based on the offsets.
+
+            concurrency::parallel_for_each(compute_domain,
+                [=, &histogram_bins](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+            {
+                const int gidx = tidx.global[0];
+                const int idx = tidx.local[0];
+
+                const int d = idx - 0;
+                output_view[d] = input_view[];
+            });
         }
     }
 
-    inline void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<int>& input_view, const unsigned int digit_width)
+    template<typename T>
+    inline void merge_bins(T* left, T*  right, const int bin_count) restrict(amp)
     {
-        ::amp_algorithms::_details::radix_sort<int>(accl_view, input_view, digit_width);
+        for (int b = 0; b < bin_count; ++b)
+        {
+            left[b] += right[b];
+        }
     }
 
+    inline void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<int>& input_view)
+    {
+        static const int bin_width = 4;
+        static const int tile_size = 256;
+        ::amp_algorithms::_details::radix_sort<int, bin_width, tile_size>(accl_view, input_view);
+    }
+
+    inline void radix_sort(concurrency::array_view<int>& input_view)
+    {
+        radix_sort(_details::auto_select_target(), input_view);
+    }
+
+    /*
     inline void radix_sort(concurrency::array_view<int>& input_view, const unsigned int digit_width)
     {
-        ::amp_algorithms::_details::radix_sort<int>(_details::auto_select_target(), input_view, digit_width);
+        ::amp_algorithms::_details::radix_sort<int, 4>(_details::auto_select_target(), input_view);
     }
 
     inline void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<unsigned int>& input_view, const unsigned int digit_width)
     {
-        ::amp_algorithms::_details::radix_sort<unsigned int>(accl_view, input_view, digit_width);
+        ::amp_algorithms::_details::radix_sort<unsigned int, 4>(accl_view, input_view);
     }
 
-    inline void radix_sort(concurrency::array_view<unsigned int>& input_view, const unsigned int digit_width)
+    inline void radix_sort(concurrency::array_view<unsigned int>& input_view)
     {
-        ::amp_algorithms::_details::radix_sort<unsigned int>(_details::auto_select_target(), input_view, digit_width);
+        ::amp_algorithms::_details::radix_sort<unsigned int, 4>(_details::auto_select_target(), input_view);
     }
-
+    */
     //----------------------------------------------------------------------------
     // merge_sort
     //----------------------------------------------------------------------------
@@ -591,7 +769,6 @@ namespace amp_algorithms
     template <typename T, typename BinaryOperator>
     void merge_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<unsigned int>& input_view, BinaryOperator op)
     {
-
     }
 
     template <typename T>

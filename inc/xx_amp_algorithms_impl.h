@@ -41,7 +41,7 @@ namespace amp_algorithms
             static concurrency::accelerator_view auto_select_accelerator_view = concurrency::accelerator(concurrency::accelerator::cpu_accelerator).create_view();
             return auto_select_accelerator_view;
 #else
-			return concurrency::accelerator::get_auto_selection_view();
+            return concurrency::accelerator::get_auto_selection_view();
 #endif
         }
 
@@ -61,7 +61,7 @@ namespace amp_algorithms
 
             concurrency::details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
 #else
-			concurrency::parallel_for_each(_Accl_view, _Compute_domain, _Kernel);
+            concurrency::parallel_for_each(_Accl_view, _Compute_domain, _Kernel);
 #endif
         }
 
@@ -77,7 +77,7 @@ namespace amp_algorithms
 
             concurrency::details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
 #else
-			concurrency::parallel_for_each(_Accl_view, _Compute_domain, _Kernel);
+            concurrency::parallel_for_each(_Accl_view, _Compute_domain, _Kernel);
 #endif
         }
 
@@ -93,7 +93,7 @@ namespace amp_algorithms
 
             concurrency::details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
 #else
-			concurrency::parallel_for_each(_Accl_view, _Compute_domain, _Kernel);
+            concurrency::parallel_for_each(_Accl_view, _Compute_domain, _Kernel);
 #endif
         }
 
@@ -109,7 +109,7 @@ namespace amp_algorithms
 
             concurrency::details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
 #else
-			concurrency::parallel_for_each(_Accl_view, _Compute_domain, _Kernel);
+            concurrency::parallel_for_each(_Accl_view, _Compute_domain, _Kernel);
 #endif
         }
 
