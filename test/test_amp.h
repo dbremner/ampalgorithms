@@ -28,7 +28,6 @@
 #include <iostream>
 #include <CppUnitTest.h>
 
-
 #include <amp_stl_algorithms.h>
 #include <amp_algorithms.h>
 
@@ -51,8 +50,8 @@ class extent { };
 class index { };
 class array { };
 
-//	Set USE_REF to use the REF accelerator for all tests. This is useful if tests fail on a particular machine as
-//	failure may be due to a driver bug.
+//  Set USE_REF to use the REF accelerator for all tests. This is useful if tests fail on a particular machine as
+//  failure may be due to a driver bug.
 
 namespace test_tools
 {

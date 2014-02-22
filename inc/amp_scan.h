@@ -24,60 +24,14 @@
 #include <amp.h>
 #include <assert.h>
 
-namespace Extras
+namespace amp_algorithms
 {
-    enum BitWidth
-    {
-        Bit08 = 0x80,
-        Bit16 = 0x8000,
-        Bit32 = 0x80000000
-    } ;
-
-    template<unsigned int N>
-    struct IsPowerOfTwoStatic
-    {
-        enum 
-        { 
-            result = ((CountBitsStatic<N, Bit32>::result == 1) ? TRUE : FALSE)
-        };
-    };
-
-    // While 1 is technically 2^0, for the purposes of calculating 
-    // tile size it isn't useful.
-    template <>
-    struct IsPowerOfTwoStatic<1>
-    {
-        enum { result = FALSE };
-    };
-
-    template<unsigned int N, unsigned int MaxBit>
-    struct CountBitsStatic
-    {
-        enum
-        { 
-            result = (IsBitSetStatic<N, MaxBit>::result + CountBitsStatic<N, (MaxBit >> 1)>::result) 
-        };
-    };
-
-    // Ensure that template program terminates.
-    template<unsigned int N>
-    struct CountBitsStatic<N, 0>
-    {
-        enum { result = FALSE };
-    };
-
-    template<unsigned int N, int Bit>
-    struct IsBitSetStatic
-    {
-        enum { result = (N & Bit) ? 1 : 0 };
-    };
-
     //===============================================================================
     // Exclusive scan, output element at i contains the sum of elements [0]...[i-1].
     //===============================================================================
 
     template <int TileSize, typename InIt, typename OutIt>
-    inline void ExclusiveScanOptimized(InIt first, InIt last, OutIt outFirst)
+    inline void scan_exclusive(InIt first, InIt last, OutIt dest_first)
     {
         typedef InIt::value_type T;
 
@@ -86,13 +40,13 @@ namespace Extras
         concurrency::array<T, 1> out(size);
         copy(first, last, in);   
         details::ScanOptimized<TileSize, details::kExclusive>(concurrency::array_view<T, 1>(in), concurrency::array_view<T, 1>(out));
-        copy(out, outFirst);
+        copy(out, dest_first);
     }
 
-    template <int TileSize, typename T>  
-    inline void ExclusiveScanOptimized(concurrency::array_view<T, 1> input, concurrency::array_view<T, 1> output)
+    template <int TileSize, typename T>
+    inline void scan_exclusive(concurrency::array_view<T, 1> input_view, concurrency::array_view<T, 1> output_view)
     {
-        details::ScanOptimized<TileSize, details::kExclusive, T>(input, output);
+        details::ScanOptimized<TileSize, details::kExclusive, T>(input_view, output_view);
     }
 
     //===============================================================================
@@ -100,22 +54,22 @@ namespace Extras
     //===============================================================================
 
     template <int TileSize, typename InIt, typename OutIt>
-    inline void InclusiveScanOptimized(InIt first, InIt last, OutIt outFirst)
+    inline void scan_inclusive(InIt first, InIt last, OutIt dest_first)
     {
         typedef InIt::value_type T;
 
-        const int size = int(distance(first, last));
+        const int size = int(std::distance(first, last));
         concurrency::array<T, 1> in(size);
         concurrency::array<T, 1> out(size);
-        copy(first, last, in);      
+        copy(first, last, in);
         details::ScanOptimized<TileSize, details::kInclusive>(concurrency::array_view<T, 1>(in), concurrency::array_view<T, 1>(out));
-        copy(out, outFirst);
+        copy(out, dest_first);
     }
 
-    template <int TileSize, typename T>  
-    inline void InclusiveScanOptimized(concurrency::array_view<T, 1> input, concurrency::array_view<T, 1> output)
+    template <int TileSize, typename T>
+    inline void scan_inclusive(concurrency::array_view<T, 1> input_view, concurrency::array_view<T, 1> output_view)
     {
-        details::ScanOptimized<TileSize, details::kInclusive, T>(input, output);
+        details::ScanOptimized<TileSize, details::kInclusive, T>(input_view, output_view);
     }
 
     //===============================================================================
@@ -131,30 +85,30 @@ namespace Extras
         };
 
         template <int TileSize, int Mode, typename T>
-        void ScanTiled(concurrency::array_view<T, 1> input, concurrency::array_view<T, 1> output)
+        void ScanTiled(concurrency::array_view<T, 1> input_view, concurrency::array_view<T, 1> output_view)
         {
             static_assert((Mode == details::kExclusive || Mode == details::kInclusive), "Mode must be either inclusive or exclusive.");
-            static_assert(IsPowerOfTwoStatic<TileSize>::result, "TileSize must be a power of 2.");
-            assert(input.extent[0] == output.extent[0]);
-            assert(input.extent[0] > 0);
+            static_assert(is_power_of_two<TileSize>::result, "TileSize must be a power of 2.");
+            assert(input_view.extent[0] == output_view.extent[0]);
+            assert(input_view.extent[0] > 0);
 
-            const int elementCount = input.extent[0];
+            const int elementCount = input_view.extent[0];
             const int tileCount = (elementCount + TileSize - 1) / TileSize;
 
             // Compute tile-wise scans and reductions.
             concurrency::array<T> tileSums(tileCount);
-            details::ComputeTilewiseExclusiveScanTiled<TileSize, Mode>(concurrency::array_view<const T>(input), concurrency::array_view<T>(output), concurrency::array_view<T>(tileSums));
+            details::ComputeTilewiseExclusiveScanTiled<TileSize, Mode>(concurrency::array_view<const T>(input_view), concurrency::array_view<T>(output_view), concurrency::array_view<T>(tileSums));
 
             if (tileCount > 1)
             {
                 // Calculate the initial value of each tile based on the tileSums.
                 concurrency::array<T> tmp(tileSums.extent);
                 ScanTiled<TileSize, details::kExclusive>(concurrency::array_view<T>(tileSums), concurrency::array_view<T>(tmp));
-                output.discard_data();
+                output_view.discard_data();
                 parallel_for_each(concurrency::extent<1>(elementCount), [=, &tileSums, &tmp](concurrency::index<1> idx) restrict(amp)
                 {
                     int tileIdx = idx[0] / TileSize;
-                    output[idx] += tmp[tileIdx];
+                    output_view[idx] += tmp[tileIdx];
                 });
             }
         }
@@ -162,9 +116,9 @@ namespace Extras
         // For each tile calculate the inclusive scan.
 
         template <int TileSize, int Mode, typename T>
-        void ComputeTilewiseExclusiveScanTiled(concurrency::array_view<const T> input, concurrency::array_view<T> tilewiseOutput, concurrency::array_view<T> tileSums)
+        void ComputeTilewiseExclusiveScanTiled(concurrency::array_view<const T> input_view, concurrency::array_view<T> tilewiseOutput, concurrency::array_view<T> tileSums)
         {
-            const int elementCount = input.extent[0];
+            const int elementCount = input_view.extent[0];
             const int tileCount = (elementCount + TileSize - 1) / TileSize;
             const int threadCount = tileCount * TileSize;
 
@@ -174,7 +128,7 @@ namespace Extras
                 const int tid = tidx.local[0];
                 const int gid = tidx.global[0];
 
-                tile_static T tileData[2][TileSize];
+                tile_static T tile_data[2][TileSize];
                 int inIdx = 0;
                 int outIdx = 1;
 
@@ -183,22 +137,22 @@ namespace Extras
                 if (gid < elementCount)
                 {
                     if (tid >= 1)
-                        tileData[outIdx][tid] = input[gid - 1] + input[gid];
+                        tile_data[outIdx][tid] = input_view[gid - 1] + input_view[gid];
                     else
-                        tileData[outIdx][tid] = input[gid];
+                        tile_data[outIdx][tid] = input_view[gid];
                 }
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
                 for (int offset = 2; offset < TileSize; offset *= 2)
                 {
-                    SwitchIndeces(inIdx, outIdx);
+                    flip_indeces(inIdx, outIdx);
 
                     if (gid < elementCount)
                     {
                         if (tid >= offset)
-                            tileData[outIdx][tid] = tileData[inIdx][tid - offset] + tileData[inIdx][tid];
+                            tile_data[outIdx][tid] = tile_data[inIdx][tid - offset] + tile_data[inIdx][tid];
                         else
-                            tileData[outIdx][tid] = tileData[inIdx][tid];
+                            tile_data[outIdx][tid] = tile_data[inIdx][tid];
                     }
                     tidx.barrier.wait_with_tile_static_memory_fence();
                 }
@@ -209,28 +163,29 @@ namespace Extras
                 {
                     // For exclusive scan calculate the last value
                     if (Mode == details::kInclusive)
-                        tilewiseOutput[gid] = tileData[outIdx][tid];
+                        tilewiseOutput[gid] = tile_data[outIdx][tid];
                     else
                     if (tid == 0)
                         tilewiseOutput[gid] = T(0);
                     else
-                        tilewiseOutput[gid] = tileData[outIdx][tid - 1];
+                        tilewiseOutput[gid] = tile_data[outIdx][tid - 1];
                 }
 
                 // Last thread in tile updates the tileSums.
                 if (tid == TileSize - 1)
-                    tileSums[tidx.tile[0]] = tileData[outIdx][tid - 1] + +input[gid];
+                    tileSums[tidx.tile[0]] = tile_data[outIdx][tid - 1] + +input_view[gid];
             });
         }
 
-        void SwitchIndeces(int& index1, int& index2) restrict(amp, cpu)
+        void flip_indeces(int& index1, int& index2) restrict(amp)
         {
             index1 = 1 - index1;
             index2 = 1 - index2;
         }
 
+        // TODO: Not using conflict free offsets yet!
         template <int BlockSize, int LogBlockSize>
-        inline int ConflictFreeOffset(int n) restrict(amp)
+        inline int conflict_free_offset(int n) restrict(amp)
         {
             return n >> BlockSize + n >> (2 * LogBlockSize);
         }
@@ -240,21 +195,21 @@ namespace Extras
         // http.developer.nvidia.com/GPUGems3/gpugems3_ch39.html
 
         template <int TileSize, int Mode, typename T>  
-        void ScanOptimized(concurrency::array_view<T, 1> input, concurrency::array_view<T, 1> output)
+        void ScanOptimized(concurrency::array_view<T, 1> input_view, concurrency::array_view<T, 1> output_view)
         {
             const int domainSize = TileSize * 2;
-            const int elementCount = input.extent[0];
+            const int elementCount = input_view.extent[0];
             const int tileCount = (elementCount + domainSize - 1) / domainSize;
 
             static_assert((Mode == details::kExclusive || Mode == details::kInclusive), "Mode must be either inclusive or exclusive.");
-            static_assert(IsPowerOfTwoStatic<TileSize>::result, "TileSize must be a power of 2.");
+            static_assert(is_power_of_two<TileSize>::result, "TileSize must be a power of 2.");
             assert(elementCount > 0);
-            assert(elementCount == output.extent[0]);
+            assert(elementCount == output_view.extent[0]);
             assert((elementCount / domainSize) >= 1);
 
             // Compute scan for each tile and store their total values in tileSums
             concurrency::array<T> tileSums(tileCount);
-            details::ComputeTilewiseExclusiveScanOptimized<TileSize, Mode>(concurrency::array_view<const T>(input), output, concurrency::array_view<T>(tileSums));
+            details::ComputeTilewisescan_exclusive<TileSize, Mode>(concurrency::array_view<const T>(input_view), output_view, concurrency::array_view<T>(tileSums));
         
             if (tileCount > 1)
             {
@@ -263,20 +218,20 @@ namespace Extras
                 ScanTiled<TileSize, details::kExclusive>(concurrency::array_view<T>(tileSums), concurrency::array_view<T>(tileSumScan));
 
                 // Add the tileSums all the elements in each tile except the first tile.
-                output.discard_data();
+                output_view.discard_data();
                 parallel_for_each(concurrency::extent<1>(elementCount - domainSize), [=, &tileSumScan] (concurrency::index<1> idx) restrict (amp) 
                 {
                     const int tileIdx = (idx[0] + domainSize) / domainSize;
-                    output[idx + domainSize] += tileSumScan[tileIdx];
+                    output_view[idx + domainSize] += tileSumScan[tileIdx];
                 });
             }
         }
 
         template <int TileSize, int Mode, typename T>
-        void ComputeTilewiseExclusiveScanOptimized(concurrency::array_view<const T, 1> input, concurrency::array_view<T> tilewiseOutput, concurrency::array_view<T, 1> tileSums)
+        void ComputeTilewisescan_exclusive(concurrency::array_view<const T, 1> input_view, concurrency::array_view<T> tilewiseOutput, concurrency::array_view<T, 1> tileSums)
         {
             static const int domainSize = TileSize * 2;
-            const int elementCount = input.extent[0];
+            const int elementCount = input_view.extent[0];
             const int tileCount = (elementCount + TileSize - 1) / TileSize;
             const int threadCount = tileCount * TileSize;
 
@@ -287,14 +242,14 @@ namespace Extras
                 const int tid = tidx.local[0];
                 const int tidx2 = tidx.local[0] * 2;
                 const int gidx2 = tidx.global[0] * 2;
-                tile_static T tileData[domainSize];
+                tile_static T tile_data[domainSize];
 
-                // Load data into tileData, load 2x elements per tile.
+                // Load data into tile_data, load 2x elements per tile.
 
                 if (gidx2 + 1 < elementCount)
                 {
-                    tileData[tidx2] = input[gidx2];
-                    tileData[tidx2 + 1] = input[gidx2 + 1];
+                    tile_data[tidx2] = input_view[gidx2];
+                    tile_data[tidx2 + 1] = input_view[gidx2 + 1];
                 }
 
                 // Up sweep (reduce) phase.
@@ -307,14 +262,14 @@ namespace Extras
                     {
                         const int ai = offset * (tidx2 + 1) - 1;
                         const int bi = offset * (tidx2 + 2) - 1; 
-                        tileData[bi] += tileData[ai];
+                        tile_data[bi] += tile_data[ai];
                     }
                     offset *= 2;
                 }
                 
                 //  Zero highest element in tile
                 if (tid == 0) 
-                    tileData[domainSize - 1] = 0;
+                    tile_data[domainSize - 1] = 0;
                 
                 // Down sweep phase.
                 // Now: offset = domainSize
@@ -328,9 +283,9 @@ namespace Extras
                     {
                         const int ai = offset * (tidx2 + 1) - 1; 
                         const int bi = offset * (tidx2 + 2) - 1; 
-                        T t = tileData[ai]; 
-                        tileData[ai] = tileData[bi]; 
-                        tileData[bi] += t;
+                        T t = tile_data[ai]; 
+                        tile_data[ai] = tile_data[bi]; 
+                        tile_data[bi] += t;
                     }
                 }
                 tidx.barrier.wait_with_tile_static_memory_fence();
@@ -339,8 +294,8 @@ namespace Extras
 
                 if (gidx2 + 1 - (2 * Mode) < elementCount)
                 {
-                    tilewiseOutput[gidx2] = tileData[tidx2 + Mode]; 
-                    tilewiseOutput[gidx2 + 1] = tileData[tidx2 + 1 + Mode];
+                    tilewiseOutput[gidx2] = tile_data[tidx2 + Mode]; 
+                    tilewiseOutput[gidx2 + 1] = tile_data[tidx2 + 1 + Mode];
                 }
 
                 // Copy tile total out, this is the inclusive total.
@@ -349,9 +304,9 @@ namespace Extras
                 {
                     // For inclusive scan calculate the last value
                     if (Mode == details::kInclusive)
-                        tilewiseOutput[gidx2 + 1] = tileData[domainSize - 1] + input[gidx2 + 1];
+                        tilewiseOutput[gidx2 + 1] = tile_data[domainSize - 1] + input_view[gidx2 + 1];
                     
-                    tileSums[tidx.tile[0]] = tileData[domainSize - 1] + input[gidx2 + 1];
+                    tileSums[tidx.tile[0]] = tile_data[domainSize - 1] + input_view[gidx2 + 1];
                 }
             });
         }

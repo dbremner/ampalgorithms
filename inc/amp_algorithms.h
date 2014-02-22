@@ -258,16 +258,25 @@ namespace amp_algorithms
     // Static operations
     //----------------------------------------------------------------------------
 
-    static const unsigned int Bit08 = 0x80;
-    static const unsigned int Bit16 = 0x8000;
-    static const unsigned int Bit32 = 0x80000000;
+    namespace _details
+    {
+        static const unsigned int Bit08 = 0x80;
+        static const unsigned int Bit16 = 0x8000;
+        static const unsigned int Bit32 = 0x80000000;
+
+        template<unsigned int N, int MaxBit>
+        struct is_bit_set
+        {
+            enum { result = (N & MaxBit) ? 1 : 0 };
+        };
+    }
 
     template<unsigned int N>
     struct is_power_of_two
     {
         enum
         {
-            result = ((count_bits<N, Bit32>::result == 1) ? TRUE : FALSE)
+            result = ((count_bits<N, _details::Bit32>::result == 1) ? TRUE : FALSE)
         };
     };
 
@@ -285,7 +294,7 @@ namespace amp_algorithms
     {
         enum
         {
-            result = (is_bit_set<N, MaxBit>::result +
+            result = (_details::is_bit_set<N, MaxBit>::result +
             count_bits<N, (MaxBit >> 1)>::result)
         };
     };
@@ -294,12 +303,6 @@ namespace amp_algorithms
     struct count_bits<N, 0>
     {
         enum { result = FALSE };
-    };
-
-    template<unsigned int N, int MaxBit>
-    struct is_bit_set
-    {
-        enum { result = (N & MaxBit) ? 1 : 0 };
     };
 
     //----------------------------------------------------------------------------
@@ -739,6 +742,7 @@ namespace amp_algorithms
         }
     }
 
+    // TODO: NOT IMPLEMENTED radix_sort
     inline void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<int>& input_view)
     {
         static const int bin_width = 4;
@@ -746,6 +750,7 @@ namespace amp_algorithms
         ::amp_algorithms::_details::radix_sort<int, bin_width, tile_size>(accl_view, input_view);
     }
 
+    // TODO: NOT IMPLEMENTED radix_sort
     inline void radix_sort(concurrency::array_view<int>& input_view)
     {
         radix_sort(_details::auto_select_target(), input_view);
@@ -771,11 +776,13 @@ namespace amp_algorithms
     // merge_sort
     //----------------------------------------------------------------------------
 
+    // TODO: NOT IMPLEMENTED radix_sort
     template <typename T, typename BinaryOperator>
     void merge_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<unsigned int>& input_view, BinaryOperator op)
     {
     }
 
+    // TODO: NOT IMPLEMENTED radix_sort
     template <typename T>
     void merge_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<unsigned int>& input_view)
     {

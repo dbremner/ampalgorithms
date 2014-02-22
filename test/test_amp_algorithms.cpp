@@ -19,7 +19,7 @@
 * This file contains the unit tests.
 *---------------------------------------------------------------------------*/
 #include "stdafx.h"
-
+#include <amp.h>
 #include <amp_algorithms.h>
 #include "test_amp.h"
 
