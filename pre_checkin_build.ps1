@@ -44,16 +44,14 @@ function set-vsenv
 
 ## Tools paths and options
 
-write-output ""
-
 if (-not (test-path "${env:ProgramFiles(x86)}\Microsoft Visual Studio 12.0\VC"))
 {
-    write-host "Visual Studio 2013 not found at ${env:ProgramFiles(x86)}\Microsoft Visual Studio 12.0\VC" -fore red
+    write-host "`nVisual Studio 2013 not found at ${env:ProgramFiles(x86)}\Microsoft Visual Studio 12.0\VC" -fore red
     exit
 }
 if (-not (test-path "${env:ProgramFiles(x86)}\Microsoft Visual Studio 11.0\VC"))
 {
-    write-host "Visual Studio 2012 not found at ${env:ProgramFiles(x86)}\Microsoft Visual Studio 11.0\VC" -fore red
+    write-host "`nVisual Studio 2012 not found at ${env:ProgramFiles(x86)}\Microsoft Visual Studio 11.0\VC" -fore red
     exit
 }
 if (-not (test-path "$env:VSINSTALLDIR"))
@@ -71,12 +69,13 @@ $msbuild_options = "/p:WARNINGS_AS_ERRORS=true /verbosity:m /nologo /filelogger 
 if ($args -contains "/ref")
 {
     $msbuild_options = $msbuild_options + " /p:USE_REF=USE_REF"
-    write-host "Building with USE_REF defined, unit tests will use REF accelerator." -fore yellow
+    write-host "`nBuilding with USE_REF defined, unit tests will use REF accelerator." -fore yellow
 }
 
 $build_dir = split-path -parent $MyInvocation.MyCommand.Definition
-$test_dir =
+$test_dir = "$build_dir/TestResults"
 $build_int = "$build_dir/Intermediate"
+$build_bin = "$build_dir/Bin"
 
 $vsvers = @( "11", "12")
 $configs = @( "Debug", "Release" )
@@ -110,20 +109,12 @@ $stopwatch.Start()
 
 write-host "== Clean         ===============================================================" -fore yellow
 
-foreach ($b in $builds) 
+foreach ($p in @( $build_bin, $build_int, $test_dir ))
 {
-    $ver = $b.Item1
-    $conf = $b.Item2
-    $plat = $b.Item3
-    $path_bin = "$build_dir/$plat/$conf/v${ver}0"
-    $path_int = "$build_int/$plat/$conf/v${ver}0"
-    foreach ($p in @( "$build_dir/$plat", "$build_int/$plat" ))
-    {
-        if (test-path $p) 
-        { 
-            Remove-Item -Recurse -Force $p
-            write-host "  Cleaned:  $p"
-        }
+    if (test-path $p)
+    { 
+        Remove-Item -Recurse -Force $p
+        write-host "  Cleaned:  $p"
     }
 }
 
@@ -142,6 +133,7 @@ foreach ($b in $builds)
 
     write-host "  $sln ( $conf | $plat )"
 }
+$builds_expected = $builds.Count * 2
 $builds_ok = 0
 $builds_run = 0
 foreach ($b in $builds)
@@ -149,10 +141,11 @@ foreach ($b in $builds)
     $ver = $b.Item1
     $conf = $b.Item2
     $plat = $b.Item3
-    $path_bin = "$build_dir/$plat/$conf/v${ver}0"
-    $path_int = "$build_int/$plat/$conf/v${ver}0"
+    $path_bin = "$build_bin/v${ver}0/$plat/$conf"
+    $path_int = "$build_int/v${ver}0/$plat/$conf"
     $sln = "amp_algorithms${ver}0.sln"
-    $log = "$build_int/$plat/$conf/v${ver}0/build.log"
+    $sln_log = "$build_int/v${ver}0_${plat}_${conf}_sln_build.log"
+    $msb_log = "$build_int/v${ver}0_${plat}_${conf}_msb_build.log"
 
     foreach ($p in @( $path_bin, $path_int ))
     {
@@ -160,10 +153,11 @@ foreach ($b in $builds)
     }
 
     $build = "$sln $plat/$conf".PadRight(36)
-    write-host "`n== Build $build ==================================" -fore yellow
-    $build_cmd = "$msbuild_exe $sln /p:platformtoolset=v${ver}0 /p:VisualStudioVersion=${ver}.0 /p:platform=$plat /p:configuration=$conf /p:intdir='$path_int/' /p:outdir='$path_bin/' $msbuild_options /fileloggerparameters:logfile='$log'"
+    $msg = "`n== Build {0:D2}\{1:D2} {2} ============================" -f $builds_run, $builds_expected, $build
+    write-host $msg -fore yellow
+    $build_cmd = "$msbuild_exe $sln /p:platformtoolset=v${ver}0 /p:VisualStudioVersion=${ver}.0 /p:platform=$plat /p:configuration=$conf /p:outdir='$path_bin/' $msbuild_options /fileloggerparameters:logfile='$sln_log'"
     Invoke-Expression $build_cmd |
-        foreach-object { if ( $_ -match "BUILD SUCCEEDED" ) { $builds_ok++ } write-host $_ } | write-host 
+        foreach-object { if ( $_ -match "BUILD SUCCEEDED" ) { $builds_ok++; write-host $_ -fore green } else { write-host $_ } }
     $builds_run += 2
 }
 
@@ -172,9 +166,9 @@ $elapsed = $stopwatch.Elapsed
 $BuildElapsedTime = [system.String]::Format("{0:00}m {1:00}s", $elapsed.Minutes, $elapsed.Seconds);
 
 $builds_failed = ($builds_run - $builds_ok)
-if ( $builds_failed -gt 0 ) 
+if ( $builds_failed -gt 0 )
 {
-    write-host "`n$builds_failed/$builds_run Builds FAILED!"-fore red
+    write-host "`n$builds_failed/$builds_run Builds FAILED!" -fore red
     $TestsElapsedTime = ""
 }
 else
@@ -195,11 +189,11 @@ else
 
     foreach ($ver in $vsvers)
     {
-        $vstest_dlls = @( "$build_dir/Win32/Release/v${ver}0/amp_algorithms.dll", "$build_dir/Win32/Release/v${ver}0/amp_stl_algorithms.dll" )
+        $vstest_dlls = @(  "$build_bin/v${ver}0/$plat/$conf/amp_algorithms.dll", "$build_bin/v${ver}0/$plat/$conf/amp_stl_algorithms.dll" )
        
         $tests_failed = 0
         $tests_passed = 0
-        write-host "Running tests for Visual Studio ${ver}.0 ( Win32 | Release) build. Showing failed tests:" -fore yellow
+        write-host "Running tests for Visual Studio ${ver}.0 ( $plat | $conf ) build. Showing failed tests:" -fore yellow
         ."$vstest_exe" $vstest_dlls /logger:trx 2>&1 | 
             %{ if ( $_ -match @('^Passed +')) { $tests_passed++ } ; $_ } | 
             %{ if ( $_ -match @('^Failed +')) { $tests_failed++ } ; $_ } | 

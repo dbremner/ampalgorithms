@@ -88,8 +88,8 @@ namespace amp_stl_algorithms_tests
         {
             static const int numbers[] = { 1, 3, 6, 3, 2, 2 };
             static const int n = sizeof(numbers)/sizeof(numbers[0]);
-
             array_view<const int> av(concurrency::extent<1>(n), numbers);
+
             auto iter = amp_stl_algorithms::find(begin(av), end(av), 3);
             int position = std::distance(begin(av), iter);
             Assert::AreEqual(1, position);

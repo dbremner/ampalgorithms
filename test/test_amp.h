@@ -68,7 +68,10 @@ namespace test_tools
     #endif
     }
 
-    // Helper functions to generate test data of random numbers.
+    //===============================================================================
+    //  Helper functions to generate test data of random numbers.
+    //===============================================================================
+
     template <typename T>
     inline void generate_data(std::vector<T> &v)
     {
@@ -89,6 +92,10 @@ namespace test_tools
         srand(2012);    // Set random number seed so tests are reproducable.
         std::generate(begin(v), end(v), [=](){ return (unsigned int) rand(); });
     }
+
+    //===============================================================================
+    //  Comparison.
+    //===============================================================================
 
     // Helper function for floating-point comparison. It combines absolute and relative comparison techniques,
     // in order to check if two floating-point are close enough to be considered as equal.
@@ -171,8 +178,99 @@ namespace test_tools
         for (int i = 0; i < int(expected_count); ++i)
         {
             if (expected[i] != actual[i])
+            {
                 return false;
+            }
         }
         return true;
+    }
+
+    //===============================================================================
+    //  Stream output overloads for std::vector, array and array_view.
+    //===============================================================================
+
+    class ContainerWidth
+    {
+    public:
+        explicit ContainerWidth(size_t width) : m_width(width) { }
+
+    private:
+        size_t m_width;
+
+        template <class T, class Traits>
+        inline friend std::basic_ostream<T, Traits>& operator <<
+            (std::basic_ostream<T, Traits>& os, const ContainerWidth& container)
+        {
+            os.iword(details::geti()) = long(container.m_width);
+            return os;
+        }
+    };
+
+    template<typename StrmType, typename Traits, typename VecT>
+    std::basic_ostream<StrmType, Traits>& operator<< (std::basic_ostream<StrmType, Traits>& os, const std::vector<VecT>& vec)
+    {
+        size_t i = std::min<size_t>(details::GetWidth(os), vec.size());
+        std::copy(std::begin(vec), std::begin(vec) + i, std::ostream_iterator<VecT, Traits::char_type>(os, details::GetDelimiter<Traits::char_type>()));
+        return os;
+    }
+
+    template<typename StrmType, typename Traits, typename VecT>
+    std::basic_ostream<StrmType, Traits>& operator<< (std::basic_ostream<StrmType, Traits>& os, concurrency::array<VecT, 1>& vec)
+    {
+        size_t i = std::min<size_t>(details::GetWidth(os), vec.extent[0]);
+        std::vector<const VecT> buffer(i);
+        copy(vec.section(0, i), std::begin(buffer));
+        std::copy(std::begin(buffer), std::begin(buffer) + i, std::ostream_iterator<VecT, Traits::char_type>(os, details::GetDelimiter<Traits::char_type>()));
+        return os;
+    }
+
+    template<typename StrmType, typename Traits, typename VecT>
+    std::basic_ostream<StrmType, Traits>& operator<< (std::basic_ostream<StrmType, Traits>& os, const concurrency::array_view<VecT, 1>& vec)
+    {
+        size_t i = std::min<size_t>(details::GetWidth(os), vec.extent[0]);
+        std::vector<VecT> buffer(i);
+        copy(vec.section(0, i), std::begin(buffer));
+        std::copy(std::begin(buffer), std::begin(buffer) + i, std::ostream_iterator<VecT, Traits::char_type>(os, details::GetDelimiter<Traits::char_type>()));
+        return os;
+    }
+
+    namespace details
+    {
+        inline int geti()
+        {
+            static int i = std::ios_base::xalloc();
+            return i;
+        }
+
+        template <typename STREAM>
+        inline size_t GetWidth(STREAM& os)
+        {
+            const size_t kDefaultWidth = 10;
+            size_t width = os.iword(geti());
+            if (width == 0)
+                width = kDefaultWidth;
+            return width;
+        }
+
+        template <typename T>
+        inline T* GetDelimiter()
+        {
+            assert(false);
+            return nullptr;
+        }
+
+        template <>
+        inline char* GetDelimiter()
+        {
+            static char delim(',');
+            return &delim;
+        }
+
+        template <>
+        inline wchar_t* GetDelimiter()
+        {
+            static wchar_t delim(L',');
+            return &delim;
+        }
     }
 }; // namespace test_tools
