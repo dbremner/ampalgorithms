@@ -79,27 +79,29 @@
     <TreatWarningAsError>$(WARNINGS_AS_ERRORS)</TreatWarningAsError>
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>$(VCInstallDir)UnitTest\include;$(ProjectDir)inc;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath)</IncludePath>
-    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>Intermediate\$(ProjectName)\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)Bin\$(PlatformToolset)\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TreatWarningAsError>$(WARNINGS_AS_ERRORS)</TreatWarningAsError>
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>$(VCInstallDir)UnitTest\include;$(ProjectDir)inc;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath)</IncludePath>
-    <IntDir>Intermediate\$(ProjectName)\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)Bin\$(PlatformToolset)\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <TreatWarningAsError>$(WARNINGS_AS_ERRORS)</TreatWarningAsError>
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(VCInstallDir)UnitTest\include;$(ProjectDir)inc;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath)</IncludePath>
-    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>Intermediate\$(ProjectName)\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)Bin\$(PlatformToolset)\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TreatWarningAsError>$(WARNINGS_AS_ERRORS)</TreatWarningAsError>
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(VCInstallDir)UnitTest\include;$(ProjectDir)inc;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath)</IncludePath>
-    <IntDir>Intermediate\$(ProjectName)\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)Bin\$(PlatformToolset)\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

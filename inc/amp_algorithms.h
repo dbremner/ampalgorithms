@@ -32,6 +32,7 @@
 
 namespace amp_algorithms
 {
+#pragma region Arithmetic, comparison, logical and bitwise,
     //----------------------------------------------------------------------------
     // Arithmetic operations
     //----------------------------------------------------------------------------
@@ -250,8 +251,11 @@ namespace amp_algorithms
 
     // TODO: Implement not1() and not2() if appropriate.
 
+#pragma endregion
+
+#pragma region Helper functions
     //----------------------------------------------------------------------------
-    // Logical operations
+    // Static operations
     //----------------------------------------------------------------------------
 
     static const unsigned int Bit08 = 0x80;
@@ -269,6 +273,7 @@ namespace amp_algorithms
 
     // While 1 is technically 2^0, for the purposes of calculating 
     // tile size it isn't useful.
+
     template <>
     struct is_power_of_two<1>
     {
@@ -285,7 +290,6 @@ namespace amp_algorithms
         };
     };
 
-    // Ensure that template program terminates.
     template<unsigned int N>
     struct count_bits<N, 0>
     {
@@ -302,7 +306,6 @@ namespace amp_algorithms
     // Padded tile read and write functions.
     //----------------------------------------------------------------------------
 
-    // TODO: Can't these two padded_read templates be collapsed into one with N = 1 ?
     template <typename T, int N>
     inline T padded_read(const concurrency::array_view<T, N> arr, const concurrency::index<N> idx) restrict(cpu, amp)
     {
@@ -329,6 +332,8 @@ namespace amp_algorithms
     {
         padded_write<T, 1>(arr, concurrency::index<1>(idx), value);
     }
+
+#pragma endregion
 
     //----------------------------------------------------------------------------
     // reduce

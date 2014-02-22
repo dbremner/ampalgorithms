@@ -141,13 +141,10 @@ foreach ($b in $builds)
     $ver = $b.Item1
     $conf = $b.Item2
     $plat = $b.Item3
-    $path_bin = "$build_bin/v${ver}0/$plat/$conf"
-    $path_int = "$build_int/v${ver}0/$plat/$conf"
     $sln = "amp_algorithms${ver}0.sln"
     $sln_log = "$build_int/v${ver}0_${plat}_${conf}_sln_build.log"
-    $msb_log = "$build_int/v${ver}0_${plat}_${conf}_msb_build.log"
 
-    foreach ($p in @( $path_bin, $path_int ))
+    foreach ($p in @( $build_int, $build_bin ))
     {
         if (-not (test-path $p)) { mkdir $p >> $null }
     }
@@ -155,7 +152,7 @@ foreach ($b in $builds)
     $build = "$sln $plat/$conf".PadRight(36)
     $msg = "`n== Build {0:D2}\{1:D2} {2} ============================" -f $builds_run, $builds_expected, $build
     write-host $msg -fore yellow
-    $build_cmd = "$msbuild_exe $sln /p:platformtoolset=v${ver}0 /p:VisualStudioVersion=${ver}.0 /p:platform=$plat /p:configuration=$conf /p:outdir='$path_bin/' $msbuild_options /fileloggerparameters:logfile='$sln_log'"
+    $build_cmd = "$msbuild_exe $sln /p:platformtoolset=v${ver}0 /p:VisualStudioVersion=${ver}.0 /p:platform=$plat /p:configuration=$conf $msbuild_options /fileloggerparameters:logfile='$sln_log'"
     Invoke-Expression $build_cmd |
         foreach-object { if ( $_ -match "BUILD SUCCEEDED" ) { $builds_ok++; write-host $_ -fore green } else { write-host $_ } }
     $builds_run += 2
