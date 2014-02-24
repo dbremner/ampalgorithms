@@ -62,7 +62,7 @@ if (-not (test-path "$env:VSINSTALLDIR"))
 $stopwatch = New-Object System.Diagnostics.Stopwatch
 $vstest_exe = "$env:VSINSTALLDIR\Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe"
 $msbuild_exe = "$env:FrameworkDir$env:FrameworkVersion\msbuild.exe"
-$msbuild_options = "/p:WARNINGS_AS_ERRORS=true /verbosity:m /nologo /filelogger /target:build /consoleloggerparameters:verbosity=m"
+$msbuild_options = "/p:WARNINGS_AS_ERRORS=true /nologo /target:build /verbosity:m /filelogger /consoleloggerparameters:verbosity=m"
 
 ## Process arguments and configure builds
 
@@ -136,8 +136,9 @@ foreach ($b in $builds)
 $builds_expected = $builds.Count * 2
 $builds_ok = 0
 $builds_run = 0
-foreach ($b in $builds)
-{
+
+foreach  ($b in $builds)
+{ 
     $ver = $b.Item1
     $conf = $b.Item2
     $plat = $b.Item3
@@ -149,10 +150,8 @@ foreach ($b in $builds)
         if (-not (test-path $p)) { mkdir $p >> $null }
     }
 
-    $build = "$sln $plat/$conf".PadRight(36)
-    $msg = "`n== Build {0:D2}\{1:D2} {2} ============================" -f $builds_run, $builds_expected, $build
-    write-host $msg -fore yellow
-    $build_cmd = "$msbuild_exe $sln /p:platformtoolset=v${ver}0 /p:VisualStudioVersion=${ver}.0 /p:platform=$plat /p:configuration=$conf $msbuild_options /fileloggerparameters:logfile='$sln_log'"
+    write-host ("`n== Build {0:D2}\{1:D2} {2,-36} ============================" -f $builds_run, $builds_expected, "$sln $plat/$conf") -fore yellow
+    $build_cmd = "$msbuild_exe $sln $msbuild_options /p:platformtoolset=v${ver}0 /p:VisualStudioVersion=${ver}.0 /p:platform=$plat /p:configuration=$conf /fileloggerparameters:logfile='$sln_log'"
     Invoke-Expression $build_cmd |
         foreach-object { if ( $_ -match "BUILD SUCCEEDED" ) { $builds_ok++; write-host $_ -fore green } else { write-host $_ } }
     $builds_run += 2
