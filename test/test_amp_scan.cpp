@@ -140,58 +140,6 @@ namespace amp_algorithms_tests
             Assert::IsTrue(expected == result, Msg(expected, result).c_str());
         }
 
-        TEST_METHOD(scan_exclusiveTests_Simple_Two_Tiles)
-        {
-            std::vector<int> input(16, 1);
-            std::vector<int> result(input.size());
-            std::vector<int> expected(input.size());
-            std::iota(begin(expected), end(expected), 0);
-
-           // InclusiveScanOptimized<4>(begin(input), end(input), result.begin());
-            
-            Assert::IsTrue(expected == result, Msg(expected, result, 16).c_str());
-        }
-
-        TEST_METHOD(scan_exclusiveTests_Sequential_One_Tile)
-        {
-            std::array<int, 8> input =      {  1, 2,  3,  4,  5,  6,  7,  8 };
-            std::vector<int> result(input.size());
-            //std::array<int, 8> expected = { +1, 3, +3, 10, +5, 11, +7, 36 }; // Up sweep only
-            //std::array<int, 8> expected = { +1, 3, +3, 10, +5, 11, +7,  0 }; // Down sweep depth = 0
-            //std::array<int, 8> expected = { +1, 3, +3,  0, +5, 11, +7, 10 }; // Down sweep depth = 1
-            //std::array<int, 8> expected = { +1, 0, +3,  3, +5, 10, +7, 21 }; // Down sweep depth = 2
-            std::array<int, 8> expected =   {  0, 1,  3,  6, 10, 15, 21, 28 }; // Final Result
-
-            InclusiveScanOptimized<4>(begin(input), end(input), result.begin());
-            
-            std::vector<int> exp(begin(expected), end(expected));
-            Assert::IsTrue(exp == result, Msg(exp, result).c_str());
-        }
-
-        TEST_METHOD(InclusiveScanOptimizedTests_Simple_One_Tile)
-        {
-            std::vector<int> input(8, 1);
-            std::vector<int> result(input.size());
-            std::vector<int> expected(input.size());
-            std::iota(begin(expected), end(expected), 1);
-
-            InclusiveScanOptimized<4>(begin(input), end(input), result.begin());
-            
-            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
-        }
-
-        TEST_METHOD(InclusiveScanOptimizedTests_Simple_Two_Tiles)
-        {
-            std::vector<int> input(16, 1);
-            std::vector<int> result(input.size());
-            std::vector<int> expected(input.size());
-            std::iota(begin(expected), end(expected), 1);
-
-            InclusiveScanOptimized<4>(begin(input), end(input), result.begin());
-            
-            Assert::IsTrue(expected == result, Msg(expected, result, 16).c_str());
-        }
-
         TEST_METHOD(InclusiveScanOptimizedTests_Complex_One_Tile)
         {
             std::array<int, 8> input =    { 1, 3,  6,  2,  7,  9,  0,  5 };

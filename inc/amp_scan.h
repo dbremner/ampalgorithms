@@ -28,7 +28,7 @@ namespace amp_algorithms
 {
 #pragma region New Scan implementation
 
-    enum class scan_mode
+    enum class scan_mode : int
     {
         exclusive = 0,
         inclusive = 1
@@ -36,19 +36,14 @@ namespace amp_algorithms
 
     namespace _details
     {
-        enum class warp : int
-        {
-            max_idx = 31,
-            size = max_idx + 1
-        };
-        // TODO: Don't use #define! 
-        #define WARP_SIZE 32
+        static const int warp_size = 32;
+        static const int warp_max = _details::warp_size - 1;
 
-        // 
         template <scan_mode _Mode, typename _BinaryOp, typename T>
         T scan_warp(T* const p, const int idx, const _BinaryOp& op) restrict(amp)
         {
-            const int widx = idx & 31;
+            const int widx = idx & _details::warp_max;
+
             // TODO: Unroll? Unroll for 32 wide warp or 64? Templated unroll?
             if (widx >= 1) p[idx] = op(p[idx - 1], p[idx]);
             if (widx >= 2) p[idx] = op(p[idx - 2], p[idx]);
@@ -62,18 +57,18 @@ namespace amp_algorithms
         }
 
         template <int TileSize, scan_mode _Mode, typename _BinaryOp, typename T>
-        T scan_tile(T* const p, tiled_index<TileSize> tidx, const _BinaryOp& op) restrict(amp)
+        T scan_tile(T* const p, concurrency::tiled_index<TileSize> tidx, const _BinaryOp& op) restrict(amp)
         {
             const int idx = tidx.local[0];
             const int warp_id = idx >> 5;
-            const int widx = idx & 31;
+            const int widx = idx & _details::warp_max;
 
             // Step 1: Intra-warp scan in each warp
             auto val = scan_warp<_Mode, _BinaryOp>(p, idx, op);
             tidx.barrier.wait_with_tile_static_memory_fence();
 
             // Step 2: Collect per-warp partial results
-            if (widx == 31)
+            if (widx == _details::warp_max)
                 p[warp_id] = p[idx];
             tidx.barrier.wait_with_tile_static_memory_fence();
 
@@ -97,12 +92,12 @@ namespace amp_algorithms
         template <int TileSize, scan_mode _Mode, typename _BinaryOp, typename T>
         inline void scan_new(const concurrency::array<T, 1>& in, concurrency::array<T, 1>& out, const _BinaryOp& op)
         {
-            static_assert(TileSize >= WARP_SIZE, "Tile size must be at least the size of a single warp.");
-            static_assert(TileSize % WARP_SIZE == 0, "Tile size must be an exact multiple of warp size.");
-            static_assert(TileSize <= (WARP_SIZE * WARP_SIZE), "Tile size must less than or equal to the square of the warp size.");
+            static_assert(TileSize >= _details::warp_size, "Tile size must be at least the size of a single warp.");
+            static_assert(TileSize % _details::warp_size == 0, "Tile size must be an exact multiple of warp size.");
+            static_assert(TileSize <= (_details::warp_size * _details::warp_size), "Tile size must less than or equal to the square of the warp size.");
 
             const int size = out.extent[0];
-            assert(size >= WARP_SIZE);
+            assert(size >= _details::warp_size);
             concurrency::array<T, 1> tile_results(size / TileSize);
 
             // 1 & 2. Scan all tiles and store results in tile_results.
@@ -150,6 +145,7 @@ namespace amp_algorithms
         }
     }
 
+    // TODO: Refactor this to remove duplicate code.
     template <int TileSize, typename InIt, typename OutIt>
     inline void scan_exclusive_new(InIt first, InIt last, OutIt dest_first)
     {
@@ -336,7 +332,7 @@ namespace amp_algorithms
             });
         }
 
-        void flip_indeces(int& index1, int& index2) restrict(amp)
+        inline void flip_indeces(int& index1, int& index2) restrict(amp)
         {
             index1 = 1 - index1;
             index2 = 1 - index2;
