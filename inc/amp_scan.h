@@ -26,12 +26,177 @@
 
 namespace amp_algorithms
 {
+#pragma region New Scan implementation
+
+    enum class scan_mode
+    {
+        exclusive = 0,
+        inclusive = 1
+    };
+
+    namespace _details
+    {
+        enum class warp : int
+        {
+            max_idx = 31,
+            size = max_idx + 1
+        };
+        // TODO: Don't use #define! 
+        #define WARP_SIZE 32
+
+        // 
+        template <scan_mode _Mode, typename _BinaryOp, typename T>
+        T scan_warp(T* const p, const int idx, const _BinaryOp& op) restrict(amp)
+        {
+            const int widx = idx & 31;
+            // TODO: Unroll? Unroll for 32 wide warp or 64? Templated unroll?
+            if (widx >= 1) p[idx] = op(p[idx - 1], p[idx]);
+            if (widx >= 2) p[idx] = op(p[idx - 2], p[idx]);
+            if (widx >= 4) p[idx] = op(p[idx - 4], p[idx]);
+            if (widx >= 8) p[idx] = op(p[idx - 8], p[idx]);
+            if (widx >= 16) p[idx] = op(p[idx - 16], p[idx]);
+
+            if (_Mode == scan_mode::inclusive)
+                return p[idx];
+            return (widx > 0) ? p[idx - 1] : T();
+        }
+
+        template <int TileSize, scan_mode _Mode, typename _BinaryOp, typename T>
+        T scan_tile(T* const p, tiled_index<TileSize> tidx, const _BinaryOp& op) restrict(amp)
+        {
+            const int idx = tidx.local[0];
+            const int warp_id = idx >> 5;
+            const int widx = idx & 31;
+
+            // Step 1: Intra-warp scan in each warp
+            auto val = scan_warp<_Mode, _BinaryOp>(p, idx, op);
+            tidx.barrier.wait_with_tile_static_memory_fence();
+
+            // Step 2: Collect per-warp partial results
+            if (widx == 31)
+                p[warp_id] = p[idx];
+            tidx.barrier.wait_with_tile_static_memory_fence();
+
+            // Step 3: Use 1st warp to scan per-warp results
+            if (warp_id == 0)
+                scan_warp<scan_mode::inclusive>(p, idx, op);
+            tidx.barrier.wait_with_tile_static_memory_fence();
+
+            // Step 4: Accumulate results from Steps 1 and 3
+            if (warp_id > 0)
+                val = op(p[warp_id - 1], val);
+            tidx.barrier.wait_with_tile_static_memory_fence();
+
+            // Step 5: Write and return the final result
+            p[idx] = val;
+            tidx.barrier.wait_with_tile_static_memory_fence();
+
+            return val;
+        }
+
+        template <int TileSize, scan_mode _Mode, typename _BinaryOp, typename T>
+        inline void scan_new(const concurrency::array<T, 1>& in, concurrency::array<T, 1>& out, const _BinaryOp& op)
+        {
+            static_assert(TileSize >= WARP_SIZE, "Tile size must be at least the size of a single warp.");
+            static_assert(TileSize % WARP_SIZE == 0, "Tile size must be an exact multiple of warp size.");
+            static_assert(TileSize <= (WARP_SIZE * WARP_SIZE), "Tile size must less than or equal to the square of the warp size.");
+
+            const int size = out.extent[0];
+            assert(size >= WARP_SIZE);
+            concurrency::array<T, 1> tile_results(size / TileSize);
+
+            // 1 & 2. Scan all tiles and store results in tile_results.
+            concurrency::parallel_for_each(concurrency::tiled_extent<TileSize>(concurrency::extent<1>(size)),
+                [=, &in, &out, &tile_results](concurrency::tiled_index<TileSize> tidx) restrict(amp)
+            {
+                tile_static T tile_data[TileSize];
+                tile_data[tidx.local[0]] = in[tidx.global[0]];
+                tidx.barrier.wait_with_tile_static_memory_fence();
+
+                auto val = _details::scan_tile<TileSize, _Mode>(tile_data, tidx, amp_algorithms::plus<T>());
+
+                if (tidx.local[0] == (TileSize - 1))
+                {
+                    tile_results[tidx.tile[0]] = val;
+
+                    if (_Mode == scan_mode::exclusive)
+                        tile_results[tidx.tile[0]] += in[tidx.global[0]];
+                }
+                out[tidx.global[0]] = tile_data[tidx.local[0]];
+            });
+
+            // 3. Scan tile results.
+            // TODO: Fix this. Right now it will only work if there are no more than TileSize tiles.
+            concurrency::parallel_for_each(concurrency::tiled_extent<TileSize>(concurrency::extent<1>(TileSize)),
+                [=, &tile_results](concurrency::tiled_index<TileSize> tidx) restrict(amp)
+            {
+                tile_static T tile_data[TileSize];
+                tile_data[tidx.local[0]] = tile_results[tidx.global[0]];
+                tidx.barrier.wait_with_tile_static_memory_fence();
+
+                _details::scan_tile<TileSize, amp_algorithms::scan_mode::exclusive>(tile_data, tidx, amp_algorithms::plus<T>());
+
+                tile_results[tidx.global[0]] = tile_data[tidx.local[0]];
+                tidx.barrier.wait_with_tile_static_memory_fence();
+            });
+            std::cerr << tile_results << std::endl;
+
+            // 4. Add the tile results to the individual results for each tile.
+            concurrency::parallel_for_each(concurrency::tiled_extent<TileSize>(concurrency::extent<1>(size)),
+                [=, &out, &tile_results](concurrency::tiled_index<TileSize> tidx) restrict(amp)
+            {
+                out[tidx.global[0]] += tile_results[tidx.tile[0]];
+            });
+        }
+    }
+
+    template <int TileSize, typename InIt, typename OutIt>
+    inline void scan_exclusive_new(InIt first, InIt last, OutIt dest_first)
+    {
+        typedef InIt::value_type T;
+
+        const int size = int(distance(first, last));
+        concurrency::array<T, 1> in(size);
+        concurrency::array<T, 1> out(size);
+        copy(first, last, in);
+
+        _details::scan_new<TileSize, amp_algorithms::scan_mode::exclusive>(in, out, amp_algorithms::plus<T>());
+
+        copy(out, dest_first);
+    }
+
+    template <int TileSize, typename InIt, typename OutIt>
+    inline void scan_inclusive_new(InIt first, InIt last, OutIt dest_first)
+    {
+        typedef InIt::value_type T;
+
+        const int size = int(distance(first, last));
+        concurrency::array<T, 1> in(size);
+        concurrency::array<T, 1> out(size);
+        copy(first, last, in);
+
+        _details::scan_new<TileSize, amp_algorithms::scan_mode::inclusive>(in, out, amp_algorithms::plus<T>());
+
+        copy(out, dest_first);
+    }
+
+#pragma endregion
+
+#pragma region Original Scan implementaton
     //===============================================================================
     // Exclusive scan, output element at i contains the sum of elements [0]...[i-1].
     //===============================================================================
+    //
+    // The following implementation is based on this GPU Gems article. 
+    //
+    // http.developer.nvidia.com/GPUGems3/gpugems3_ch39.html
+    //
+    // It has been superseded by further research, found here:
+    //
+    // https://research.nvidia.com/sites/default/files/publications/nvr-2008-003.pdf
 
     template <int TileSize, typename InIt, typename OutIt>
-    inline void scan_exclusive(InIt first, InIt last, OutIt dest_first)
+    inline void ExclusiveScanOptimized(InIt first, InIt last, OutIt dest_first)
     {
         typedef InIt::value_type T;
 
@@ -39,14 +204,14 @@ namespace amp_algorithms
         concurrency::array<T, 1> in(size);
         concurrency::array<T, 1> out(size);
         copy(first, last, in);   
-        details::ScanOptimized<TileSize, details::kExclusive>(concurrency::array_view<T, 1>(in), concurrency::array_view<T, 1>(out));
+        details::ScanOptimized<TileSize, amp_algorithms::scan_mode::exclusive>(concurrency::array_view<T, 1>(in), concurrency::array_view<T, 1>(out));
         copy(out, dest_first);
     }
 
     template <int TileSize, typename T>
-    inline void scan_exclusive(concurrency::array_view<T, 1> input_view, concurrency::array_view<T, 1> output_view)
+    inline void ExclusiveScanOptimized(concurrency::array_view<T, 1> input_view, concurrency::array_view<T, 1> output_view)
     {
-        details::ScanOptimized<TileSize, details::kExclusive, T>(input_view, output_view);
+        details::ScanOptimized<TileSize, amp_algorithms::scan_mode::exclusive, T>(input_view, output_view);
     }
 
     //===============================================================================
@@ -54,7 +219,7 @@ namespace amp_algorithms
     //===============================================================================
 
     template <int TileSize, typename InIt, typename OutIt>
-    inline void scan_inclusive(InIt first, InIt last, OutIt dest_first)
+    inline void InclusiveScanOptimized(InIt first, InIt last, OutIt dest_first)
     {
         typedef InIt::value_type T;
 
@@ -62,14 +227,14 @@ namespace amp_algorithms
         concurrency::array<T, 1> in(size);
         concurrency::array<T, 1> out(size);
         copy(first, last, in);
-        details::ScanOptimized<TileSize, details::kInclusive>(concurrency::array_view<T, 1>(in), concurrency::array_view<T, 1>(out));
+        details::ScanOptimized<TileSize, int(amp_algorithms::scan_mode::inclusive)>(concurrency::array_view<T, 1>(in), concurrency::array_view<T, 1>(out));
         copy(out, dest_first);
     }
 
     template <int TileSize, typename T>
-    inline void scan_inclusive(concurrency::array_view<T, 1> input_view, concurrency::array_view<T, 1> output_view)
+    inline void InclusiveScanOptimized(concurrency::array_view<T, 1> input_view, concurrency::array_view<T, 1> output_view)
     {
-        details::ScanOptimized<TileSize, details::kInclusive, T>(input_view, output_view);
+        details::ScanOptimized<TileSize, amp_algorithms::scan_mode::inclusive, T>(input_view, output_view);
     }
 
     //===============================================================================
@@ -78,16 +243,10 @@ namespace amp_algorithms
 
     namespace details
     {
-        enum ScanMode
-        {
-            kExclusive = 0,
-            kInclusive = 1
-        };
-
         template <int TileSize, int Mode, typename T>
         void ScanTiled(concurrency::array_view<T, 1> input_view, concurrency::array_view<T, 1> output_view)
         {
-            static_assert((Mode == details::kExclusive || Mode == details::kInclusive), "Mode must be either inclusive or exclusive.");
+            static_assert((Mode == int(scan_mode::exclusive) || Mode == int(scan_mode::inclusive)), "Mode must be either inclusive or exclusive.");
             static_assert(is_power_of_two<TileSize>::result, "TileSize must be a power of 2.");
             assert(input_view.extent[0] == output_view.extent[0]);
             assert(input_view.extent[0] > 0);
@@ -103,7 +262,7 @@ namespace amp_algorithms
             {
                 // Calculate the initial value of each tile based on the tileSums.
                 concurrency::array<T> tmp(tileSums.extent);
-                ScanTiled<TileSize, details::kExclusive>(concurrency::array_view<T>(tileSums), concurrency::array_view<T>(tmp));
+                ScanTiled<TileSize, int(scan_mode::exclusive)>(concurrency::array_view<T>(tileSums), concurrency::array_view<T>(tmp));
                 output_view.discard_data();
                 parallel_for_each(concurrency::extent<1>(elementCount), [=, &tileSums, &tmp](concurrency::index<1> idx) restrict(amp)
                 {
@@ -162,7 +321,7 @@ namespace amp_algorithms
                 if (gid < elementCount)
                 {
                     // For exclusive scan calculate the last value
-                    if (Mode == details::kInclusive)
+                    if (Mode == int(scan_mode::inclusive))
                         tilewiseOutput[gid] = tile_data[outIdx][tid];
                     else
                     if (tid == 0)
@@ -190,10 +349,6 @@ namespace amp_algorithms
             return n >> BlockSize + n >> (2 * LogBlockSize);
         }
 
-        // For each tile calculate the exclusive scan.
-        //
-        // http.developer.nvidia.com/GPUGems3/gpugems3_ch39.html
-
         template <int TileSize, int Mode, typename T>  
         void ScanOptimized(concurrency::array_view<T, 1> input_view, concurrency::array_view<T, 1> output_view)
         {
@@ -201,7 +356,7 @@ namespace amp_algorithms
             const int elementCount = input_view.extent[0];
             const int tileCount = (elementCount + domainSize - 1) / domainSize;
 
-            static_assert((Mode == details::kExclusive || Mode == details::kInclusive), "Mode must be either inclusive or exclusive.");
+            static_assert((Mode == int(scan_mode::exclusive) || Mode == int(scan_mode::inclusive)), "Mode must be either inclusive or exclusive.");
             static_assert(is_power_of_two<TileSize>::result, "TileSize must be a power of 2.");
             assert(elementCount > 0);
             assert(elementCount == output_view.extent[0]);
@@ -209,13 +364,13 @@ namespace amp_algorithms
 
             // Compute scan for each tile and store their total values in tileSums
             concurrency::array<T> tileSums(tileCount);
-            details::ComputeTilewisescan_exclusive<TileSize, Mode>(concurrency::array_view<const T>(input_view), output_view, concurrency::array_view<T>(tileSums));
+            details::ComputeTilewiseScanExclusive<TileSize, Mode>(concurrency::array_view<const T>(input_view), output_view, concurrency::array_view<T>(tileSums));
         
             if (tileCount > 1)
             {
                 // Calculate the initial value of each tile based on the tileSums.
                 concurrency::array<T> tileSumScan(tileSums.extent);
-                ScanTiled<TileSize, details::kExclusive>(concurrency::array_view<T>(tileSums), concurrency::array_view<T>(tileSumScan));
+                ScanTiled<TileSize, int(scan_mode::exclusive)>(concurrency::array_view<T>(tileSums), concurrency::array_view<T>(tileSumScan));
 
                 // Add the tileSums all the elements in each tile except the first tile.
                 output_view.discard_data();
@@ -228,7 +383,7 @@ namespace amp_algorithms
         }
 
         template <int TileSize, int Mode, typename T>
-        void ComputeTilewisescan_exclusive(concurrency::array_view<const T, 1> input_view, concurrency::array_view<T> tilewiseOutput, concurrency::array_view<T, 1> tileSums)
+        void ComputeTilewiseScanExclusive(concurrency::array_view<const T, 1> input_view, concurrency::array_view<T> tilewiseOutput, concurrency::array_view<T, 1> tileSums)
         {
             static const int domainSize = TileSize * 2;
             const int elementCount = input_view.extent[0];
@@ -303,7 +458,7 @@ namespace amp_algorithms
                 if (tid == (TileSize - 1))
                 {
                     // For inclusive scan calculate the last value
-                    if (Mode == details::kInclusive)
+                    if (Mode == int(scan_mode::inclusive))
                         tilewiseOutput[gidx2 + 1] = tile_data[domainSize - 1] + input_view[gidx2 + 1];
                     
                     tileSums[tidx.tile[0]] = tile_data[domainSize - 1] + input_view[gidx2 + 1];
@@ -311,4 +466,5 @@ namespace amp_algorithms
             });
         }
     }
+#pragma endregion
 }

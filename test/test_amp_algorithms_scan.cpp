@@ -39,14 +39,14 @@ namespace amp_algorithms_tests
 
     struct bitvector;
 
-    TEST_CLASS(scan_tests)
+    TEST_CLASS(scan_dx_tests)
     {
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
             set_default_accelerator();
         }
 
-        TEST_METHOD(amp_scan_backwards)
+        TEST_METHOD(amp_dx_scan_backwards)
         {
             const bool backwards = true;
 
@@ -56,7 +56,7 @@ namespace amp_algorithms_tests
             test_scan_bitwise_op<int>(backwards);
         }
 
-        TEST_METHOD(amp_scan_forwards)
+        TEST_METHOD(amp_dx_scan_forwards)
         {
             const bool backwards = false;
 
@@ -66,7 +66,7 @@ namespace amp_algorithms_tests
             test_scan_bitwise_op<int>(backwards);
         }
 
-        TEST_METHOD(amp_multiscan_backwards)
+        TEST_METHOD(amp_dx_multiscan_backwards)
         {
             const bool backwards = true;
 
@@ -76,7 +76,7 @@ namespace amp_algorithms_tests
             test_multiscan_bitwise_op<int>(backwards);
         }
 
-        TEST_METHOD(amp_multiscan_forwards)
+        TEST_METHOD(amp_dx_multiscan_forwards)
         {
             const bool backwards = false;
 
@@ -86,7 +86,7 @@ namespace amp_algorithms_tests
             test_multiscan_bitwise_op<int>(backwards);
         }
 
-        TEST_METHOD(amp_segmented_scan_backwards)
+        TEST_METHOD(amp_dx_segmented_scan_backwards)
         {
             const bool backwards = true;
 
@@ -96,7 +96,7 @@ namespace amp_algorithms_tests
             test_segmented_bitwise_op<int>(backwards);
         }
 
-        TEST_METHOD(amp_segmented_scan_forwards)
+        TEST_METHOD(amp_dx_segmented_scan_forwards)
         {
             const bool backwards = false;
 
@@ -106,7 +106,7 @@ namespace amp_algorithms_tests
             test_segmented_bitwise_op<int>(backwards);
         }
 
-        TEST_METHOD(amp_scan_other)
+        TEST_METHOD(amp_dx_scan_other)
         {
             const int elem_count = 10;
             std::vector<unsigned int> in(elem_count, 1);
@@ -136,7 +136,7 @@ namespace amp_algorithms_tests
             }
         }
 
-        TEST_METHOD(amp_scan_error_handling)
+        TEST_METHOD(amp_dx_scan_error_handling)
         {
             accelerator ref(accelerator::direct3d_ref);
             accelerator_view ref_view = ref.create_view();

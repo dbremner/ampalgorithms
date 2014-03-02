@@ -28,27 +28,115 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace amp_algorithms;
 using namespace test_tools;
 
-namespace ScanTests
+namespace amp_algorithms_tests
 {
-    std::wstring Msg(std::vector<int>& expected, std::vector<int>& actual, size_t width = 8)
+    std::wstring Msg(std::vector<int>& expected, std::vector<int>& actual, size_t width = 32)
     {
         std::wostringstream msg;
-        msg << ContainerWidth(width) << L"[" << expected << L"] != [" << actual << L"]" << std::endl;
+        msg << container_width(50) << L"[" << expected << L"] != [" << actual << L"]" << std::endl;
         return msg.str();
     }
 
-    TEST_CLASS(ScanOptimizedTests)
+    TEST_CLASS(scan_tests)
     {
-    public:
-        TEST_METHOD(scan_exclusiveTests_Simple_One_Tile)
+        //TEST_CLASS_INITIALIZE(initialize_tests)
+        //{
+        //    set_default_accelerator();
+        //}
+
+        TEST_METHOD(amp_scan_exclusive_single_warp)
         {
-            std::vector<int> input(8, 1);
-            std::vector<int> result(input.size());
+            std::vector<int> input(32, 1);
+            std::vector<int> result(input.size(), -1);
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 0);
 
-            scan_exclusive<4>(begin(input), end(input), result.begin());
-            
+            scan_exclusive_new<32>(begin(input), end(input), result.begin());
+
+            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
+        }
+
+        TEST_METHOD(amp_scan_inclusive_single_warp)
+        {
+            std::vector<int> input(32, 1);
+            std::vector<int> result(input.size(), -1);
+            std::vector<int> expected(input.size());
+            std::iota(begin(expected), end(expected), 1);
+
+            scan_inclusive_new<32>(begin(input), end(input), result.begin());
+
+            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
+        }
+
+        TEST_METHOD(amp_scan_exclusive_multi_warp)
+        {
+            std::vector<int> input(64, 1);
+            std::vector<int> result(input.size(), -1);
+            std::vector<int> expected(input.size());
+            std::iota(begin(expected), end(expected), 0);
+
+            scan_exclusive_new<64>(begin(input), end(input), result.begin());
+
+            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
+        }
+
+        TEST_METHOD(amp_scan_inclusive_multi_warp)
+        {
+            std::vector<int> input(64, 1);
+            std::vector<int> result(input.size(), -1);
+            std::vector<int> expected(input.size());
+            std::iota(begin(expected), end(expected), 1);
+
+            scan_inclusive_new<64>(begin(input), end(input), result.begin());
+
+            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
+        }
+
+        TEST_METHOD(amp_scan_exclusive_multi_tile)
+        {
+            std::vector<int> input(128, 1);
+            std::vector<int> result(input.size(), -1);
+            std::vector<int> expected(input.size());
+            std::iota(begin(expected), end(expected), 0);
+
+            scan_exclusive_new<32>(begin(input), end(input), result.begin());
+
+            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
+        }
+
+        TEST_METHOD(amp_scan_inclusive_multi_tile)
+        {
+            std::vector<int> input(128, 1);
+            std::vector<int> result(input.size(), -1);
+            std::vector<int> expected(input.size());
+            std::iota(begin(expected), end(expected), 1);
+
+            scan_inclusive_new<32>(begin(input), end(input), result.begin());
+
+            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
+        }
+
+        TEST_METHOD(amp_scan_exclusive_multi_warp_multi_tile)
+        {
+            std::vector<int> input(1024, 1);
+            std::vector<int> result(input.size(), -1);
+            std::vector<int> expected(input.size());
+            std::iota(begin(expected), end(expected), 0);
+
+            scan_exclusive_new<128>(begin(input), end(input), result.begin());
+
+            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
+        }
+
+        TEST_METHOD(amp_scan_inclusive_multi_warp_multi_tile)
+        {
+            std::vector<int> input(1024, 1);
+            std::vector<int> result(input.size(), -1);
+            std::vector<int> expected(input.size());
+            std::iota(begin(expected), end(expected), 1);
+
+            scan_inclusive_new<128>(begin(input), end(input), result.begin());
+
             Assert::IsTrue(expected == result, Msg(expected, result).c_str());
         }
 
@@ -59,7 +147,7 @@ namespace ScanTests
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 0);
 
-            scan_exclusive<4>(begin(input), end(input), result.begin());
+           // InclusiveScanOptimized<4>(begin(input), end(input), result.begin());
             
             Assert::IsTrue(expected == result, Msg(expected, result, 16).c_str());
         }
@@ -74,43 +162,43 @@ namespace ScanTests
             //std::array<int, 8> expected = { +1, 0, +3,  3, +5, 10, +7, 21 }; // Down sweep depth = 2
             std::array<int, 8> expected =   {  0, 1,  3,  6, 10, 15, 21, 28 }; // Final Result
 
-            scan_exclusive<4>(begin(input), end(input), result.begin());
+            InclusiveScanOptimized<4>(begin(input), end(input), result.begin());
             
             std::vector<int> exp(begin(expected), end(expected));
             Assert::IsTrue(exp == result, Msg(exp, result).c_str());
         }
 
-        TEST_METHOD(scan_inclusiveTests_Simple_One_Tile)
+        TEST_METHOD(InclusiveScanOptimizedTests_Simple_One_Tile)
         {
             std::vector<int> input(8, 1);
             std::vector<int> result(input.size());
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 1);
 
-            scan_inclusive<4>(begin(input), end(input), result.begin());
+            InclusiveScanOptimized<4>(begin(input), end(input), result.begin());
             
             Assert::IsTrue(expected == result, Msg(expected, result).c_str());
         }
 
-        TEST_METHOD(scan_inclusiveTests_Simple_Two_Tiles)
+        TEST_METHOD(InclusiveScanOptimizedTests_Simple_Two_Tiles)
         {
             std::vector<int> input(16, 1);
             std::vector<int> result(input.size());
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 1);
 
-            scan_inclusive<4>(begin(input), end(input), result.begin());
+            InclusiveScanOptimized<4>(begin(input), end(input), result.begin());
             
             Assert::IsTrue(expected == result, Msg(expected, result, 16).c_str());
         }
 
-        TEST_METHOD(scan_inclusiveTests_Complex_One_Tile)
+        TEST_METHOD(InclusiveScanOptimizedTests_Complex_One_Tile)
         {
             std::array<int, 8> input =    { 1, 3,  6,  2,  7,  9,  0,  5 };
             std::vector<int> result(input.size());
             std::array<int, 8> expected = { 1, 4, 10, 12, 19, 28, 28, 33 };
 
-            scan_inclusive<4>(begin(input), end(input), result.begin());
+            InclusiveScanOptimized<4>(begin(input), end(input), result.begin());
             
             std::vector<int> exp(begin(expected), end(expected));
             Assert::IsTrue(exp == result, Msg(exp, result, 8).c_str());
@@ -129,19 +217,19 @@ namespace ScanTests
             //std::array<int, 16> expected = {  0, 1, 3,  6,  0,  5, 11, 18,  0,  9, 19, 30 };  // Down sweep depth = 2
             std::array<int, 16> expected =   {  0, 1, 3,  6, 10, 15, 21, 28, 36, 45, 55, 66, 78, 91, 105, 120 }; // Final Result
 
-            scan_exclusive<4>(begin(input), end(input), result.begin());
+            InclusiveScanOptimized<4>(begin(input), end(input), result.begin());
             
             std::vector<int> exp(begin(expected), end(expected));
             Assert::IsTrue(exp == result, Msg(exp, result, 16).c_str());
         }
 
-        TEST_METHOD(scan_inclusiveTests_Complex_Two_Tiles)
+        TEST_METHOD(InclusiveScanOptimizedTests_Complex_Two_Tiles)
         {
             std::array<int, 8> input =    { 1, 3,  6,  2,  7,  9,  0,  5 };
             std::vector<int> result(input.size());
             std::array<int, 8> expected = { 1, 4, 10, 12, 19, 28, 28, 33 };
 
-            scan_inclusive<2>(begin(input), end(input), result.begin());
+            InclusiveScanOptimized<2>(begin(input), end(input), result.begin());
             
             std::vector<int> exp(begin(expected), end(expected));
             Assert::IsTrue(exp == result, Msg(exp, result).c_str());
@@ -154,19 +242,19 @@ namespace ScanTests
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 0);
             // Does not work for tiles sizes greater than 32. Relying on warp sync.
-            scan_exclusive<256>(begin(input), end(input), result.begin());
+            InclusiveScanOptimized<256>(begin(input), end(input), result.begin());
             
             Assert::IsTrue(expected == result, Msg(expected, result, 24).c_str());
         }
 
-        TEST_METHOD(scan_inclusiveTests_Large)
+        TEST_METHOD(InclusiveScanOptimizedTests_Large)
         {
             std::vector<int> input(4096, 1);
             std::vector<int> result(input.size());
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 1);
             // Does not work for tiles sizes greater than 32. Relying on warp sync.
-            scan_inclusive<256>(begin(input), end(input), result.begin());
+            InclusiveScanOptimized<256>(begin(input), end(input), result.begin());
             
             Assert::IsTrue(expected == result, Msg(expected, result, 24).c_str());
         }
@@ -178,7 +266,7 @@ namespace ScanTests
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 0);
 
-            scan_exclusive<4>(begin(input), end(input), result.begin());
+            InclusiveScanOptimized<4>(begin(input), end(input), result.begin());
             
             Assert::IsTrue(expected == result, Msg(expected, result, 16).c_str());
         }

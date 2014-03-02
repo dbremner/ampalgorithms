@@ -46,6 +46,7 @@ namespace graphics { };
 namespace fast_math { };
 namespace precise_math { };
 
+// TODO: Define a dummy parallel_for_each here to make sure that we don't have any conflicts.
 class extent { };
 class index { };
 class array { };
@@ -188,52 +189,62 @@ namespace test_tools
     //  Stream output overloads for std::vector, array and array_view.
     //===============================================================================
 
-    class ContainerWidth
+    // Setting the container width in the output stream modifies the number of elements output from the containers
+    // subsequently output in the stream. The following outputs the first 4 elements of data.
+    //
+    //      std::vector<int> data(12, 1);
+    //      cout << container_width(4) << data;
+    //
+    class container_width
     {
     public:
-        explicit ContainerWidth(size_t width) : m_width(width) { }
+        explicit container_width(size_t width) : m_width(width) { }
 
     private:
         size_t m_width;
 
         template <class T, class Traits>
         inline friend std::basic_ostream<T, Traits>& operator <<
-            (std::basic_ostream<T, Traits>& os, const ContainerWidth& container)
+            (std::basic_ostream<T, Traits>& os, const container_width& container)
         {
-            os.iword(details::geti()) = long(container.m_width);
+            os.iword(_details::geti()) = long(container.m_width);
             return os;
         }
     };
 
+    // TODO: These print two ',' as a delimiter not one. Fix.
     template<typename StrmType, typename Traits, typename VecT>
     std::basic_ostream<StrmType, Traits>& operator<< (std::basic_ostream<StrmType, Traits>& os, const std::vector<VecT>& vec)
     {
-        size_t i = std::min<size_t>(details::GetWidth(os), vec.size());
-        std::copy(std::begin(vec), std::begin(vec) + i, std::ostream_iterator<VecT, Traits::char_type>(os, details::GetDelimiter<Traits::char_type>()));
+        size_t i = std::min<size_t>(_details::get_width(os), vec.size());
+        std::copy(std::begin(vec), std::begin(vec) + i,
+            std::ostream_iterator<VecT, Traits::char_type>(os, _details::get_delimiter<Traits::char_type>()));
         return os;
     }
 
     template<typename StrmType, typename Traits, typename VecT>
     std::basic_ostream<StrmType, Traits>& operator<< (std::basic_ostream<StrmType, Traits>& os, concurrency::array<VecT, 1>& vec)
     {
-        size_t i = std::min<size_t>(details::GetWidth(os), vec.extent[0]);
+        size_t i = std::min<size_t>(_details::get_width(os), vec.extent[0]);
         std::vector<const VecT> buffer(i);
-        copy(vec.section(0, i), std::begin(buffer));
-        std::copy(std::begin(buffer), std::begin(buffer) + i, std::ostream_iterator<VecT, Traits::char_type>(os, details::GetDelimiter<Traits::char_type>()));
+        copy(vec.section(0, int(i)), std::begin(buffer));
+        std::copy(std::begin(buffer), std::begin(buffer) + i,
+            std::ostream_iterator<VecT, Traits::char_type>(os, _details::get_delimiter<Traits::char_type>()));
         return os;
     }
 
     template<typename StrmType, typename Traits, typename VecT>
     std::basic_ostream<StrmType, Traits>& operator<< (std::basic_ostream<StrmType, Traits>& os, const concurrency::array_view<VecT, 1>& vec)
     {
-        size_t i = std::min<size_t>(details::GetWidth(os), vec.extent[0]);
+        size_t i = std::min<size_t>(_details::get_width(os), vec.extent[0]);
         std::vector<VecT> buffer(i);
-        copy(vec.section(0, i), std::begin(buffer));
-        std::copy(std::begin(buffer), std::begin(buffer) + i, std::ostream_iterator<VecT, Traits::char_type>(os, details::GetDelimiter<Traits::char_type>()));
+        copy(vec.section(0, int(i)), std::begin(buffer));
+        std::copy(std::begin(buffer), std::begin(buffer) + i, 
+            std::ostream_iterator<VecT, Traits::char_type>(os, _details::get_delimiter<Traits::char_type>()));
         return os;
     }
 
-    namespace details
+    namespace _details
     {
         inline int geti()
         {
@@ -242,31 +253,29 @@ namespace test_tools
         }
 
         template <typename STREAM>
-        inline size_t GetWidth(STREAM& os)
+        inline size_t get_width(STREAM& os)
         {
-            const size_t kDefaultWidth = 10;
+            const size_t default_width = 4;
             size_t width = os.iword(geti());
-            if (width == 0)
-                width = kDefaultWidth;
-            return width;
+            return (width == 0) ? default_width : width;
         }
 
         template <typename T>
-        inline T* GetDelimiter()
+        inline T* get_delimiter()
         {
             assert(false);
             return nullptr;
         }
 
         template <>
-        inline char* GetDelimiter()
+        inline char* get_delimiter()
         {
             static char delim(',');
             return &delim;
         }
 
         template <>
-        inline wchar_t* GetDelimiter()
+        inline wchar_t* get_delimiter()
         {
             static wchar_t delim(L',');
             return &delim;
