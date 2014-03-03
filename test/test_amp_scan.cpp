@@ -140,6 +140,56 @@ namespace amp_algorithms_tests
             Assert::IsTrue(expected == result, Msg(expected, result).c_str());
         }
 
+        TEST_METHOD(amp_scan_exclusive_incomplete_warp)
+        {
+            std::vector<int> input(34, 1);
+            std::vector<int> result(input.size(), -1);
+            std::vector<int> expected(input.size());
+            std::iota(begin(expected), end(expected), 0);
+
+            scan_exclusive_new<32>(begin(input), end(input), result.begin());
+
+            Assert::IsTrue(expected == result, Msg(expected, result, 36).c_str());
+        }
+
+        TEST_METHOD(amp_scan_inclusive_incomplete_warp)
+        {
+            std::vector<int> input(34, 1);
+            std::vector<int> result(input.size(), -1);
+            std::vector<int> expected(input.size());
+            std::iota(begin(expected), end(expected), 1);
+
+            scan_inclusive_new<32>(begin(input), end(input), result.begin());
+
+            Assert::IsTrue(expected == result, Msg(expected, result, 36).c_str());
+        }
+
+        TEST_METHOD(amp_scan_exclusive)
+        {
+            std::vector<int> input(1024);
+            generate_data(input);
+            std::vector<int> result(input.size(), -1);
+            std::vector<int> expected(input.size());
+            scan_sequential_exclusive(begin(input), end(input), begin(expected));
+
+            scan_exclusive_new<128>(begin(input), end(input), result.begin());
+
+            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
+        }
+
+        TEST_METHOD(amp_scan_inclusive)
+        {
+            std::vector<int> input(1024);
+            generate_data(input);
+            std::vector<int> result(input.size(), -1);
+            std::vector<int> expected(input.size());
+            scan_sequential_inclusive(begin(input), end(input), begin(expected));
+
+            scan_inclusive_new<128>(begin(input), end(input), result.begin());
+
+            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
+        }
+
         TEST_METHOD(InclusiveScanOptimizedTests_Complex_One_Tile)
         {
             std::array<int, 8> input =    { 1, 3,  6,  2,  7,  9,  0,  5 };
