@@ -27,7 +27,7 @@
 // Code coverage is optional and requires VS Premium or Ultimate.
 #ifdef CODECOVERAGE
 #pragma managed(push, off)
-ExcludeFromCodeCoverage(exclude_test_tool_tests, L"test_tools_tests::*");
+ExcludeFromCodeCoverage(exclude_test_tool_tests, L"testtools_tests::*");
 #pragma managed(pop)
 #endif
 
@@ -77,43 +77,28 @@ namespace testtools_tests
 
     TEST_CLASS(testtools_sequential_scan)
     {
-        template <scan_mode _Mode, typename _BinaryOp, typename InIt, typename OutIt>
-        inline void scan_sequential(InIt first, InIt last, OutIt dest_first, const _BinaryOp& op)
-        {
-            typedef InIt::value_type T;
-
-            auto result = (_Mode == amp_algorithms::scan_mode::exclusive) ? T() : *first;
-            *dest_first = result;
-            std::transform(first + 1, last, dest_first + 1, [=, &result](const T& v)
-            {
-                result += v;
-                return result;
-            });
-        }
-
         TEST_METHOD(testtools_sequential_exclusive_scan)
         {
-            std::vector<int> input(1024, 1);
+            std::array<int, 16> input = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
             std::vector<int> result(input.size(), -1);
-            std::vector<int> expected(input.size());
-            std::iota(begin(expected), end(expected), 0);
+            std::array<int, 16> expected = { 0, 1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66, 78, 91, 105, 120 };
 
-            scan_sequential<amp_algorithms::scan_mode::exclusive>(begin(input), end(input), result.begin(), amp_algorithms::plus<int>());
+            scan_sequential_exclusive(begin(input), end(input), result.begin());
 
-            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
+            std::vector<int> exp(begin(expected), end(expected));
+            Assert::IsTrue(exp == result, Msg(exp, result, 16).c_str());
         }
 
         TEST_METHOD(testtools_sequential_inclusive_scan)
         {
-            std::vector<int> input(1024, 1);
+            std::array<int, 16> input = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
             std::vector<int> result(input.size(), -1);
-            std::vector<int> expected(input.size());
-            std::iota(begin(expected), end(expected), 1);
+            std::array<int, 16> expected = { 1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66, 78, 91, 105, 120, 136 };
 
-            scan_sequential<amp_algorithms::scan_mode::inclusive>(begin(input), end(input), result.begin(), amp_algorithms::plus<int>());
+            scan_sequential_inclusive(begin(input), end(input), result.begin());
 
-            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
+            std::vector<int> exp(begin(expected), end(expected));
+            Assert::IsTrue(exp == result, Msg(exp, result, 16).c_str());
         }
-
     };
 };

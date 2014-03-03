@@ -30,6 +30,7 @@
 
 #include <amp_stl_algorithms.h>
 #include <amp_algorithms.h>
+#include "amp_scan.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace concurrency;
@@ -93,6 +94,38 @@ namespace test_tools
         std::generate(begin(v), end(v), [=](){ return (unsigned int) rand(); });
     }
 
+    //===============================================================================
+    //  CPU based scan implementation for comparing results from AMP implementations.
+    //===============================================================================
+
+    template <typename InIt, typename OutIt>
+    inline void scan_sequential_exclusive(InIt first, InIt last, OutIt dest_first)
+    {
+        typedef InIt::value_type T;
+        int previous = T();
+        auto result = T();
+
+        std::transform((first), last, (dest_first), [=, &result, &previous](const T& v)
+        {
+            result = previous;
+            previous += v;
+            return result;
+        });
+    }
+
+    template <typename InIt, typename OutIt>
+    inline void scan_sequential_inclusive(InIt first, InIt last, OutIt dest_first)
+    {
+        typedef InIt::value_type T;
+        auto result = T();
+
+        std::transform(first, last, dest_first, [=, &result](const T& v)
+        {
+            result += v;
+            return result;
+        });
+    }
+    
     //===============================================================================
     //  Comparison.
     //===============================================================================
