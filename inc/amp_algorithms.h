@@ -43,7 +43,7 @@ namespace amp_algorithms
     public:
         T operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
-            return (a + b); 
+            return (a + b);
         }
     };
 
@@ -53,7 +53,7 @@ namespace amp_algorithms
     public:
         T operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
-            return (a - b); 
+            return (a - b);
         }
     };
 
@@ -95,6 +95,98 @@ namespace amp_algorithms
         {
             return (-a);
         }
+    };
+
+    template<int N, unsigned int P = 0>
+    struct log2
+    {
+        enum { value = log2<N / 2, P + 1>::value };
+    };
+
+    template <unsigned int P>
+    struct log2<0, P>
+    {
+        enum { value = P };
+    };
+
+    template <unsigned int P>
+    struct log2<1, P>
+    {
+        enum { value = P };
+    };
+
+    template<unsigned int N>
+    struct is_power_of_two
+    {
+        enum { value = ((count_bits<N, _details::bit32>::value == 1) ? TRUE : FALSE) };
+    };
+
+    // While 1 is technically 2^0, for the purposes of calculating 
+    // tile size it isn't useful.
+
+    template <>
+    struct is_power_of_two<1>
+    {
+        enum { value = FALSE };
+    };
+
+    //----------------------------------------------------------------------------
+    // Bitwise operations
+    //----------------------------------------------------------------------------
+
+    template <typename T>
+    class bit_and
+    {
+    public:
+        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return (a & b);
+        }
+    };
+
+    template <typename T>
+    class bit_or
+    {
+    public:
+        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return (a | b);
+        }
+    };
+
+    template <typename T>
+    class bit_xor
+    {
+    public:
+        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return (a ^ b);
+        }
+    };
+
+    namespace _details
+    {
+        static const unsigned int bit08 = 0x80;
+        static const unsigned int bit16 = 0x8000;
+        static const unsigned int bit32 = 0x80000000;
+
+        template<unsigned int N, int MaxBit>
+        struct is_bit_set
+        {
+            enum { value = (N & MaxBit) ? 1 : 0 };
+        };
+    };
+
+    template<unsigned int N, unsigned int MaxBit>
+    struct count_bits
+    {
+        enum { value = (_details::is_bit_set<N, MaxBit>::value + count_bits<N, (MaxBit >> 1)>::value) };
+    };
+
+    template<unsigned int N>
+    struct count_bits<N, 0>
+    {
+        enum { value = FALSE };
     };
 
     //----------------------------------------------------------------------------
@@ -182,40 +274,6 @@ namespace amp_algorithms
     };
 
     //----------------------------------------------------------------------------
-    // Bitwise operations
-    //----------------------------------------------------------------------------
-
-    template <typename T>
-    class bit_and
-    {
-    public:
-        T operator()(const T &a, const T &b) const restrict(cpu, amp)
-        {
-            return (a & b);
-        }
-    };
-
-    template <typename T>
-    class bit_or
-    {
-    public:
-        T operator()(const T &a, const T &b) const restrict(cpu, amp)
-        {
-            return (a | b);
-        }
-    };
-
-    template <typename T>
-    class bit_xor
-    {
-    public:
-        T operator()(const T &a, const T &b) const restrict(cpu, amp)
-        {
-            return (a ^ b);
-        }
-    };
-
-    //----------------------------------------------------------------------------
     // Logical operations
     //----------------------------------------------------------------------------
 
@@ -253,309 +311,21 @@ namespace amp_algorithms
 
 #pragma endregion
 
-#pragma region Helper functions
     //----------------------------------------------------------------------------
-    // Static operations
-    //----------------------------------------------------------------------------
-
-    namespace _details
-    {
-        static const unsigned int Bit08 = 0x80;
-        static const unsigned int Bit16 = 0x8000;
-        static const unsigned int Bit32 = 0x80000000;
-
-        template<unsigned int N, int MaxBit>
-        struct is_bit_set
-        {
-            enum { result = (N & MaxBit) ? 1 : 0 };
-        };
-    }
-
-    template<unsigned int N>
-    struct is_power_of_two
-    {
-        enum
-        {
-            result = ((count_bits<N, _details::Bit32>::result == 1) ? TRUE : FALSE)
-        };
-    };
-
-    // While 1 is technically 2^0, for the purposes of calculating 
-    // tile size it isn't useful.
-
-    template <>
-    struct is_power_of_two<1>
-    {
-        enum { result = FALSE };
-    };
-
-    template<unsigned int N, unsigned int MaxBit>
-    struct count_bits
-    {
-        enum
-        {
-            result = (_details::is_bit_set<N, MaxBit>::result +
-            count_bits<N, (MaxBit >> 1)>::result)
-        };
-    };
-
-    template<unsigned int N>
-    struct count_bits<N, 0>
-    {
-        enum { result = FALSE };
-    };
-
-    //----------------------------------------------------------------------------
-    // Padded tile read and write functions.
+    // fill
     //----------------------------------------------------------------------------
 
-    template <typename T, int N>
-    inline T padded_read(const concurrency::array_view<T, N> arr, const concurrency::index<N> idx) restrict(cpu, amp)
+    template<typename OutputIndexableView, typename T>
+    void fill(const concurrency::accelerator_view &accl_view, OutputIndexableView& output_view, const T& value)
     {
-        return arr.extent.contains(idx) ? arr[idx] : T();
+        :::amp_algorithms::generate(accl_view, output_view, [value]() restrict(amp) { return value; });
     }
 
-    template <typename T>
-    inline T padded_read(const concurrency::array_view<T> arr, const int idx) restrict(cpu, amp)
+    template<typename OutputIndexableView, typename T>
+    void fill(OutputIndexableView& output_view, const T& value)
     {
-        return padded_read<T, 1>(arr, concurrency::index<1>(idx));
+        ::amp_algorithms::generate(output_view, [value]() restrict(amp) { return value; });
     }
-
-    template <typename T, int N>
-    inline T padded_read(const concurrency::array<T, N>& arr, const concurrency::index<N> idx) restrict(cpu, amp)
-    {
-        return arr.extent.contains(idx) ? arr[idx] : T();
-    }
-
-    template <typename T>
-    inline T padded_read(const concurrency::array<T>& arr, const int idx) restrict(cpu, amp)
-    {
-        return padded_read<T, 1>(arr, concurrency::index<1>(idx));
-    }
-
-    template <typename T, int N>
-    inline void padded_write(const concurrency::array_view<T, N> arr, const concurrency::index<N> idx, const T& value) restrict(cpu, amp)
-    {
-        if (arr.extent.contains(idx))
-        {
-            arr[idx] = value;
-        }
-    }
-
-    template <typename T>
-    inline void padded_write(const concurrency::array_view<T> arr, const int idx, const T& value) restrict(cpu, amp)
-    {
-        padded_write<T, 1>(arr, concurrency::index<1>(idx), value);
-    }
-
-    template <typename T, int N>
-    inline void padded_write(concurrency::array<T, N>& arr, const concurrency::index<N> idx, const T& value) restrict(cpu, amp)
-    {
-        if (arr.extent.contains(idx))
-        {
-            arr[idx] = value;
-        }
-    }
-
-    template <typename T>
-    inline void padded_write(concurrency::array<T>& arr, const int idx, const T& value) restrict(cpu, amp)
-    {
-        padded_write<T, 1>(arr, concurrency::index<1>(idx), value);
-    }
-
-#pragma endregion
-
-    //----------------------------------------------------------------------------
-    // reduce
-    //----------------------------------------------------------------------------
-
-    // Generic reduction template for binary operators that are commutative and associative
-    template <typename InputIndexableView, typename BinaryFunction>
-    typename std::result_of<BinaryFunction(const typename indexable_view_traits<InputIndexableView>::value_type&, const typename indexable_view_traits<InputIndexableView>::value_type&)>::type
-        reduce(const concurrency::accelerator_view &accl_view, const InputIndexableView &input_view, const BinaryFunction &binary_op) 
-    {
-        return _details::reduce<512, 10000, InputIndexableView, BinaryFunction>(accl_view, input_view, binary_op);
-    }
-
-    template <typename InputIndexableView, typename BinaryFunction>
-    typename std::result_of<BinaryFunction(const typename indexable_view_traits<InputIndexableView>::value_type&, const typename indexable_view_traits<InputIndexableView>::value_type&)>::type
-        reduce(const InputIndexableView &input_view, const BinaryFunction &binary_op) 
-    {
-        return reduce(_details::auto_select_target(), input_view, binary_op);
-    }
-
-    //----------------------------------------------------------------------------
-    // scan
-    //----------------------------------------------------------------------------
-
-    // Allowed directions for scan operations
-    enum class scan_direction
-    {
-        forward,
-        backward
-    };
-
-    class scan
-    {
-    public:
-        // Constructs scan object, this constructor provides ability to define max_scan_count for multiscan
-        scan(unsigned int max_scan_size, unsigned int max_scan_count, const concurrency::accelerator_view &target_accel_view = concurrency::accelerator().default_view) : m_scan_accelerator_view(target_accel_view)
-        {
-            initialize_scan(max_scan_size, max_scan_count);
-        }
-
-        // Constructs scan object 
-        scan(unsigned int max_scan_size, const concurrency::accelerator_view &target_accel_view = concurrency::accelerator().default_view) : m_scan_accelerator_view(target_accel_view)
-        {
-            initialize_scan(max_scan_size, 1);
-        }
-
-        // Performs exclusive scan in specified direction
-        template <typename T, typename BinaryFunction>
-        void scan_exclusive(const concurrency::array<T> &input_array, concurrency::array<T> &output_array, scan_direction direction, const BinaryFunction &binary_op)
-        {
-            // Scan is special case of multiscan where scan_size == scan_pitch and scan_count = 1
-            scan_internal(input_array, output_array, direction, binary_op, input_array.extent.size(), input_array.extent.size(), 1);
-        }
-
-        // Performs forward exclusive scan (overload with direction already specified)
-        template <typename T, typename BinaryFunction>
-        void scan_exclusive(const concurrency::array<T> &input_array, concurrency::array<T> &output_array, const BinaryFunction &binary_op)
-        {
-            scan_exclusive(input_array, output_array, scan_direction::forward, binary_op);
-        }
-
-        // Performs forward exclusive prefix sum (overload with direction and binary function already specified)
-        template <typename T>
-        void scan_exclusive(const concurrency::array<T> &input_array, concurrency::array<T> &output_array)
-        {
-            scan_exclusive(input_array, output_array, scan_direction::forward, amp_algorithms::plus<T>());
-        }
-
-        // Performs exclusive multi scan is specified direction
-        template <typename T, typename BinaryFunction>
-        void multi_scan_exclusive(const concurrency::array<T, 2> &input_array, concurrency::array<T, 2> &output_array, scan_direction direction, const BinaryFunction &binary_op)
-        {
-            scan_internal(input_array, output_array, direction, binary_op, input_array.extent[1], input_array.extent[1], input_array.extent[0]);
-        }
-
-        // Performs exclusive segmented scan in specified direction
-        template <typename T, typename BinaryFunction>
-        void segmented_scan_exclusive(const concurrency::array<T> &input_array, concurrency::array<T> &output_array, const concurrency::array<unsigned int> &flags_array, scan_direction direction, const BinaryFunction &binary_op)
-        {
-            static_assert(_details::_dx_scan_type_helper<T>::is_type_supported, "Unsupported type for scan");
-            static_assert(_details::_dx_scan_op_helper<BinaryFunction>::is_op_supported, "Unsupported binary function for scan");
-
-            // Verify that we have the same accelerator view for both input, output and scan object
-            if (input_array.accelerator_view != output_array.accelerator_view || input_array.accelerator_view != flags_array.accelerator_view || input_array.accelerator_view != m_scan_accelerator_view)
-            {
-                throw runtime_exception("The accelerator_view for input_array, output_array, flags_array and scan object has to be the same.", E_INVALIDARG);
-            }
-
-            // Get d3d11 buffer pointers
-            Microsoft::WRL::ComPtr<ID3D11Buffer> src_buffer(_details::_get_d3d11_buffer_ptr(input_array));
-            Microsoft::WRL::ComPtr<ID3D11Buffer> flags_buffer(_details::_get_d3d11_buffer_ptr(flags_array));
-            Microsoft::WRL::ComPtr<ID3D11Buffer> dst_buffer(_details::_get_d3d11_buffer_ptr(output_array));
-
-            // Create typed uavs
-            Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> src_view(_details::_create_d3d11_uav(m_device, src_buffer, _details::_dx_scan_type_helper<T>::dx_view_type));
-            Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> flags_view(_details::_create_d3d11_uav(m_device, flags_buffer,  DXGI_FORMAT_R32_UINT));
-            // 2nd view is only needed if destination buffer is different from source buffer (not-in-place scan)
-            Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> dst_view;
-            if (src_buffer.Get() == dst_buffer.Get())
-            { 
-                dst_view = src_view;
-            }
-            else
-            {
-                dst_view = _details::_create_d3d11_uav(m_device, dst_buffer, _details::_dx_scan_type_helper<T>::dx_view_type);
-            }
-
-            set_direction(direction);
-            _details::_dx_state_cleaner cleaner(m_immediate_context);
-            auto hr_result = m_segmented_scan->SegScan(_details::_dx_scan_type_helper<T>::dx_scan_type, _details::_dx_scan_op_helper<BinaryFunction>::dx_op_type, input_array.extent.size(), src_view.Get(), flags_view.Get(), dst_view.Get());
-            _details::_check_hresult(hr_result, "Failed to perform scan");
-        }
-
-    private:
-        // Common subset of initialization for both scan constructors
-        void initialize_scan(unsigned int max_scan_size, unsigned int max_scan_count)
-        {
-            // Get device and context handles
-            _ASSERTE(m_device.Get() == nullptr);
-            m_device = _details::_get_d3d11_device_ptr(m_scan_accelerator_view);
-            _ASSERTE(m_immediate_context.Get() == nullptr);
-            m_device->GetImmediateContext(m_immediate_context.GetAddressOf());
-
-            // Create DirectX scan objects
-            std::string msg = "Failed to create scan object";
-            _details::_check_hresult(D3DX11CreateScan(m_immediate_context.Get(), max_scan_size, max_scan_count, m_scan.GetAddressOf()), msg);
-            _details::_check_hresult(D3DX11CreateSegmentedScan(m_immediate_context.Get(), max_scan_size, m_segmented_scan.GetAddressOf()), msg);
-
-            // Set default direction
-            set_direction(scan_direction::forward);
-        }
-
-        // Common subset of scan setup for multiscan and scan
-        template <typename T, unsigned int Rank, typename BinaryFunction>
-        void scan_internal(const concurrency::array<T, Rank> &input_array, concurrency::array<T, Rank> &output_array, scan_direction direction, const BinaryFunction &binary_op, unsigned int scan_size, unsigned int scan_pitch, unsigned int scan_count) 
-        {
-            static_assert(_details::_dx_scan_type_helper<T>::is_type_supported, "Unsupported type for scan");
-            static_assert(_details::_dx_scan_op_helper<BinaryFunction>::is_op_supported, "Currently only fixed set of binary functions is allowed, we are working to remove this limitation");
-
-            // Verify that we have the same accelerator view for both input, output and scan object
-            if (input_array.accelerator_view != output_array.accelerator_view || input_array.accelerator_view != m_scan_accelerator_view)
-            {
-                throw runtime_exception("The accelerator_view for input_array, output_array and scan object has to be the same.", E_INVALIDARG);
-            }
-
-            // Note: DirectX library performs validation for scan_size, pitch etc, so it would be a dup and unnecessary perf impact to do it here
-
-            // Get d3d11 buffer pointers
-            Microsoft::WRL::ComPtr<ID3D11Buffer> src_buffer(_details::_get_d3d11_buffer_ptr(input_array));
-            Microsoft::WRL::ComPtr<ID3D11Buffer> dst_buffer(_details::_get_d3d11_buffer_ptr(output_array));
-
-            // Create typed uavs
-            Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> src_view(_details::_create_d3d11_uav(m_device, src_buffer, _details::_dx_scan_type_helper<T>::dx_view_type));
-            // 2nd view is only needed if destination buffer is different from source buffer (not-in-place scan)
-            Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> dst_view;
-            if (src_buffer.Get() == dst_buffer.Get())
-            { 
-                dst_view = src_view;
-            }
-            else
-            {
-                dst_view = _details::_create_d3d11_uav(m_device, dst_buffer, _details::_dx_scan_type_helper<T>::dx_view_type);
-            } 
-
-            set_direction(direction);
-            _details::_dx_state_cleaner cleaner(m_immediate_context);
-            auto hr_result = m_scan->Multiscan(_details::_dx_scan_type_helper<T>::dx_scan_type, _details::_dx_scan_op_helper<BinaryFunction>::dx_op_type, scan_size, scan_pitch, scan_count, src_view.Get(), dst_view.Get());
-            _details::_check_hresult(hr_result, "Failed to perform scan");
-        }
-
-        // Changes scan direction
-        void set_direction(scan_direction direction)
-        {
-            if (m_selected_scan_direction != direction)
-            {
-                std::string msg = "Failed to set scan direction";
-                _details::_check_hresult(m_scan->SetScanDirection(direction == scan_direction::forward ? D3DX11_SCAN_DIRECTION_FORWARD : D3DX11_SCAN_DIRECTION_BACKWARD), msg);
-                _details::_check_hresult(m_segmented_scan->SetScanDirection(direction == scan_direction::forward ? D3DX11_SCAN_DIRECTION_FORWARD : D3DX11_SCAN_DIRECTION_BACKWARD), msg);
-                m_selected_scan_direction = direction;
-            }
-        }
-
-        // Scan data members 
-        Microsoft::WRL::ComPtr<ID3DX11Scan> m_scan; // capable of scan and multiscan
-        Microsoft::WRL::ComPtr<ID3DX11SegmentedScan> m_segmented_scan;
-
-        Microsoft::WRL::ComPtr<ID3D11Device> m_device;
-        Microsoft::WRL::ComPtr<ID3D11DeviceContext> m_immediate_context;
-        const concurrency::accelerator_view m_scan_accelerator_view;
-
-        scan_direction m_selected_scan_direction;
-    };
 
     //----------------------------------------------------------------------------
     // generate
@@ -564,7 +334,7 @@ namespace amp_algorithms
     template <typename OutputIndexableView, typename Generator>
     void generate(const concurrency::accelerator_view &accl_view, OutputIndexableView& output_view, const Generator& generator)
     {
-        _details::parallel_for_each(accl_view, output_view.extent, [output_view,generator] (concurrency::index<indexable_view_traits<OutputIndexableView>::rank> idx) restrict(amp) {
+        _details::parallel_for_each(accl_view, output_view.extent, [output_view, generator](concurrency::index<indexable_view_traits<OutputIndexableView>::rank> idx) restrict(amp) {
             output_view[idx] = generator();
         });
     }
@@ -576,55 +346,51 @@ namespace amp_algorithms
     }
 
     //----------------------------------------------------------------------------
-    // transform (unary)
+    // merge_sort
     //----------------------------------------------------------------------------
 
-    template <typename ConstInputIndexableView, typename OutputIndexableView, typename UnaryFunc>
-    void transform(const concurrency::accelerator_view &accl_view, const ConstInputIndexableView& input_view, OutputIndexableView& output_view, const UnaryFunc& func)
+    // TODO: NOT IMPLEMENTED radix_sort
+    template <typename T, typename BinaryOperator>
+    void merge_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<unsigned int>& input_view, BinaryOperator op)
     {
-        _details::parallel_for_each(accl_view, output_view.extent, [input_view,output_view,func] (concurrency::index<indexable_view_traits<OutputIndexableView>::rank> idx) restrict(amp) {
-            output_view[idx] = func(input_view[idx]);
-        });
     }
 
-    template <typename ConstInputIndexableView, typename OutputIndexableView, typename UnaryFunc>
-    void transform(const ConstInputIndexableView& input_view, OutputIndexableView& output_view, const UnaryFunc& func)
+    // TODO: NOT IMPLEMENTED radix_sort
+    template <typename T>
+    void merge_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<unsigned int>& input_view)
     {
-        ::amp_algorithms::transform(_details::auto_select_target(), input_view, output_view, func);
-    }
-
-    //----------------------------------------------------------------------------
-    // transform (binary)
-    //----------------------------------------------------------------------------
-
-    template <typename ConstInputIndexableView1, typename ConstInputIndexableView2, typename OutputIndexableView, typename BinaryFunc>
-    void transform(const concurrency::accelerator_view &accl_view, const ConstInputIndexableView1& input_view1, const ConstInputIndexableView2& input_view2, OutputIndexableView& output_view, const BinaryFunc& func)
-    {
-        _details::parallel_for_each(accl_view, output_view.extent, [input_view1,input_view2,output_view,func] (concurrency::index<indexable_view_traits<OutputIndexableView>::rank> idx) restrict(amp) {
-            output_view[idx] = func(input_view1[idx], input_view2[idx]);
-        });
-    }
-
-    template <typename ConstInputIndexableView1, typename ConstInputIndexableView2, typename OutputIndexableView, typename BinaryFunc>
-    void transform(const ConstInputIndexableView1& input_view1, const ConstInputIndexableView2& input_view2, OutputIndexableView& output_view, const BinaryFunc& func)
-    {
-        ::amp_algorithms::transform(_details::auto_select_target(), input_view1, input_view2, output_view, func);
+        ::amp_algorithms::merge_sort(accl_view, input_view, amp_algorithms::less<T>());
     }
 
     //----------------------------------------------------------------------------
-    // fill
+    // padded_read & padded_write
     //----------------------------------------------------------------------------
 
-    template<typename OutputIndexableView, typename T>
-    void fill(const concurrency::accelerator_view &accl_view, OutputIndexableView& output_view, const T& value )
+    template <typename TContainer, int N>
+    inline typename TContainer::value_type padded_read(const TContainer& arr, const concurrency::index<N> idx) restrict(cpu, amp)
     {
-        :::amp_algorithms::generate(accl_view, output_view, [value] () restrict(amp) { return value; });
+        return arr.extent.contains(idx) ? arr[idx] : typename TContainer::value_type();
     }
 
-    template<typename OutputIndexableView, typename T>
-    void fill(OutputIndexableView& output_view, const T& value )
+    template <typename TContainer>
+    inline typename TContainer::value_type padded_read(const TContainer& arr, const int idx) restrict(cpu, amp)
     {
-        ::amp_algorithms::generate(output_view, [value] () restrict(amp) { return value; });
+        return padded_read<TContainer, 1>(arr, concurrency::index<1>(idx));
+    }
+
+    template <typename TContainer, int N>
+    inline void padded_write(TContainer& arr, const concurrency::index<N> idx, const typename TContainer::value_type &value) restrict(cpu, amp)
+    {
+        if (arr.extent.contains(idx))
+        {
+            arr[idx] = value;
+        }
+    }
+
+    template <typename TContainer>
+    inline void padded_write(TContainer& arr, const int idx, const typename TContainer::value_type &value) restrict(cpu, amp)
+    {
+        padded_write<TContainer, 1>(arr, concurrency::index<1>(idx), value);
     }
 
     //----------------------------------------------------------------------------
@@ -662,8 +428,8 @@ namespace amp_algorithms
         void histogram_tile(const concurrency::array_view<T>& input_view, concurrency::array_view<T>& output_view,
             const int key_idx)
         {
-            static const unsigned type_width = sizeof(T) * 8;
-            static_assert((type_width % key_size == 0), "The sort key width must be an exact multiple of the type width."); 
+            static const unsigned type_width = sizeof(T)* 8;
+            static_assert((type_width % key_size == 0), "The sort key width must be an exact multiple of the type width.");
 
             static const unsigned bin_count = 1 << key_size;
             static const T bin_mask = bin_count - 1;
@@ -786,36 +552,432 @@ namespace amp_algorithms
     /*
     inline void radix_sort(concurrency::array_view<int>& input_view, const unsigned int digit_width)
     {
-        ::amp_algorithms::_details::radix_sort<int, 4>(_details::auto_select_target(), input_view);
+    ::amp_algorithms::_details::radix_sort<int, 4>(_details::auto_select_target(), input_view);
     }
 
     inline void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<unsigned int>& input_view, const unsigned int digit_width)
     {
-        ::amp_algorithms::_details::radix_sort<unsigned int, 4>(accl_view, input_view);
+    ::amp_algorithms::_details::radix_sort<unsigned int, 4>(accl_view, input_view);
     }
 
     inline void radix_sort(concurrency::array_view<unsigned int>& input_view)
     {
-        ::amp_algorithms::_details::radix_sort<unsigned int, 4>(_details::auto_select_target(), input_view);
+    ::amp_algorithms::_details::radix_sort<unsigned int, 4>(_details::auto_select_target(), input_view);
     }
     */
+
     //----------------------------------------------------------------------------
-    // merge_sort
+    // reduce
     //----------------------------------------------------------------------------
 
-    // TODO: NOT IMPLEMENTED radix_sort
-    template <typename T, typename BinaryOperator>
-    void merge_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<unsigned int>& input_view, BinaryOperator op)
+    // Generic reduction template for binary operators that are commutative and associative
+    template <typename InputIndexableView, typename BinaryFunction>
+    typename std::result_of<BinaryFunction(const typename indexable_view_traits<InputIndexableView>::value_type&, const typename indexable_view_traits<InputIndexableView>::value_type&)>::type
+        reduce(const concurrency::accelerator_view &accl_view, const InputIndexableView &input_view, const BinaryFunction &binary_op)
     {
+            return _details::reduce<512, 10000, InputIndexableView, BinaryFunction>(accl_view, input_view, binary_op);
     }
 
-    // TODO: NOT IMPLEMENTED radix_sort
-    template <typename T>
-    void merge_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<unsigned int>& input_view)
+    template <typename InputIndexableView, typename BinaryFunction>
+    typename std::result_of<BinaryFunction(const typename indexable_view_traits<InputIndexableView>::value_type&, const typename indexable_view_traits<InputIndexableView>::value_type&)>::type
+        reduce(const InputIndexableView &input_view, const BinaryFunction &binary_op)
     {
-        ::amp_algorithms::merge_sort(accl_view, input_view, amp_algorithms::less<T>());
+            return reduce(_details::auto_select_target(), input_view, binary_op);
     }
 
+    //----------------------------------------------------------------------------
+    // scan - D3D implementation wrapper
+    //----------------------------------------------------------------------------
+
+    enum class scan_mode : int
+    {
+        exclusive = 0,
+        inclusive = 1
+    };
+
+    // TODO: Need to support forward and reverse scan directions and segmented scan for non-DX scan implementation.
+    enum class scan_direction : int
+    {
+        forward = 0,
+        backward = 1
+    };
+
+    namespace direct3d
+    {
+        class scan
+        {
+        public:
+            // Constructs scan object, this constructor provides ability to define max_scan_count for multiscan
+            scan(unsigned int max_scan_size, unsigned int max_scan_count, const concurrency::accelerator_view &target_accel_view = concurrency::accelerator().default_view) : m_scan_accelerator_view(target_accel_view)
+            {
+                initialize_scan(max_scan_size, max_scan_count);
+            }
+
+            // Constructs scan object 
+            scan(unsigned int max_scan_size, const concurrency::accelerator_view &target_accel_view = concurrency::accelerator().default_view) : m_scan_accelerator_view(target_accel_view)
+            {
+                initialize_scan(max_scan_size, 1);
+            }
+
+            // Performs exclusive scan in specified direction
+            template <typename T, typename BinaryFunction>
+            void scan_exclusive(const concurrency::array<T> &input_array, concurrency::array<T> &output_array, amp_algorithms::scan_direction direction, const BinaryFunction &binary_op)
+            {
+                // Scan is special case of multiscan where scan_size == scan_pitch and scan_count = 1
+                scan_internal(input_array, output_array, direction, binary_op, input_array.extent.size(), input_array.extent.size(), 1);
+            }
+
+            // Performs forward exclusive scan (overload with direction already specified)
+            template <typename T, typename BinaryFunction>
+            void scan_exclusive(const concurrency::array<T> &input_array, concurrency::array<T> &output_array, const BinaryFunction &binary_op)
+            {
+                scan_exclusive(input_array, output_array, amp_algorithms::scan_direction::forward, binary_op);
+            }
+
+            // Performs forward exclusive prefix sum (overload with direction and binary function already specified)
+            template <typename T>
+            void scan_exclusive(const concurrency::array<T> &input_array, concurrency::array<T> &output_array)
+            {
+                scan_exclusive(input_array, output_array, amp_algorithms::scan_direction::forward, amp_algorithms::plus<T>());
+            }
+
+            // Performs exclusive multi scan is specified direction
+            template <typename T, typename BinaryFunction>
+            void multi_scan_exclusive(const concurrency::array<T, 2> &input_array, concurrency::array<T, 2> &output_array, amp_algorithms::scan_direction direction, const BinaryFunction &binary_op)
+            {
+                scan_internal(input_array, output_array, direction, binary_op, input_array.extent[1], input_array.extent[1], input_array.extent[0]);
+            }
+
+            // Performs exclusive segmented scan in specified direction
+            template <typename T, typename BinaryFunction>
+            void segmented_scan_exclusive(const concurrency::array<T> &input_array, concurrency::array<T> &output_array, const concurrency::array<unsigned int> &flags_array, amp_algorithms::scan_direction direction, const BinaryFunction &binary_op)
+            {
+                static_assert(_details::_dx_scan_type_helper<T>::is_type_supported, "Unsupported type for scan");
+                static_assert(_details::_dx_scan_op_helper<BinaryFunction>::is_op_supported, "Unsupported binary function for scan");
+
+                // Verify that we have the same accelerator view for both input, output and scan object
+                if (input_array.accelerator_view != output_array.accelerator_view || input_array.accelerator_view != flags_array.accelerator_view || input_array.accelerator_view != m_scan_accelerator_view)
+                {
+                    throw runtime_exception("The accelerator_view for input_array, output_array, flags_array and scan object has to be the same.", E_INVALIDARG);
+                }
+
+                // Get d3d11 buffer pointers
+                Microsoft::WRL::ComPtr<ID3D11Buffer> src_buffer(_details::_get_d3d11_buffer_ptr(input_array));
+                Microsoft::WRL::ComPtr<ID3D11Buffer> flags_buffer(_details::_get_d3d11_buffer_ptr(flags_array));
+                Microsoft::WRL::ComPtr<ID3D11Buffer> dst_buffer(_details::_get_d3d11_buffer_ptr(output_array));
+
+                // Create typed uavs
+                Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> src_view(_details::_create_d3d11_uav(m_device, src_buffer, _details::_dx_scan_type_helper<T>::dx_view_type));
+                Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> flags_view(_details::_create_d3d11_uav(m_device, flags_buffer, DXGI_FORMAT_R32_UINT));
+                // 2nd view is only needed if destination buffer is different from source buffer (not-in-place scan)
+                Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> dst_view;
+                if (src_buffer.Get() == dst_buffer.Get())
+                {
+                    dst_view = src_view;
+                }
+                else
+                {
+                    dst_view = _details::_create_d3d11_uav(m_device, dst_buffer, _details::_dx_scan_type_helper<T>::dx_view_type);
+                }
+
+                set_direction(direction);
+                _details::_dx_state_cleaner cleaner(m_immediate_context);
+                auto hr_result = m_segmented_scan->SegScan(_details::_dx_scan_type_helper<T>::dx_scan_type, _details::_dx_scan_op_helper<BinaryFunction>::dx_op_type, input_array.extent.size(), src_view.Get(), flags_view.Get(), dst_view.Get());
+                _details::_check_hresult(hr_result, "Failed to perform scan");
+            }
+
+        private:
+            // Common subset of initialization for both scan constructors
+            void initialize_scan(unsigned int max_scan_size, unsigned int max_scan_count)
+            {
+                // Get device and context handles
+                _ASSERTE(m_device.Get() == nullptr);
+                m_device = _details::_get_d3d11_device_ptr(m_scan_accelerator_view);
+                _ASSERTE(m_immediate_context.Get() == nullptr);
+                m_device->GetImmediateContext(m_immediate_context.GetAddressOf());
+
+                // Create DirectX scan objects
+                std::string msg = "Failed to create scan object";
+                _details::_check_hresult(D3DX11CreateScan(m_immediate_context.Get(), max_scan_size, max_scan_count, m_scan.GetAddressOf()), msg);
+                _details::_check_hresult(D3DX11CreateSegmentedScan(m_immediate_context.Get(), max_scan_size, m_segmented_scan.GetAddressOf()), msg);
+
+                // Set default direction
+                set_direction(amp_algorithms::scan_direction::forward);
+            }
+
+            // Common subset of scan setup for multiscan and scan
+            template <typename T, unsigned int Rank, typename BinaryFunction>
+            void scan_internal(const concurrency::array<T, Rank> &input_array, concurrency::array<T, Rank> &output_array, amp_algorithms::scan_direction direction, const BinaryFunction &binary_op, unsigned int scan_size, unsigned int scan_pitch, unsigned int scan_count)
+            {
+                static_assert(_details::_dx_scan_type_helper<T>::is_type_supported, "Unsupported type for scan");
+                static_assert(_details::_dx_scan_op_helper<BinaryFunction>::is_op_supported, "Currently only fixed set of binary functions is allowed, we are working to remove this limitation");
+
+                // Verify that we have the same accelerator view for both input, output and scan object
+                if (input_array.accelerator_view != output_array.accelerator_view || input_array.accelerator_view != m_scan_accelerator_view)
+                {
+                    throw runtime_exception("The accelerator_view for input_array, output_array and scan object has to be the same.", E_INVALIDARG);
+                }
+
+                // Note: DirectX library performs validation for scan_size, pitch etc, so it would be a dup and unnecessary perf impact to do it here
+
+                // Get d3d11 buffer pointers
+                Microsoft::WRL::ComPtr<ID3D11Buffer> src_buffer(_details::_get_d3d11_buffer_ptr(input_array));
+                Microsoft::WRL::ComPtr<ID3D11Buffer> dst_buffer(_details::_get_d3d11_buffer_ptr(output_array));
+
+                // Create typed uavs
+                Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> src_view(_details::_create_d3d11_uav(m_device, src_buffer, _details::_dx_scan_type_helper<T>::dx_view_type));
+                // 2nd view is only needed if destination buffer is different from source buffer (not-in-place scan)
+                Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> dst_view;
+                if (src_buffer.Get() == dst_buffer.Get())
+                {
+                    dst_view = src_view;
+                }
+                else
+                {
+                    dst_view = _details::_create_d3d11_uav(m_device, dst_buffer, _details::_dx_scan_type_helper<T>::dx_view_type);
+                }
+
+                set_direction(direction);
+                _details::_dx_state_cleaner cleaner(m_immediate_context);
+                auto hr_result = m_scan->Multiscan(_details::_dx_scan_type_helper<T>::dx_scan_type, _details::_dx_scan_op_helper<BinaryFunction>::dx_op_type, scan_size, scan_pitch, scan_count, src_view.Get(), dst_view.Get());
+                _details::_check_hresult(hr_result, "Failed to perform scan");
+            }
+
+            // Changes scan direction
+            void set_direction(amp_algorithms::scan_direction direction)
+            {
+                if (m_selected_scan_direction != direction)
+                {
+                    std::string msg = "Failed to set scan direction";
+                    _details::_check_hresult(m_scan->SetScanDirection(direction == amp_algorithms::scan_direction::forward ? D3DX11_SCAN_DIRECTION_FORWARD : D3DX11_SCAN_DIRECTION_BACKWARD), msg);
+                    _details::_check_hresult(m_segmented_scan->SetScanDirection(direction == amp_algorithms::scan_direction::forward ? D3DX11_SCAN_DIRECTION_FORWARD : D3DX11_SCAN_DIRECTION_BACKWARD), msg);
+                    m_selected_scan_direction = direction;
+                }
+            }
+
+            // Scan data members 
+            Microsoft::WRL::ComPtr<ID3DX11Scan> m_scan; // capable of scan and multiscan
+            Microsoft::WRL::ComPtr<ID3DX11SegmentedScan> m_segmented_scan;
+
+            Microsoft::WRL::ComPtr<ID3D11Device> m_device;
+            Microsoft::WRL::ComPtr<ID3D11DeviceContext> m_immediate_context;
+            const concurrency::accelerator_view m_scan_accelerator_view;
+
+            amp_algorithms::scan_direction m_selected_scan_direction;
+        };
+    }
+
+    //----------------------------------------------------------------------------
+    // scan - C++ AMP implementation
+    //----------------------------------------------------------------------------
+    //
+    // Scan implementation using the same algorithm described here and used by the CUDPP library.
+    //
+    // https://research.nvidia.com/sites/default/files/publications/nvr-2008-003.pdf
+    //
+    // For a full overview of various scan implementations see:
+    //
+    // https://sites.google.com/site/duanemerrill/ScanTR2.pdf
+    //
+    // TODO: There may be some better scan implementations that are described in the second reference. Investigate.
+
+    namespace _details
+    {
+#ifdef USE_REF
+        static const int warp_size = 4;
+#else
+        static const int warp_size = 32;
+#endif
+        static const int warp_max = _details::warp_size - 1;
+
+        // TODO: Scan still needs optimizing.
+
+        template <scan_mode _Mode, typename _BinaryOp, typename T>
+        T scan_warp(T* const tile_data, const int idx, const _BinaryOp& op) restrict(amp)
+        {
+            const int widx = idx & _details::warp_max;
+
+            if (widx >= 1)
+                tile_data[idx] = op(tile_data[idx - 1], tile_data[idx]);
+            if ((warp_size > 2) && (widx >= 2))
+                tile_data[idx] = op(tile_data[idx - 2], tile_data[idx]);
+            if ((warp_size > 4) && (widx >= 4))
+                tile_data[idx] = op(tile_data[idx - 4], tile_data[idx]);
+            if ((warp_size > 8) && (widx >= 8))
+                tile_data[idx] = op(tile_data[idx - 8], tile_data[idx]);
+            if ((warp_size > 16) && (widx >= 16))
+                tile_data[idx] = op(tile_data[idx - 16], tile_data[idx]);
+            if ((warp_size > 32) && (widx >= 32))
+                tile_data[idx] = op(tile_data[idx - 32], tile_data[idx]);
+
+            if (_Mode == scan_mode::inclusive)
+                return tile_data[idx];
+            return (widx > 0) ? tile_data[idx - 1] : T();
+        }
+
+        template <int TileSize, scan_mode _Mode, typename _BinaryOp, typename T>
+        T scan_tile(T* const tile_data, concurrency::tiled_index<TileSize> tidx, const _BinaryOp& op) restrict(amp)
+        {
+            static_assert(is_power_of_two<warp_size>::value, "Warp size must be an exact power of 2.");
+            const int lidx = tidx.local[0];
+            const int warp_id = lidx >> log2<warp_size>::value;
+
+            // Step 1: Intra-warp scan in each warp
+            auto val = scan_warp<_Mode, _BinaryOp>(tile_data, lidx, op);
+            tidx.barrier.wait_with_tile_static_memory_fence();
+
+            // Step 2: Collect per-warp partial results
+            if ((lidx & warp_max) == _details::warp_max)
+                tile_data[warp_id] = tile_data[lidx];
+            tidx.barrier.wait_with_tile_static_memory_fence();
+
+            // Step 3: Use 1st warp to scan per-warp results
+            if (warp_id == 0)
+                scan_warp<scan_mode::inclusive>(tile_data, lidx, op);
+            tidx.barrier.wait_with_tile_static_memory_fence();
+
+            // Step 4: Accumulate results from Steps 1 and 3
+            if (warp_id > 0)
+                val = op(tile_data[warp_id - 1], val);
+            tidx.barrier.wait_with_tile_static_memory_fence();
+
+            // Step 5: Write and return the final result
+            tile_data[lidx] = val;
+            tidx.barrier.wait_with_tile_static_memory_fence();
+            return val;
+        }
+    }
+
+    template <int TileSize, scan_mode _Mode, typename _BinaryOp, typename T>
+    inline void scan_new(const concurrency::array<T, 1>& input_array, concurrency::array<T, 1>& output_array, const _BinaryOp& op)
+    {
+        static_assert(TileSize >= _details::warp_size, "Tile size must be at least the size of a single warp.");
+        static_assert(TileSize % _details::warp_size == 0, "Tile size must be an exact multiple of warp size.");
+        static_assert(TileSize <= (_details::warp_size * _details::warp_size), "Tile size must less than or equal to the square of the warp size.");
+
+        assert(output_array.extent[0] >= _details::warp_size);
+        auto compute_domain = output_array.extent.tile<TileSize>().pad();
+        concurrency::array<T, 1> tile_results(compute_domain / TileSize);
+
+        // 1 & 2. Scan all tiles and store results in tile_results.
+        concurrency::parallel_for_each(compute_domain,
+            [=, &input_array, &output_array, &tile_results](concurrency::tiled_index<TileSize> tidx) restrict(amp)
+        {
+            const int gidx = tidx.global[0];
+            const int lidx = tidx.local[0];
+            tile_static T tile_data[TileSize];
+            tile_data[lidx] = padded_read(input_array, gidx);
+            tidx.barrier.wait_with_tile_static_memory_fence();
+
+            auto val = _details::scan_tile<TileSize, _Mode>(tile_data, tidx, amp_algorithms::plus<T>());
+            if (lidx == (TileSize - 1))
+            {
+                tile_results[tidx.tile[0]] = val;
+                if (_Mode == scan_mode::exclusive)
+                    tile_results[tidx.tile[0]] += input_array[gidx];
+            }
+            padded_write(output_array, gidx, tile_data[lidx]);
+        });
+
+        // 3. Scan tile results.
+        if (tile_results.extent[0] > TileSize)
+        {
+            scan_new<TileSize, amp_algorithms::scan_mode::exclusive>(tile_results, tile_results, op);
+        }
+        else
+        {
+            concurrency::parallel_for_each(compute_domain,
+                [=, &tile_results](concurrency::tiled_index<TileSize> tidx) restrict(amp)
+            {
+                const int gidx = tidx.global[0];
+                const int lidx = tidx.local[0];
+                tile_static T tile_data[TileSize];
+                tile_data[lidx] = tile_results[gidx];
+                tidx.barrier.wait_with_tile_static_memory_fence();
+
+                _details::scan_tile<TileSize, amp_algorithms::scan_mode::exclusive>(tile_data, tidx, amp_algorithms::plus<T>());
+
+                tile_results[gidx] = tile_data[lidx];
+                tidx.barrier.wait_with_tile_static_memory_fence();
+            });
+        }
+        // 4. Add the tile results to the individual results for each tile.
+        concurrency::parallel_for_each(compute_domain,
+            [=, &output_array, &tile_results](concurrency::tiled_index<TileSize> tidx) restrict(amp)
+        {
+            const int gidx = tidx.global[0];
+            if (gidx < output_array.extent[0])
+                output_array[gidx] += tile_results[tidx.tile[0]];
+        });
+    }
+
+    // TODO: Refactor this to remove duplicate code. Also need to decide on final API.
+
+    template <int TileSize, typename InIt, typename OutIt>
+    inline void scan_exclusive_new(InIt first, InIt last, OutIt dest_first)
+    {
+        typedef InIt::value_type T;
+
+        const int size = int(std::distance(first, last));
+        concurrency::array<T, 1> in(size);
+        concurrency::array<T, 1> out(size);
+        concurrency::copy(first, last, in);
+
+        scan_new<TileSize, amp_algorithms::scan_mode::exclusive>(in, out, amp_algorithms::plus<T>());
+
+        concurrency::copy(out, dest_first);
+    }
+
+    template <int TileSize, typename InIt, typename OutIt>
+    inline void scan_inclusive_new(InIt first, InIt last, OutIt dest_first)
+    {
+        typedef InIt::value_type T;
+
+        const int size = int(std::distance(first, last));
+        concurrency::array<T, 1> in(size);
+        concurrency::array<T, 1> out(size);
+        concurrency::copy(first, last, in);
+
+        scan_new<TileSize, amp_algorithms::scan_mode::inclusive>(in, out, amp_algorithms::plus<T>());
+
+        concurrency::copy(out, dest_first);
+    }
+
+    //----------------------------------------------------------------------------
+    // transform (unary)
+    //----------------------------------------------------------------------------
+
+    template <typename ConstInputIndexableView, typename OutputIndexableView, typename UnaryFunc>
+    void transform(const concurrency::accelerator_view &accl_view, const ConstInputIndexableView& input_view, OutputIndexableView& output_view, const UnaryFunc& func)
+    {
+        _details::parallel_for_each(accl_view, output_view.extent, [input_view,output_view,func] (concurrency::index<indexable_view_traits<OutputIndexableView>::rank> idx) restrict(amp) {
+            output_view[idx] = func(input_view[idx]);
+        });
+    }
+
+    template <typename ConstInputIndexableView, typename OutputIndexableView, typename UnaryFunc>
+    void transform(const ConstInputIndexableView& input_view, OutputIndexableView& output_view, const UnaryFunc& func)
+    {
+        ::amp_algorithms::transform(_details::auto_select_target(), input_view, output_view, func);
+    }
+
+    //----------------------------------------------------------------------------
+    // transform (binary)
+    //----------------------------------------------------------------------------
+
+    template <typename ConstInputIndexableView1, typename ConstInputIndexableView2, typename OutputIndexableView, typename BinaryFunc>
+    void transform(const concurrency::accelerator_view &accl_view, const ConstInputIndexableView1& input_view1, const ConstInputIndexableView2& input_view2, OutputIndexableView& output_view, const BinaryFunc& func)
+    {
+        _details::parallel_for_each(accl_view, output_view.extent, [input_view1,input_view2,output_view,func] (concurrency::index<indexable_view_traits<OutputIndexableView>::rank> idx) restrict(amp) {
+            output_view[idx] = func(input_view1[idx], input_view2[idx]);
+        });
+    }
+
+    template <typename ConstInputIndexableView1, typename ConstInputIndexableView2, typename OutputIndexableView, typename BinaryFunc>
+    void transform(const ConstInputIndexableView1& input_view1, const ConstInputIndexableView2& input_view2, OutputIndexableView& output_view, const BinaryFunc& func)
+    {
+        ::amp_algorithms::transform(_details::auto_select_target(), input_view1, input_view2, output_view, func);
+    }
 } // namespace amp_algorithms
 
 #include <xx_amp_algorithms_impl_inl.h>

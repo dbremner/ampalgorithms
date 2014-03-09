@@ -21,7 +21,7 @@
 #include "stdafx.h"
 #include <amp.h>
 #include <amp_algorithms.h>
-#include "test_amp.h"
+#include "testtools.h"
 
 // Code coverage is optional and requires VS Premium or Ultimate.
 #ifdef CODECOVERAGE
@@ -38,26 +38,6 @@ using namespace amp_algorithms;
 using namespace test_tools;
 
 // TODO: Add tests for indexable_view_traits
-
-namespace amp_algorithms_details_tests
-{
-    // This tests an inlined function so don't exclude this from coverage.
-    TEST_CLASS(details_tests)
-    {
-        TEST_METHOD(amp_details_check_hresult)
-        {
-            try
-            {
-                amp_algorithms::_details::_check_hresult(E_FAIL, "Failed!");
-            }
-            catch (runtime_exception& ex)
-            {
-                Assert::AreEqual(E_FAIL, ex.get_error_code());
-                Assert::AreEqual("Failed! 0x80004005.", ex.what());
-            }
-        }
-    };
-};
 
 namespace amp_algorithms_tests
 {

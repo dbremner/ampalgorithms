@@ -20,9 +20,8 @@
 *---------------------------------------------------------------------------*/
 
 #include "stdafx.h"
-#include "amp_scan.h"
 #include "amp_stl_algorithms.h"
-#include "test_amp.h"
+#include "testtools.h"
 
 // Code coverage is optional and requires VS Premium or Ultimate.
 #ifdef CODECOVERAGE
@@ -36,7 +35,6 @@ using namespace concurrency;
 using namespace amp_stl_algorithms;
 using namespace test_tools;
 
-// TODO: Filename should match namespace
 namespace testtools_tests
 {
     TEST_CLASS(testtools_equality)
@@ -99,6 +97,57 @@ namespace testtools_tests
 
             std::vector<int> exp(begin(expected), end(expected));
             Assert::IsTrue(exp == result, Msg(exp, result, 16).c_str());
+        }
+    };
+
+    TEST_CLASS(testtools_ostream)
+    {
+        TEST_METHOD(testtools_ostream_insertion_std_vector)
+        {
+            auto data = std::vector<int>(5);
+            std::iota(begin(data), end(data), 1);
+            std::ostringstream stream;
+            stream << data;
+            Assert::AreEqual("1,2,3,4,", stream.str().c_str());
+        }
+
+        TEST_METHOD(testtools_ostream_insertion_std_array)
+        {
+            auto data = std::array<int, 5>();
+            std::iota(begin(data), end(data), 1);
+            std::ostringstream stream;
+            stream << data;
+            Assert::AreEqual("1,2,3,4,", stream.str().c_str());
+        }
+
+        TEST_METHOD(testtools_ostream_insertion_amp_array_view)
+        {
+            auto data = std::vector<int>(5);
+            std::iota(begin(data), end(data), 1);
+            auto data_vw = concurrency::array_view<int, 1>(5, data.data());
+            std::ostringstream stream;
+            stream << data_vw;
+            Assert::AreEqual("1,2,3,4,", stream.str().c_str());
+        }
+
+        TEST_METHOD(testtools_ostream_insertion_amp_array)
+        {
+            auto data = std::vector<int>(5);
+            std::iota(begin(data), end(data), 1);
+            auto data_arr = concurrency::array<int, 1>(5);
+            copy(begin(data), end(data), data_arr);
+            std::ostringstream stream;
+            stream << data_arr;
+            Assert::AreEqual("1,2,3,4,", stream.str().c_str());
+        }
+
+        TEST_METHOD(testtools_ostream_insertion_container_width_limited)
+        {
+            auto data = std::vector<int>(5);
+            std::iota(begin(data), end(data), 1);
+            std::ostringstream stream;
+            stream << container_width(2) << data << container_width(3) << " " << data;
+            Assert::AreEqual("1,2, 1,2,3,", stream.str().c_str());
         }
     };
 };

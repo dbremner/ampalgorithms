@@ -5,10 +5,8 @@
     <ClInclude Include="..\inc\amp_indexable_view.h" />
     <ClInclude Include="..\inc\xx_amp_algorithms_impl.h" />
     <ClInclude Include="..\inc\xx_amp_algorithms_impl_inl.h" />
-    <ClInclude Include="..\test\stdafx.h">
-      <Filter>Tests</Filter>
-    </ClInclude>
-    <ClInclude Include="..\test\test_amp.h">
+    <ClInclude Include="..\test\stdafx.h"/>
+    <ClInclude Include="..\test\testtools.h">
       <Filter>Tests</Filter>
     </ClInclude>
   </ItemGroup>
@@ -18,7 +16,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\test\test_amp.cpp">
+    <ClCompile Include="..\test\test_amp_algorithms_scan.cpp">
+    <Filter>Tests</Filter>
+    </ClCompile>      
+    <ClCompile Include="..\test\test_testtools.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
     <ClCompile Include="..\test\stdafx.cpp">
@@ -27,7 +28,7 @@
     <ClCompile Include="..\test\test_amp_algorithms.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
-    <ClCompile Include="..\test\test_amp_algorithms_scan.cpp">
+    <ClCompile Include="..\test\test_amp_algorithms_direct3d_scan.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
     <ClCompile Include="..\test\test_amp_algorithms_sort.cpp">

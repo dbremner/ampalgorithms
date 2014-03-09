@@ -189,7 +189,7 @@ else
        
         $tests_failed = 0
         $tests_passed = 0
-        write-host "Running tests for Visual Studio ${ver}.0 ( $plat | $conf ) build. Showing failed tests:" -fore yellow
+        write-host "Running tests for Visual Studio ${ver}.0 ( $plat | $conf ) build..." -fore yellow
         ."$vstest_exe" $vstest_dlls /logger:trx 2>&1 | 
             %{ if ( $_ -match @('^Passed +')) { $tests_passed++ } ; $_ } | 
             %{ if ( $_ -match @('^Failed +')) { $tests_failed++ } ; $_ } | 
@@ -199,11 +199,11 @@ else
         $tests_count = $tests_passed + $tests_failed
         if ($tests_failed -gt 0) 
         {
-            write-host "`n$tests_failed / $tests_count Tests FAILED!`n" -fore red
+            write-host "`n$tests_failed / $tests_count Tests FAILED!" -fore red
         }
         else
         {
-            write-host "`nAll $tests_count tests complete, no failures.`n" -fore green
+            write-host "`nAll $tests_count tests complete, no failures." -fore green
         }
     }
     $stopwatch.Stop();

@@ -23,82 +23,83 @@
 
 namespace amp_algorithms
 {
-    namespace _details
-    {
-        // Scan helper that converts binary functions from C++ AMP library to DirectX scan operation codes
-        template <typename BinaryFunction>
-        struct _dx_scan_op_helper
+    namespace direct3d
+    { 
+        namespace _details
         {
-            static const bool is_op_supported = false;
-        };
+            // Scan helper that converts binary functions from C++ AMP library to DirectX scan operation codes
+            template <typename BinaryFunction>
+            struct _dx_scan_op_helper
+            {
+                static const bool is_op_supported = false;
+            };
 
-        template <typename T>
-        struct _dx_scan_op_helper<amp_algorithms::plus<T>>
-        {
-            static const bool is_op_supported = true;
-            static const D3DX11_SCAN_OPCODE dx_op_type = D3DX11_SCAN_OPCODE_ADD;
-        };
+            template <typename T>
+            struct _dx_scan_op_helper<amp_algorithms::plus<T>>
+            {
+                static const bool is_op_supported = true;
+                static const D3DX11_SCAN_OPCODE dx_op_type = D3DX11_SCAN_OPCODE_ADD;
+            };
 
-        template <typename T>
-        struct _dx_scan_op_helper<amp_algorithms::max<T>>
-        {
-            static const bool is_op_supported = true;
-            static const D3DX11_SCAN_OPCODE dx_op_type = D3DX11_SCAN_OPCODE_MAX;
-        };
+            template <typename T>
+            struct _dx_scan_op_helper<amp_algorithms::max<T>>
+            {
+                static const bool is_op_supported = true;
+                static const D3DX11_SCAN_OPCODE dx_op_type = D3DX11_SCAN_OPCODE_MAX;
+            };
 
-        // Further specialize amp_algorithms::max for uint and mark as not supported.
-        template <>
-        struct _dx_scan_op_helper<amp_algorithms::max<unsigned int>>
-        {
-            // max is not supported for uint, as our implementation is based on int,
-            // this will return incorrect results for values that are greater than numeric_limits<int>::max().
-            static const bool is_op_supported = false;
-        };
+            // Further specialize amp_algorithms::max for uint and mark as not supported.
+            template <>
+            struct _dx_scan_op_helper<amp_algorithms::max<unsigned int>>
+            {
+                // max is not supported for uint, as our implementation is based on int,
+                // this will return incorrect results for values that are greater than numeric_limits<int>::max().
+                static const bool is_op_supported = false;
+            };
 
-        template <typename T>
-        struct _dx_scan_op_helper<amp_algorithms::min<T>>
-        {
-            static const bool is_op_supported = true;
-            static const D3DX11_SCAN_OPCODE dx_op_type = D3DX11_SCAN_OPCODE_MIN;
-        };
+            template <typename T>
+            struct _dx_scan_op_helper<amp_algorithms::min<T>>
+            {
+                static const bool is_op_supported = true;
+                static const D3DX11_SCAN_OPCODE dx_op_type = D3DX11_SCAN_OPCODE_MIN;
+            };
 
-        // Further specialize amp_algorithms::min for uint and mark as not supported.
-        template <>
-        struct _dx_scan_op_helper<amp_algorithms::min<unsigned int>>
-        {
-            // min is not supported for uint, as our implementation is based on int,
-            // this will return incorrect results for values that are greater than numeric_limits<int>::max().
-            static const bool is_op_supported = false;
-        };
+            // Further specialize amp_algorithms::min for uint and mark as not supported.
+            template <>
+            struct _dx_scan_op_helper<amp_algorithms::min<unsigned int>>
+            {
+                // min is not supported for uint, as our implementation is based on int,
+                // this will return incorrect results for values that are greater than numeric_limits<int>::max().
+                static const bool is_op_supported = false;
+            };
 
-        template <typename T>
-        struct _dx_scan_op_helper<amp_algorithms::multiplies<T>>
-        {
-            static const bool is_op_supported = true;
-            static const D3DX11_SCAN_OPCODE dx_op_type = D3DX11_SCAN_OPCODE_MUL;
-        };
+            template <typename T>
+            struct _dx_scan_op_helper<amp_algorithms::multiplies<T>>
+            {
+                static const bool is_op_supported = true;
+                static const D3DX11_SCAN_OPCODE dx_op_type = D3DX11_SCAN_OPCODE_MUL;
+            };
 
-        template <typename T>
-        struct _dx_scan_op_helper<amp_algorithms::bit_and<T>>
-        {
-            static const bool is_op_supported = true;
-            static const D3DX11_SCAN_OPCODE dx_op_type = D3DX11_SCAN_OPCODE_AND;
-        };
+            template <typename T>
+            struct _dx_scan_op_helper<amp_algorithms::bit_and<T>>
+            {
+                static const bool is_op_supported = true;
+                static const D3DX11_SCAN_OPCODE dx_op_type = D3DX11_SCAN_OPCODE_AND;
+            };
 
-        template <typename T>
-        struct _dx_scan_op_helper<amp_algorithms::bit_or<T>>
-        {
-            static const bool is_op_supported = true;
-            static const D3DX11_SCAN_OPCODE dx_op_type = D3DX11_SCAN_OPCODE_OR;
-        };
+            template <typename T>
+            struct _dx_scan_op_helper<amp_algorithms::bit_or<T>>
+            {
+                static const bool is_op_supported = true;
+                static const D3DX11_SCAN_OPCODE dx_op_type = D3DX11_SCAN_OPCODE_OR;
+            };
 
-        template <typename T>
-        struct _dx_scan_op_helper<amp_algorithms::bit_xor<T>>
-        {
-            static const bool is_op_supported = true;
-            static const D3DX11_SCAN_OPCODE dx_op_type = D3DX11_SCAN_OPCODE_XOR;
-        };
-
-    } // namespace amp_algorithms::_details
-
+            template <typename T>
+            struct _dx_scan_op_helper<amp_algorithms::bit_xor<T>>
+            {
+                static const bool is_op_supported = true;
+                static const D3DX11_SCAN_OPCODE dx_op_type = D3DX11_SCAN_OPCODE_XOR;
+            };
+        } // namespace amp_algorithms::direct3d::_details
+    } // namespace amp_algorithms::direct3d
 } // namespace amp_algorithms

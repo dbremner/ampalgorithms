@@ -30,7 +30,6 @@
 
 #include <amp_stl_algorithms.h>
 #include <amp_algorithms.h>
-#include "amp_scan.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace concurrency;
@@ -47,7 +46,6 @@ namespace graphics { };
 namespace fast_math { };
 namespace precise_math { };
 
-// TODO: Define a dummy parallel_for_each here to make sure that we don't have any conflicts.
 class extent { };
 class index { };
 class array { };
@@ -77,14 +75,10 @@ namespace test_tools
     inline void generate_data(std::vector<T> &v)
     {
         srand(2012);    // Set random number seed so tests are reproducable.
-        for (unsigned int i = 0; i < v.size(); ++i) 
-        {
-            v[i] = (T) rand();
-            if ((i % 4) == 0) 
-            {
-                v[i] = -v[i];
-            }
-        }
+        std::generate(begin(v), end(v), [=]{
+            T v = (T)rand();
+            return ((int(v) % 4) == 0) ? -v : v;
+        });
     }
 
     template <>
@@ -162,8 +156,8 @@ namespace test_tools
 
     // Compare two floats and return true if they are close to each other.
     inline bool compare(float v1, float v2, 
-                        const float maxAbsoluteDiff = 0.000005f,
-                        const float maxRelativeDiff = 0.001f)
+        const float maxAbsoluteDiff = 0.000005f,
+        const float maxRelativeDiff = 0.001f)
     {
         return are_almost_equal(v1, v2, maxAbsoluteDiff, maxRelativeDiff);
     }
@@ -246,35 +240,38 @@ namespace test_tools
     };
 
     // TODO: These print two ',' as a delimiter not one. Fix.
-    template<typename StrmType, typename Traits, typename VecT>
-    std::basic_ostream<StrmType, Traits>& operator<< (std::basic_ostream<StrmType, Traits>& os, const std::vector<VecT>& vec)
+    template<typename StrmType, typename Traits, typename T, int N>
+    std::basic_ostream<StrmType, Traits>& operator<< (std::basic_ostream<StrmType, Traits>& os, const std::array<T, N>& vec)
     {
-        size_t i = std::min<size_t>(_details::get_width(os), vec.size());
-        std::copy(std::begin(vec), std::begin(vec) + i,
-            std::ostream_iterator<VecT, Traits::char_type>(os, _details::get_delimiter<Traits::char_type>()));
+        std::copy(std::begin(vec), std::begin(vec) + std::min<size_t>(_details::get_width(os), vec.size()),
+            std::ostream_iterator<T, Traits::char_type>(os, _details::get_delimiter<Traits::char_type>()));
         return os;
     }
 
-    template<typename StrmType, typename Traits, typename VecT>
-    std::basic_ostream<StrmType, Traits>& operator<< (std::basic_ostream<StrmType, Traits>& os, concurrency::array<VecT, 1>& vec)
+    template<typename StrmType, typename Traits, typename T>
+    std::basic_ostream<StrmType, Traits>& operator<< (std::basic_ostream<StrmType, Traits>& os, const std::vector<T>& vec)
     {
-        size_t i = std::min<size_t>(_details::get_width(os), vec.extent[0]);
-        std::vector<const VecT> buffer(i);
-        copy(vec.section(0, int(i)), std::begin(buffer));
-        std::copy(std::begin(buffer), std::begin(buffer) + i,
-            std::ostream_iterator<VecT, Traits::char_type>(os, _details::get_delimiter<Traits::char_type>()));
+        std::copy(std::begin(vec), std::begin(vec) + std::min<size_t>(_details::get_width(os), vec.size()),
+            std::ostream_iterator<T, Traits::char_type>(os, _details::get_delimiter<Traits::char_type>()));
         return os;
     }
 
-    template<typename StrmType, typename Traits, typename VecT>
-    std::basic_ostream<StrmType, Traits>& operator<< (std::basic_ostream<StrmType, Traits>& os, const concurrency::array_view<VecT, 1>& vec)
+    template<typename StrmType, typename Traits, typename T>
+    std::basic_ostream<StrmType, Traits>& operator<< (std::basic_ostream<StrmType, Traits>& os, concurrency::array<T, 1>& vec)
     {
         size_t i = std::min<size_t>(_details::get_width(os), vec.extent[0]);
-        std::vector<VecT> buffer(i);
+        std::vector<const T> buffer(i);
         copy(vec.section(0, int(i)), std::begin(buffer));
-        std::copy(std::begin(buffer), std::begin(buffer) + i, 
-            std::ostream_iterator<VecT, Traits::char_type>(os, _details::get_delimiter<Traits::char_type>()));
-        return os;
+        return os << buffer;
+    }
+
+    template<typename StrmType, typename Traits, typename T>
+    std::basic_ostream<StrmType, Traits>& operator<< (std::basic_ostream<StrmType, Traits>& os, const concurrency::array_view<T, 1>& vec)
+    {
+        size_t i = std::min<size_t>(_details::get_width(os), vec.extent[0]);
+        std::vector<T> buffer(i);
+        copy(vec.section(0, int(i)), std::begin(buffer));
+        return os << buffer;
     }
 
     namespace _details
@@ -314,4 +311,4 @@ namespace test_tools
             return &delim;
         }
     }
-}; // namespace test_tools
+}; // namespace testtools

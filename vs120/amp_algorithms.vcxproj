@@ -18,12 +18,6 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\inc\amp_scan.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="..\test\test_amp_scan.cpp" />
-  </ItemGroup>
   <PropertyGroup Label="Globals" />
   <PropertyGroup Condition="'$(WARNINGS_AS_ERRORS)' == ''">
     <WARNINGS_AS_ERRORS>false</WARNINGS_AS_ERRORS>
