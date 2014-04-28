@@ -53,28 +53,52 @@ class array { };
 //  Set USE_REF to use the REF accelerator for all tests. This is useful if tests fail on a particular machine as
 //  failure may be due to a driver bug.
 
-namespace test_tools
+#define TEST_CATEGORY(category) TEST_METHOD_ATTRIBUTE(L"TestCategory", L#category)
+
+#define TEST_METHOD_CATEGORY(methodName, category) \
+    BEGIN_TEST_METHOD_ATTRIBUTE(methodName) \
+    TEST_CATEGORY(category) \
+    END_TEST_METHOD_ATTRIBUTE() \
+    TEST_METHOD(methodName)
+
+namespace testtools
 {
     inline void set_default_accelerator()
     {
-    #if defined(USE_REF)
+#if defined(USE_REF)
         bool set_ok = accelerator::set_default(accelerator::direct3d_ref);
 
         if (!set_ok)
         {
             Logger::WriteMessage("Unable to set default accelerator to REF.");
         }
-    #endif
+#endif
     }
 
     //===============================================================================
     //  Helper functions to generate test data of random numbers.
     //===============================================================================
 
+    template<typename T>
+    inline int test_array_size()
+    {
+        int size;
+#if _DEBUG
+        size = 1023;
+#else
+        size = 1023 + 1029;
+#endif
+        if (std::is_same<T, int>::value)
+            size *= 13;
+        else if (std::is_same<T, float>::value)
+            size *= 5;
+        return size;
+    }
+
     template <typename T>
     inline void generate_data(std::vector<T> &v)
     {
-        srand(2012);    // Set random number seed so tests are reproducable.
+        srand(2012);    // Set random number seed so tests are reproducible.
         std::generate(begin(v), end(v), [=]{
             T v = (T)rand();
             return ((int(v) % 4) == 0) ? -v : v;
@@ -84,7 +108,7 @@ namespace test_tools
     template <>
     inline void generate_data(std::vector<unsigned int> &v)
     {
-        srand(2012);    // Set random number seed so tests are reproducable.
+        srand(2012);    // Set random number seed so tests are reproducible.
         std::generate(begin(v), end(v), [=](){ return (unsigned int) rand(); });
     }
 
@@ -179,6 +203,45 @@ namespace test_tools
         return true;
     }
 
+    template<typename StlFunc, typename AmpFunc>
+    void compare_operators(StlFunc stl_func, AmpFunc amp_func)
+    {
+        typedef std::pair<int, int> test_pair;
+        
+        std::array<test_pair, 6> tests = {
+            test_pair(1, 2),
+            test_pair(100, 100),
+            test_pair(150, 300),
+            test_pair(1000, -50),
+            test_pair(11, 12),
+            test_pair(-12, 33)
+        };
+        
+        for (auto p : tests)
+        {
+            Assert::AreEqual(stl_func(p.first, p.second), amp_func(p.first, p.second));
+        }
+    }
+
+    template<typename StlFunc, typename AmpFunc>
+    void compare_logical_operators(StlFunc stl_func, AmpFunc amp_func)
+    {
+        typedef std::pair<unsigned int, unsigned int> test_pair;
+
+        std::array<test_pair, 8> tests = {
+            test_pair(0xF, 0xF),
+            test_pair(0xFF, 0x0A),
+            test_pair(0x0A, 0xFF),
+            test_pair(0xFF, 0x00),
+            test_pair(0x00, 0x00)
+        };
+
+        for (auto& p : tests)
+        {
+            Assert::AreEqual(stl_func(p.first, p.second), amp_func(p.first, p.second));
+        }
+    }
+
     // Compare array_view with other STL containers.
     template<typename T>
     size_t size(const array_view<T>& arr)
@@ -222,6 +285,8 @@ namespace test_tools
     //      std::vector<int> data(12, 1);
     //      cout << container_width(4) << data;
     //
+    // TODO: Should this stream support be part of the library. It seems pretty useful, for debugging and testing if nothing else.
+
     class container_width
     {
     public:
@@ -310,5 +375,41 @@ namespace test_tools
             static wchar_t delim(L',');
             return &delim;
         }
+    } // namespace _details
+
+    //===============================================================================
+    //  Basic performance timing.
+    //===============================================================================
+
+    inline double elapsed_time(const LARGE_INTEGER& start, const LARGE_INTEGER& end)
+    {
+        LARGE_INTEGER freq;
+        QueryPerformanceFrequency(&freq);
+        return (double(end.QuadPart) - double(start.QuadPart)) * 1000.0 / double(freq.QuadPart);
     }
-}; // namespace testtools
+
+    template <typename Func>
+    double time_func(accelerator_view& view, Func f)
+    {
+        //  Ensure that the C++ AMP runtime is initialized.
+        accelerator::get_all();
+
+        //  Ensure that the C++ AMP kernel has been JITed.
+        f();
+
+        //  Wait for all accelerator work to end.
+        view.wait();
+
+        LARGE_INTEGER start, end;
+        QueryPerformanceCounter(&start);
+
+        f();
+
+        //  Wait for all accelerator work to end.
+        view.wait();
+        QueryPerformanceCounter(&end);
+
+        return elapsed_time(start, end);
+    }
+
+}; // namespace test_tools

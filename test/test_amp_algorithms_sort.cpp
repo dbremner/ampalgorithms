@@ -27,11 +27,11 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace concurrency;
 using namespace amp_algorithms;
 using namespace amp_algorithms::_details;
-using namespace test_tools;
+using namespace testtools;
 
 namespace amp_algorithms_tests
 {
-    TEST_CLASS(sort_tests)
+    TEST_CLASS(amp_sort_tests)
     {
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
@@ -66,25 +66,26 @@ namespace amp_algorithms_tests
             }
         }
 
-        TEST_METHOD(aaa_amp_sort_radix)
-        {
-            std::array<unsigned, 16> input = {  3,  2,  1,  6, 10, 11, 13, 16, 15, 10,  5, 14,  4, 12,  9,  8 };
-            //                                  3   2   1   2   2   3   1   0   3   2   1   2   0   0   1   0
-            //std::array<unsigned, 4> expected = { 3, 2, 1, 6 };
-            std::array<int, 4> expected = { 4, 4, 5, 3 };
-            //std::array<unsigned, 4> expected = { 0, 4, 9, 12 };
-            array_view<unsigned> input_av(int(input.size()), input);
+        //TEST_METHOD(aaa_amp_sort_radix)
+        //{
+        //    std::array<unsigned, 16> input = {  3,  2,  1,  6, 10, 11, 13, 16, 15, 10,  5, 14,  4, 12,  9,  8 };
+        //    //                                  3   2   1   2   2   3   1   0   3   2   1   2   0   0   1   0
+        //    //std::array<unsigned, 4> expected = { 3, 2, 1, 6 };
+        //    std::array<int, 4> expected = { 4, 4, 5, 3 };
+        //    //std::array<unsigned, 4> expected = { 0, 4, 9, 12 };
+        //    array_view<unsigned> input_av(int(input.size()), input);
 
-            //radix_sort(input_av);
-            
-            //histogram_tile<unsigned, 2, 8>(input_av, 0);
+        //    //radix_sort(input_av);
+        //    
+        //    //histogram_tile<unsigned, 2, 8>(input_av, 0);
 
-            //Assert::IsTrue(are_equal(expected, input_av.section(0, 4)));
-        }
+        //    Assert::IsTrue(are_equal(expected, input_av.section(0, 4)));
+        //}
     };
 }; // namespace amp_algorithms_tests
 
 // TODO: Finish make_array_view, assuming we really need it.
+
 template< typename ConstRandomAccessIterator >
 void make_array_view( ConstRandomAccessIterator first, ConstRandomAccessIterator last )
 {

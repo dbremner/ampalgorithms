@@ -20,15 +20,27 @@
 
 #define NOMINMAX
 
-#include <vector>
 #include <algorithm>
 #include <array>
+#include <functional>
 #include <iostream>
 #include <numeric>
-#include <functional>
 #include <random>
+#include <vector>
+
+// These are not required includes, they already included by the AMP library headers .
+#include <amp.h>
+#include <assert.h>
+#include <wrl\client.h>
+#include <d3d11.h>
+#include <d3dcsx.h>
+#include <iterator>
+#include <sstream>
+#include <type_traits>
+#include <utility>
 
 #include <CppUnitTest.h>
+
 // Code coverage is optional and requires VS Premium or Ultimate.
 #ifdef CODECOVERAGE
 #include <CodeCoverage\CodeCoverage.h>

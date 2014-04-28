@@ -33,13 +33,13 @@ ExcludeFromCodeCoverage(exclude_test_tool_tests, L"testtools_tests::*");
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace concurrency;
 using namespace amp_stl_algorithms;
-using namespace test_tools;
+using namespace testtools;
 
 namespace testtools_tests
 {
-    TEST_CLASS(testtools_equality)
+    TEST_CLASS(testtools_equality_tests)
     {
-        TEST_METHOD(testtools_array_view_equality)
+        TEST_METHOD_CATEGORY(testtools_array_view_equality, "testtools")
         {
             const int size = 10;
             std::vector<int> a(size, 0);
@@ -73,9 +73,9 @@ namespace testtools_tests
         return msg.str();
     }
 
-    TEST_CLASS(testtools_sequential_scan)
+    TEST_CLASS(testtools_sequential_scan_tests)
     {
-        TEST_METHOD(testtools_sequential_exclusive_scan)
+        TEST_METHOD_CATEGORY(testtools_sequential_exclusive_scan, "testtools")
         {
             std::array<int, 16> input = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
             std::vector<int> result(input.size(), -1);
@@ -87,7 +87,7 @@ namespace testtools_tests
             Assert::IsTrue(exp == result, Msg(exp, result, 16).c_str());
         }
 
-        TEST_METHOD(testtools_sequential_inclusive_scan)
+        TEST_METHOD_CATEGORY(testtools_sequential_inclusive_scan, "testtools")
         {
             std::array<int, 16> input = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
             std::vector<int> result(input.size(), -1);
@@ -100,9 +100,9 @@ namespace testtools_tests
         }
     };
 
-    TEST_CLASS(testtools_ostream)
+    TEST_CLASS(testtools_ostream_tests)
     {
-        TEST_METHOD(testtools_ostream_insertion_std_vector)
+        TEST_METHOD_CATEGORY(testtools_ostream_insertion_std_vector, "testtools")
         {
             auto data = std::vector<int>(5);
             std::iota(begin(data), end(data), 1);
@@ -111,7 +111,7 @@ namespace testtools_tests
             Assert::AreEqual("1,2,3,4,", stream.str().c_str());
         }
 
-        TEST_METHOD(testtools_ostream_insertion_std_array)
+        TEST_METHOD_CATEGORY(testtools_ostream_insertion_std_array, "testtools")
         {
             auto data = std::array<int, 5>();
             std::iota(begin(data), end(data), 1);
@@ -120,7 +120,7 @@ namespace testtools_tests
             Assert::AreEqual("1,2,3,4,", stream.str().c_str());
         }
 
-        TEST_METHOD(testtools_ostream_insertion_amp_array_view)
+        TEST_METHOD_CATEGORY(testtools_ostream_insertion_amp_array_view, "testtools")
         {
             auto data = std::vector<int>(5);
             std::iota(begin(data), end(data), 1);
@@ -130,7 +130,7 @@ namespace testtools_tests
             Assert::AreEqual("1,2,3,4,", stream.str().c_str());
         }
 
-        TEST_METHOD(testtools_ostream_insertion_amp_array)
+        TEST_METHOD_CATEGORY(testtools_ostream_insertion_amp_array, "testtools")
         {
             auto data = std::vector<int>(5);
             std::iota(begin(data), end(data), 1);
@@ -141,7 +141,7 @@ namespace testtools_tests
             Assert::AreEqual("1,2,3,4,", stream.str().c_str());
         }
 
-        TEST_METHOD(testtools_ostream_insertion_container_width_limited)
+        TEST_METHOD_CATEGORY(testtools_ostream_insertion_container_width_limited, "testtools")
         {
             auto data = std::vector<int>(5);
             std::iota(begin(data), end(data), 1);

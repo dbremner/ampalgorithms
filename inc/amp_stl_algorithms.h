@@ -20,14 +20,192 @@
 *---------------------------------------------------------------------------*/
 #pragma once
 
+#include <utility>
 #include <xx_amp_algorithms_impl.h>
 #include <amp_iterators.h>
 
 // TODO: Get the tests, header and internal implementations into the same logical order.
-// TODO: consider supporting the heap functions (is_heap et al)
+// TODO: consider supporting the heap functions (is_heap etc)
 
 namespace amp_stl_algorithms
 {
+    //----------------------------------------------------------------------------
+    // pair<T1, T2>
+    //----------------------------------------------------------------------------
+
+    template<class T1, class T2>
+    class pair
+    {
+    public:
+        typedef T1 first_type;
+        typedef T2 second_type;
+
+        T1 first;
+        T2 second;
+
+        pair() restrict(amp, cpu)
+            : first(), second()
+        { }
+
+        pair(const T1& val1, const T2& val2) restrict(amp)
+            : first(val1), second(val2)
+        { }
+
+        template<class Other1, class Other2>
+        pair(const pair<Other1, Other2>& _Right) restrict(amp, cpu)
+            : first(_Right.first), second(_Right.second)
+        { }
+
+        template<class Other1, class Other2>
+        pair(Other1&& val1, Other2&& val2) restrict(amp, cpu)
+            : first(val1), second(val2)
+        { }
+
+        // Support interop with std::pair.
+
+        pair(const std::pair<T1, T2>& val) restrict(amp, cpu)
+            : first(val.first), second(val.second)
+        { }
+
+        pair& operator=(const std::pair<T1, T2>& val) restrict(cpu)
+        {
+            first = val.first;
+            second = val.second;
+            return *this;
+        }
+
+        operator std::pair<T1, T2>() restrict(cpu)
+        {
+            return std::pair<T1, T2>(first, second);
+        }
+    };
+
+    template<class T1, class T2>
+    inline bool operator==(const pair<T1, T2>& _Left, const pair<T1, T2>& _Right) restrict(amp, cpu)
+    {
+        return (_Left.first == _Right.first && _Left.second == _Right.second);
+    }
+
+    template<class T1, class T2>
+    inline bool operator!=(const pair<T1, T2>& _Left, const pair<T1, T2>& _Right) restrict(amp, cpu)
+    {
+        return (!(_Left == _Right));
+    }
+
+    template<class T1, class T2>
+    inline bool operator<(const pair<T1, T2>& _Left, const pair<T1, T2>& _Right) restrict(amp, cpu)
+    {
+        return (_Left.first < _Right.first || (!(_Right.first < _Left.first) && _Left.second < _Right.second));
+    }
+
+    template<class T1, class T2>
+    inline bool operator>(const pair<T1, T2>& _Left, const pair<T1, T2>& _Right) restrict(amp, cpu)
+    {
+        return (_Right < _Left);
+    }
+
+    template<class T1, class T2>
+    inline bool operator<=(const pair<T1, T2>& _Left, const pair<T1, T2>& _Right) restrict(amp, cpu)
+    {
+        return (!(_Right < _Left));
+    }
+
+    template<class T1, class T2> 
+    inline bool operator>=(const pair<T1, T2>& _Left, const pair<T1, T2>& _Right) restrict(amp, cpu)
+    {
+            return (!(_Left < _Right));
+    }
+
+    //----------------------------------------------------------------------------
+    //  tuple<... T>
+    //----------------------------------------------------------------------------
+
+    // http://mitchnull.blogspot.com/2012/06/c11-tuple-implementation-details-part-1.html
+    // TODO: NOT IMPLEMENTED Tuple<...T>
+    /*
+    template <typename... T>
+    class tuple;
+
+    namespace _details
+    {
+
+    }
+
+    template <typename... T>
+    class tuple {
+    public:
+        tuple();
+
+        explicit tuple(const T&...);
+
+        template <typename... U>
+        explicit tuple(U&&...);
+
+        tuple(const tuple&);
+
+        tuple(tuple&&);
+
+        template <typename... U>
+        tuple(const tuple<U...>&);
+
+        template <typename... U>
+        tuple(tuple<U...>&&);
+
+        tuple& operator=(const tuple&);
+      
+        tuple& operator=(tuple&&);
+
+        template <typename... U>
+        tuple& operator=(const tuple<U...>&);
+
+        template <typename... U>
+        tuple& operator=(tuple<U...>&&);
+
+        void swap(tuple&);
+    };
+
+    template <typename... T> typename tuple_size<tuple<T...>>;
+
+    template <size_t I, typename... T> typename tuple_element<I, tuple<T...>>;
+
+    // element access:
+
+    template <size_t I, typename... T>
+    typename tuple_element<I, tuple<T...>>::type&
+        get(tuple<T...>&);
+
+    template <size_t I, typename... T>
+    typename tuple_element<I, tuple<T...>>::type const&
+        get(const tuple<T...>&);
+
+    template <size_t I, typename... T>
+    typename tuple_element<I, tuple<T...>>::type&&
+        get(tuple<T...>&&);
+
+    // relational operators:
+
+    template<typename... T, typename... U>
+    bool operator==(const tuple<T...>&, const tuple<U...>&);
+
+    template<typename... T, typename... U>
+    bool operator<(const tuple<T...>&, const tuple<U...>&);
+
+    template<typename... T, typename... U>
+    bool operator!=(const tuple<T...>&, const tuple<U...>&);
+
+    template<typename... T, typename... U>
+    bool operator>(const tuple<T...>&, const tuple<U...>&);
+
+    template<typename... T, typename... U>
+    bool operator<=(const tuple<T...>&, const tuple<U...>&);
+
+    template<typename... T, typename... U>
+    bool operator>=(const tuple<T...>&, const tuple<U...>&);
+
+    template <typename... Types>
+    void swap(tuple<Types...>& x, tuple<Types...>& y);
+    */
+
     //----------------------------------------------------------------------------
     // adjacent_difference
     //----------------------------------------------------------------------------
@@ -353,34 +531,20 @@ namespace amp_stl_algorithms
         Compare comp ); 
 
     //----------------------------------------------------------------------------
-    // min, max,minmax, max_element, min_element, minmax_element
+    // minmax, max_element, min_element, minmax_element
     //----------------------------------------------------------------------------
 
-#ifdef max
-#error amp_stl_algorithms encountered a definition of the macro max
-#endif
+    template <typename T>
+    inline amp_stl_algorithms::pair<const T, const T> minmax(const T a, const T b) restrict( cpu)
+    {
+        return minmax(a, b, amp_algorithms::less<T>());
+    }
 
-    template<typename T> 
-    const T& max( const T& a, const T& b ) restrict (cpu,amp);
-
-    template<typename T, typename Compare>
-    const T& max( const T& a, const T& b, Compare comp ) restrict (cpu,amp);
-
-#ifdef min
-#error amp_stl_algorithms encountered a definition of the macro min
-#endif
-
-    template<typename T> 
-    const T& min( const T& a, const T& b ) restrict (cpu,amp);
-
-    template<typename T, typename Compare>
-    const T& min( const T& a, const T& b, Compare comp ) restrict (cpu,amp);
-
-    template<typename T> 
-    std::pair<const T&,const T&> minmax( const T& a, const T& b ) restrict (cpu,amp);
-
-    template<typename T, typename Compare>
-    std::pair<const T&,const T&> minmax( const T& a, const T& b, Compare comp ) restrict (cpu,amp);
+    template <typename T, typename Compare>
+    inline amp_stl_algorithms::pair<const T, const T> minmax(const T a, const T b, Compare comp) restrict(cpu)
+    {
+        return comp(a, b) ? amp_stl_algorithms::pair<const T, const T>(a, b) : amp_stl_algorithms::pair<const T, const T>(b, a);
+    }
 
     // TODO: enable initializer list in amp restricted code
     //

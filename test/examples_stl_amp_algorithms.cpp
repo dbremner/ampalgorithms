@@ -23,6 +23,8 @@
 #include <amp_algorithms.h>
 #include <amp_stl_algorithms.h>
 
+#include "testtools.h"
+
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 using namespace concurrency;
@@ -47,8 +49,9 @@ namespace examples
         // TODO: Replace stl_example_hello_world with SAXPY
         TEST_METHOD(stl_example_hello_world)
         {
+            auto size = testtools::test_array_size<int>();
             {
-                array<float> data(1024 * 1024);
+                concurrency::array<float> data(size);
                 array_view<float> data_av(data);
 
                 amp_stl_algorithms::iota(begin(data_av), end(data_av), 1.0f);
@@ -63,7 +66,7 @@ namespace examples
 
             // STL Equivalent code.
             {
-                std::vector<float> data(1024 * 1024);
+                std::vector<float> data(size);
 
                 std::iota(std::begin(data), std::end(data), 1.0f);
                 auto last = std::remove_if(std::begin(data), std::end(data), 

@@ -253,6 +253,12 @@ namespace amp_algorithms
         }
     };
 
+    // TODO: Where should these be declared? Technically they are STL algorithms but they are already used by the direct3d namespace
+    // TODO: Does it really make a lot of sense to declare two namespaces or should everything be flattened into amp_algorithms?
+#ifdef max
+#error amp_algorithms encountered a definition of the macro max.
+#endif
+
     template <typename T>
     class max
     {
@@ -262,6 +268,10 @@ namespace amp_algorithms
             return ((a < b) ? b : a);
         }
     };
+
+#ifdef min
+#error amp_algorithms encountered a definition of the macro min.
+#endif
 
     template <typename T>
     class min
@@ -403,11 +413,11 @@ namespace amp_algorithms
     // http://www.cs.virginia.edu/~dgm4d/papers/RadixSortTR.pdf
     // http://xxx.lanl.gov/pdf/1008.2849
     // http://www.rebe.rau.ro/RePEc/rau/jisomg/WI12/JISOM-WI12-A11.pdf
-
+    //
     // "Designing Efficient Sorting Algorithms for Manycore GPUs" http://www.nvidia.com/docs/io/67073/nvr-2008-001.pdf
-
+    //
     // "Histogram Calculation in CUDA" http://docs.nvidia.com/cuda/samples/3_Imaging/histogram/doc/histogram.pdf
-
+    //
     // TODO: Move this to the impl file?
     namespace _details
     {
@@ -444,7 +454,7 @@ namespace amp_algorithms
                 [=, &histogram_bins](concurrency::tiled_index<tile_size> tidx) restrict(amp)
             {
                 // Each thread has its own histogram
-                tile_static unsigned bins[tile_size][bin_count];
+                tile_static unsigned tile_bins[tile_size][bin_count];
                 const int gidx = tidx.global[0];
                 const int idx = tidx.local[0];
                 const int start_elem = idx * elements_per_thread;
@@ -461,33 +471,34 @@ namespace amp_algorithms
                 // Initialize bins for this thread
                 for (int b = 0; b < bin_count; ++b)
                 {
-                    bins[idx][b] = 0u;
+                    tile_bins[idx][b] = 0u;
                 }
 
                 // Increment bins for each element.
                 for (int i = start_elem; i < (start_elem + elements_per_thread); ++i)
                 {
                     if (gidx < input_view.extent[0])
-                        bins[idx][_details::radix_key_value<T, key_size>(input_view[gidx], key_idx)]++;
+                        tile_bins[idx][_details::radix_key_value<T, key_size>(input_view[gidx], key_idx)]++;
                 }
 
                 // Wait for all threads to finish incrementing.
                 tidx.barrier.wait();
 
                 // TODO: This could be more efficient. Don't do it all on one thread.
-                // Thread zero merges local histograms.
                 if (idx == 0)
                 {
+                    // Thread zero merges local histograms.
                     for (int i = 1; i < tile_size; ++i)
                     {
-                        merge_bins(bins[0], bins[i], bin_count);
+                        merge_bins(tile_bins[0], tile_bins[i], bin_count);
                     }
 
                     // TODO: This isn't smart either but it'll get things working.
 
+                    // Thread zero copies and merges data with global histogram.
                     for (int b = 0; b < bin_count; ++b)
                     {
-                        concurrency::atomic_fetch_add(&histogram_bins(b), bins[0][b]);
+                        concurrency::atomic_fetch_add(&histogram_bins(b), tile_bins[0][b]);
                     }
                 }
             });
@@ -501,9 +512,8 @@ namespace amp_algorithms
             // prefix scan the histogram results to get offsets.
             // TODO: This scan supports multi-tile. Probably need a simpler version that uses only one tile.
             concurrency::array<unsigned> histogram_scan(bin_count);
-            amp_algorithms::scan s(2 * bin_count);
+            amp_algorithms::direct3d::::scan s(2 * bin_count);
             s.scan_exclusive(histogram_bins, histogram_bins);
-
 #if _DEBUG
             {
                 std::vector<unsigned> scans(4);
@@ -527,7 +537,7 @@ namespace amp_algorithms
     }
 
     template<typename T>
-    inline void merge_bins(T* left, T*  right, const int bin_count) restrict(amp)
+    inline void merge_bins(const T* left, const T*  right, const int bin_count) restrict(amp)
     {
         for (int b = 0; b < bin_count; ++b)
         {
@@ -724,7 +734,7 @@ namespace amp_algorithms
                 Microsoft::WRL::ComPtr<ID3D11Buffer> src_buffer(_details::_get_d3d11_buffer_ptr(input_array));
                 Microsoft::WRL::ComPtr<ID3D11Buffer> dst_buffer(_details::_get_d3d11_buffer_ptr(output_array));
 
-                // Create typed uavs
+                // Create typed UAVs
                 Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> src_view(_details::_create_d3d11_uav(m_device, src_buffer, _details::_dx_scan_type_helper<T>::dx_view_type));
                 // 2nd view is only needed if destination buffer is different from source buffer (not-in-place scan)
                 Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> dst_view;
@@ -846,7 +856,7 @@ namespace amp_algorithms
             tidx.barrier.wait_with_tile_static_memory_fence();
             return val;
         }
-    }
+    } // namespace _details
 
     template <int TileSize, scan_mode _Mode, typename _BinaryOp, typename T>
     inline void scan_new(const concurrency::array<T, 1>& input_array, concurrency::array<T, 1>& output_array, const _BinaryOp& op)

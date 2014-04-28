@@ -139,7 +139,7 @@ namespace amp_stl_algorithms
                 }
             }
         });
-        }
+    }
 
     // Standard, builds of top of the non-standard async version above, and adds a sync to
     // materialize the result.
@@ -179,7 +179,7 @@ namespace amp_stl_algorithms
     RandomAccessIterator copy_if(ConstRandomAccessIterator first,  
         ConstRandomAccessIterator last,
         RandomAccessIterator dest_first,
-        UnaryPredicate p)
+        UnaryPredicate pred)
     {
         typedef typename std::iterator_traits<ConstRandomAccessIterator>::difference_type diff_type;
 
@@ -192,22 +192,24 @@ namespace amp_stl_algorithms
         auto src_view = _details::create_section(first, element_count);
         auto dest_view = _details::create_section(dest_first, element_count);
 
-        concurrency::array<unsigned int> map(element_count + 1);
+        auto map_size = concurrency::extent<1>(element_count + 1).tile<tile_size>().pad().size();
+        concurrency::array<unsigned int> map(map_size);
         concurrency::array_view<unsigned int> map_vw(map);
         concurrency::tiled_extent<tile_size> compute_domain = concurrency::extent<1>(element_count).tile<tile_size>().pad();
         concurrency::parallel_for_each(compute_domain,
-            [src_view, map_vw, p, element_count](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+            [src_view, map_vw, pred, element_count](concurrency::tiled_index<tile_size> tidx) restrict(amp)
         {
             const int idx = tidx.global[0];
-            if (idx < element_count)
-            {
-                map_vw[idx] = static_cast<unsigned int>(p(src_view[idx]));
-            }
+            map_vw[idx] = (idx < element_count) ? static_cast<unsigned int>(pred(src_view[idx])) : 0;
         });
 
-        map_vw.synchronize();
-        amp_algorithms::direct3d::scan s(element_count + 1);
-        s.scan_exclusive(map, map);
+        amp_algorithms::scan_new<tile_size, scan_mode::exclusive>(map, map, amp_algorithms::plus<unsigned int>());
+
+        // Old implementation used direct3d::scan() Now using a pure C++ AMP version with no dependency on Direct 3D.
+        //map_vw.synchronize();
+        //amp_algorithms::direct3d::scan s(map.extent.size());
+        //s.scan_exclusive(map, map);
+
         dest_view.discard_data();
         concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<tile_size> tidx) restrict(amp)
         {
@@ -215,13 +217,11 @@ namespace amp_stl_algorithms
             const int i = tidx.local[0];
             tile_static unsigned local_buffer[tile_size + 1];
 
-            // TODO: Lukasz - Since map is created locally in this function, wouldn't it be better to pad the container instead of padding on read?
-
             // Use tile memory so that each value is only read once from global memory.
-            local_buffer[i] = amp_algorithms::padded_read(map_vw, idx);
+            local_buffer[i] = map_vw[idx];
             if (i == (tile_size - 1))
             {
-                local_buffer[i + 1] = amp_algorithms::padded_read(map_vw, (idx + 1));
+                local_buffer[i + 1] = map_vw[idx + 1];
             }
 
             tidx.barrier.wait_with_all_memory_fence();
@@ -598,7 +598,7 @@ namespace amp_stl_algorithms
     //----------------------------------------------------------------------------
 
     //----------------------------------------------------------------------------
-    // min, max,minmax, max_element, min_element, minmax_element
+    // max_element, min_element, minmax_element
     //----------------------------------------------------------------------------
 
     //----------------------------------------------------------------------------
