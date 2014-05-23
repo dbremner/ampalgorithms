@@ -46,16 +46,12 @@ namespace amp_algorithms_tests
     {
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
-            set_default_accelerator();
+            set_default_accelerator(L"testtools_configuration_tests");
         }
 
         TEST_METHOD_CATEGORY(amp_accelerator_configuration, "amp")
         {
-            Logger::WriteMessage("Running amp_algorithms_tests on:");
-            Logger::WriteMessage(accelerator().description.c_str());
-            Logger::WriteMessage("\n  ");
-            Logger::WriteMessage(accelerator().device_path.c_str());
-            Logger::WriteMessage("\n");
+            log_accellerator(L"amp_algorithms_tests");
         }
     };
 
@@ -63,7 +59,7 @@ namespace amp_algorithms_tests
     {
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
-            set_default_accelerator();
+            set_default_accelerator(L"amp_padded_read_write_tests");
         }
 
         TEST_METHOD_CATEGORY(amp_padded_read, "amp")
@@ -91,7 +87,7 @@ namespace amp_algorithms_tests
     {
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
-            set_default_accelerator();
+            set_default_accelerator(L"amp_operator_tests");
         }
 
         TEST_METHOD_CATEGORY(amp_arithmetic_operators, "amp")
@@ -159,7 +155,7 @@ namespace amp_algorithms_tests
     {
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
-            set_default_accelerator();
+            set_default_accelerator(L"amp_reduce_tests");
         }
 
         /*
@@ -218,7 +214,7 @@ namespace amp_algorithms_tests
     {
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
-            set_default_accelerator();
+            set_default_accelerator(L"amp_functor_view_tests");
         }
 
         TEST_METHOD_CATEGORY(amp_functor_view_float, "amp")
@@ -282,7 +278,7 @@ namespace amp_algorithms_tests
     {
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
-            set_default_accelerator();
+            set_default_accelerator(L"amp_generate_tests");
         }
 
         TEST_METHOD_CATEGORY(amp_generate_int, "amp")
@@ -307,7 +303,7 @@ namespace amp_algorithms_tests
     {
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
-            set_default_accelerator();
+            set_default_accelerator(L"amp_transform_tests");
         }
 
         TEST_METHOD_CATEGORY(amp_transform_unary, "amp")
@@ -372,7 +368,7 @@ namespace amp_algorithms_tests
     {
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
-            set_default_accelerator();
+            set_default_accelerator(L"amp_fill_tests");
         }
 
         TEST_METHOD_CATEGORY(amp_fill_int, "amp")

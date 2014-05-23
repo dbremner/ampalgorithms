@@ -24,15 +24,28 @@
 #include <amp.h>
 #include <assert.h>
 #include <sstream>
-#include <d3d11.h>
-#include <d3dcsx.h>
-#include <wrl\client.h>
-#pragma comment(lib, "d3dcsx")
 
+#include <xx_amp_algorithms_impl_inl.h>
 #include <amp_indexable_view.h>
 
 namespace amp_algorithms
 {
+#if !defined(AMP_ALGORITHMS_ENUMS)
+#define AMP_ALGORITHMS_ENUMS
+    enum class scan_mode : int
+    {
+        exclusive = 0,
+        inclusive = 1
+    };
+
+    // TODO: Duplicated in both amp and direct3d namespaces. Fix this?
+    enum class scan_direction : int
+    {
+        forward = 0,
+        backward = 1
+    };
+#endif
+
     namespace _details
     {
         inline concurrency::accelerator_view auto_select_target()
@@ -239,122 +252,143 @@ namespace amp_algorithms
                 return retVal;
         }
 
-    } // namespace amp_algorithms::_details
+        //----------------------------------------------------------------------------
+        // scan implementation
+        //----------------------------------------------------------------------------
 
-    namespace direct3d
-    {
-        namespace _details
+        // The current scan implementation uses the warp size.
+#if (defined(USE_REF) || defined(_DEBUG))
+        static const int scan_warp_size = 4;
+        static const int scan_default_tile_size = 8;
+#else
+        static const int scan_warp_size = 32;
+        static const int scan_default_tile_size = 512;
+#endif
+
+        template <amp_algorithms::scan_mode _Mode, typename _BinaryOp, typename T>
+        T scan_warp(T* const tile_data, const int idx, const _BinaryOp& op) restrict(amp)
         {
-            inline void _check_hresult(HRESULT _hr, std::string _exception_msg = "")
+            const int warp_max = _details::scan_warp_size - 1;
+            const int widx = idx & warp_max;
+
+            if (widx >= 1)
+                tile_data[idx] = op(tile_data[idx - 1], tile_data[idx]);
+            if ((scan_warp_size > 2) && (widx >= 2))
+                tile_data[idx] = op(tile_data[idx - 2], tile_data[idx]);
+            if ((scan_warp_size > 4) && (widx >= 4))
+                tile_data[idx] = op(tile_data[idx - 4], tile_data[idx]);
+            if ((scan_warp_size > 8) && (widx >= 8))
+                tile_data[idx] = op(tile_data[idx - 8], tile_data[idx]);
+            if ((scan_warp_size > 16) && (widx >= 16))
+                tile_data[idx] = op(tile_data[idx - 16], tile_data[idx]);
+            if ((scan_warp_size > 32) && (widx >= 32))
+                tile_data[idx] = op(tile_data[idx - 32], tile_data[idx]);
+
+            if (_Mode == scan_mode::inclusive)
+                return tile_data[idx];
+            return (widx > 0) ? tile_data[idx - 1] : T();
+        }
+
+        template <int TileSize, scan_mode _Mode, typename _BinaryOp, typename T>
+        T scan_tile(T* const tile_data, concurrency::tiled_index<TileSize> tidx, const _BinaryOp& op) restrict(amp)
+        {
+            static_assert(is_power_of_two<scan_warp_size>::value, "Warp size must be an exact power of 2.");
+
+            const int warp_max = _details::scan_warp_size - 1;
+            const int lidx = tidx.local[0];
+            const int warp_id = lidx >> log2<scan_warp_size>::value;
+
+            // Step 1: Intra-warp scan in each warp
+            auto val = scan_warp<_Mode, _BinaryOp>(tile_data, lidx, op);
+            tidx.barrier.wait_with_tile_static_memory_fence();
+
+            // Step 2: Collect per-warp partial results
+            if ((lidx & warp_max) == warp_max)
+                tile_data[warp_id] = tile_data[lidx];
+            tidx.barrier.wait_with_tile_static_memory_fence();
+
+            // Step 3: Use 1st warp to scan per-warp results
+            if (warp_id == 0)
+                scan_warp<scan_mode::inclusive>(tile_data, lidx, op);
+            tidx.barrier.wait_with_tile_static_memory_fence();
+
+            // Step 4: Accumulate results from Steps 1 and 3
+            if (warp_id > 0)
+                val = op(tile_data[warp_id - 1], val);
+            tidx.barrier.wait_with_tile_static_memory_fence();
+
+            // Step 5: Write and return the final result
+            tile_data[lidx] = val;
+            tidx.barrier.wait_with_tile_static_memory_fence();
+            return val;
+        }
+
+        template <int TileSize, scan_mode _Mode, typename _BinaryFunc, typename InputIndexableView>
+        inline void scan(const concurrency::accelerator_view& accl_view, const InputIndexableView& input_view, InputIndexableView& output_view, const _BinaryFunc& op)
+        {
+            static_assert(TileSize >= _details::scan_warp_size, "Tile size must be at least the size of a single warp.");
+            static_assert(TileSize % _details::scan_warp_size == 0, "Tile size must be an exact multiple of warp size.");
+            static_assert(TileSize <= (_details::scan_warp_size * _details::scan_warp_size), "Tile size must less than or equal to the square of the warp size.");
+            assert(output_view.extent[0] >= _details::scan_warp_size);
+
+            typedef InputIndexableView::value_type T;
+
+            auto compute_domain = output_view.extent.tile<TileSize>().pad();
+            concurrency::array<T, 1> tile_results(compute_domain / TileSize, accl_view);
+            concurrency::array_view<T, 1> tile_results_vw(tile_results);
+            // 1 & 2. Scan all tiles and store results in tile_results.
+            concurrency::parallel_for_each(accl_view, compute_domain, [=](concurrency::tiled_index<TileSize> tidx) restrict(amp)
             {
-                if (FAILED(_hr))
+                const int gidx = tidx.global[0];
+                const int lidx = tidx.local[0];
+                tile_static T tile_data[TileSize];
+                tile_data[lidx] = padded_read(input_view, gidx);
+                tidx.barrier.wait_with_tile_static_memory_fence();
+
+                auto val = _details::scan_tile<TileSize, _Mode>(tile_data, tidx, amp_algorithms::plus<T>());
+                if (lidx == (TileSize - 1))
                 {
-                    std::stringstream _out;
-                    _out << _exception_msg << " 0x" << std::hex << _hr << ".";
-                    throw runtime_exception(_out.str().c_str(), _hr);
+                    tile_results_vw[tidx.tile[0]] = val;
+                    if (_Mode == scan_mode::exclusive)
+                        tile_results_vw[tidx.tile[0]] += input_view[gidx];
                 }
+                padded_write(output_view, gidx, tile_data[lidx]);
+            });
+
+            // 3. Scan tile results.
+            if (tile_results_vw.extent[0] > TileSize)
+            {
+                scan<TileSize, amp_algorithms::scan_mode::exclusive>(accl_view, tile_results_vw, tile_results_vw, op);
             }
-
-            inline Microsoft::WRL::ComPtr<ID3D11Device> _get_d3d11_device_ptr(const concurrency::accelerator_view &av)
+            else
             {
-                IUnknown *u = concurrency::direct3d::get_device(av);
-                Microsoft::WRL::ComPtr<ID3D11Device> dev_ptr;
-                auto hr = u->QueryInterface(__uuidof(ID3D11Device), reinterpret_cast<void**>(dev_ptr.GetAddressOf()));
-                u->Release();
-                _check_hresult(hr);
-                return dev_ptr;
-            }
-
-            template<typename T, unsigned int Rank>
-            inline Microsoft::WRL::ComPtr<ID3D11Buffer> _get_d3d11_buffer_ptr(const concurrency::array<T, Rank> &a)
-            {
-                IUnknown *u = concurrency::direct3d::get_buffer(a);
-                Microsoft::WRL::ComPtr<ID3D11Buffer> buf_ptr;
-                auto hr = u->QueryInterface(__uuidof(ID3D11Buffer), reinterpret_cast<void**>(buf_ptr.GetAddressOf()));
-                u->Release();
-                _check_hresult(hr);
-                return buf_ptr;
-            }
-
-            inline Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> _create_d3d11_uav(Microsoft::WRL::ComPtr<ID3D11Device> &device, Microsoft::WRL::ComPtr<ID3D11Buffer> &pSrcBuff, DXGI_FORMAT view_format)
-            {
-                D3D11_UNORDERED_ACCESS_VIEW_DESC desc;
-                ZeroMemory(&desc, sizeof(desc));
-                desc.Format = view_format;
-                desc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
-
-                D3D11_BUFFER_DESC descBuff;
-                pSrcBuff->GetDesc(&descBuff);
-                desc.Buffer.FirstElement = 0;
-                desc.Buffer.NumElements = descBuff.ByteWidth / sizeof(int);
-
-                Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> pUAView;
-                _check_hresult(device->CreateUnorderedAccessView(reinterpret_cast<ID3D11Resource*>(pSrcBuff.Get()), &desc, pUAView.GetAddressOf()), "Failed to create view");
-
-                return pUAView;
-            }
-
-            template <typename _Type>
-            struct _dx_scan_type_helper
-            {
-                static const bool is_type_supported = false;
-            };
-
-            template <>
-            struct _dx_scan_type_helper<int>
-            {
-                static const bool is_type_supported = true;
-                static const D3DX11_SCAN_DATA_TYPE dx_scan_type = D3DX11_SCAN_DATA_TYPE_INT;
-                static const DXGI_FORMAT dx_view_type = DXGI_FORMAT_R32_SINT;
-            };
-
-            template <>
-            struct _dx_scan_type_helper<unsigned int>
-            {
-                // Note: Despite what the MSDN says D3DCSX does not support uint, 
-                // we can partially support it by treating it as int.
-                static const bool is_type_supported = true;
-                static const D3DX11_SCAN_DATA_TYPE dx_scan_type = D3DX11_SCAN_DATA_TYPE_INT;
-                static const DXGI_FORMAT dx_view_type = DXGI_FORMAT_R32_SINT;
-            };
-
-            template <>
-            struct _dx_scan_type_helper<float>
-            {
-                static const bool is_type_supported = true;
-                static const D3DX11_SCAN_DATA_TYPE dx_scan_type = D3DX11_SCAN_DATA_TYPE_FLOAT;
-                static const DXGI_FORMAT dx_view_type = DXGI_FORMAT_R32_FLOAT;
-            };
-
-            struct _dx_state_cleaner
-            {
-                _dx_state_cleaner(Microsoft::WRL::ComPtr<ID3D11DeviceContext> &context) : m_immediate_context(context)
+                concurrency::parallel_for_each(accl_view, compute_domain, [=](concurrency::tiled_index<TileSize> tidx) restrict(amp)
                 {
-                    memset(m_uavs, 0, D3D11_PS_CS_UAV_REGISTER_COUNT * sizeof(ID3D11UnorderedAccessView*));
-                    m_immediate_context->CSGetUnorderedAccessViews(0, D3D11_PS_CS_UAV_REGISTER_COUNT, m_uavs);
-                }
+                    const int gidx = tidx.global[0];
+                    const int lidx = tidx.local[0];
+                    tile_static T tile_data[TileSize];
+                    tile_data[lidx] = tile_results_vw[gidx];
+                    tidx.barrier.wait_with_tile_static_memory_fence();
 
-                ~_dx_state_cleaner()
-                {
-                    m_immediate_context->CSSetUnorderedAccessViews(0, D3D11_PS_CS_UAV_REGISTER_COUNT, m_uavs, nullptr);
-                    for (unsigned int i = 0; i < D3D11_PS_CS_UAV_REGISTER_COUNT; ++i)
-                    {
-                        if (m_uavs[i] != nullptr)
-                        {
-                            m_uavs[i]->Release();
-                        }
-                    }
-                }
+                    _details::scan_tile<TileSize, amp_algorithms::scan_mode::exclusive>(tile_data, tidx, amp_algorithms::plus<T>());
 
-            private:
-                ID3D11UnorderedAccessView *m_uavs[D3D11_PS_CS_UAV_REGISTER_COUNT];
-                Microsoft::WRL::ComPtr<ID3D11DeviceContext> m_immediate_context;
-            };
+                    tile_results_vw[gidx] = tile_data[lidx];
+                    tidx.barrier.wait_with_tile_static_memory_fence();
+                });
+            }
+            // 4. Add the tile results to the individual results for each tile.
+            concurrency::parallel_for_each(accl_view, compute_domain, [=](concurrency::tiled_index<TileSize> tidx) restrict(amp)
+            {
+                const int gidx = tidx.global[0];
+                if (gidx < output_view.extent[0])
+                    output_view[gidx] += tile_results_vw[tidx.tile[0]];
+            });
+        }
 
-            // Declaration of Scan helper that converts binary functions from C++ AMP library to DirectX scan operation codes
-            template <typename BinaryFunction>
-            struct _dx_scan_op_helper;
+        //----------------------------------------------------------------------------
+        // radix sort implementation
+        //----------------------------------------------------------------------------
 
-        } // namespace amp_algorithms::direct3d::_details
     } // namespace amp_algorithms::_details
+
 } // namespace amp_algorithms

@@ -81,21 +81,17 @@ namespace Microsoft {
 namespace amp_stl_algorithms_tests
 {
     // This isn't a test, it's just a convenient way to determine which accelerator tests ran on.
-    TEST_CLASS(testtools_configuration_tests)
+    TEST_CLASS(testtools_configuration)
     {
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
-            set_default_accelerator();
+            set_default_accelerator(L"amp_stl_algorithms_tests_configuration");
         }
 
-        TEST_METHOD_CATEGORY(stl_accelerator_configuration, "stl")
-        {
-            Logger::WriteMessage("Running stl_algorithms_tests on:");
-            Logger::WriteMessage(accelerator().description.c_str());
-            Logger::WriteMessage("\n  ");
-            Logger::WriteMessage(accelerator().device_path.c_str());
-            Logger::WriteMessage("\n");
-        }
+        //TEST_METHOD_CATEGORY(stl_accelerator_configuration, "stl")
+        //{
+        //    log_accellerator(L"amp_stl_algorithms_tests_configuration");
+        //}
     };
     
     // TODO: Get the tests, header and internal implementations into the same logical order.
@@ -105,7 +101,7 @@ namespace amp_stl_algorithms_tests
         // TODO: Add more tests for pair<T, T>, casting etc.
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
-            set_default_accelerator();
+            set_default_accelerator(L"stl_pair_tests");
         }
 
         TEST_METHOD_CATEGORY(stl_pair_property_accessors, "stl")
@@ -162,7 +158,7 @@ namespace amp_stl_algorithms_tests
     {
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
-            set_default_accelerator();
+            set_default_accelerator(L"stl_algorithms_tests");
         }
 
         //----------------------------------------------------------------------------
@@ -318,18 +314,26 @@ namespace amp_stl_algorithms_tests
             Assert::AreEqual(result_av[size - 1], *--result_end);
         }
 
-        TEST_METHOD_CATEGORY(stl_copy_if, "stl")
+        TEST_METHOD_CATEGORY(stl_copy_if_no_values_to_copy, "stl")
         {
-            // These tests copy all the non-zero elements from the numbers array.
-
             const std::array<int, 5> numbers = { 0, 0, 0, 0, 0 };
             test_copy_if(begin(numbers), end(numbers));
+        }
 
-            const std::array<int, 5> numbers0 = { 3, 0, 0, 0, 0 };
-            test_copy_if(begin(numbers0), end(numbers0));
+        TEST_METHOD_CATEGORY(stl_copy_if_first_value_matches, "stl")
+        {
+            const std::array<int, 5> numbers = { 2, 0, 0, 0, 0 };
+            test_copy_if(begin(numbers), end(numbers));
+        }
 
-            const std::array<float, 5> numbers1 = { 0.0f, 0.0f, 0.0f, 0.0f,3.0f };
-            test_copy_if(begin(numbers1), end(numbers1));
+        TEST_METHOD_CATEGORY(stl_copy_if_last_value_matches, "stl")
+        {
+            const std::array<float, 5> numbers = { 0.0f, 0.0f, 0.0f, 0.0f, 3.0f };
+            test_copy_if(begin(numbers), end(numbers));
+        }
+
+        TEST_METHOD_CATEGORY(stl_copy_if, "stl")
+        {
 
             const std::array<int, 12> numbers2 = { -1, 1, 0, 2, 3, 0, 4, 0, 5, 0, 6, 7 };
             //  predicate result:                   1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1
@@ -340,6 +344,13 @@ namespace amp_stl_algorithms_tests
             const std::array<int, 5> numbers3 = { 0, 0, 0, 0, 0 };
             test_copy_if(begin(numbers3), end(numbers3));
 
+            std::vector<int> numbers4(test_array_size<int>());
+            generate_data(numbers4);
+            test_copy_if(begin(numbers4), end(numbers4));
+        }
+
+        TEST_METHOD_CATEGORY(stl_copy_if_multi_tile, "stl")
+        {
             std::vector<int> numbers4(test_array_size<int>());
             generate_data(numbers4);
             test_copy_if(begin(numbers4), end(numbers4));
@@ -459,7 +470,7 @@ namespace amp_stl_algorithms_tests
             Assert::IsFalse(amp_stl_algorithms::equal(begin(av1), end(av1), begin(av2), pred));
 
             std::iota(begin(vec2), end(vec2), 2);
-            av2.refresh();           
+            av2.refresh();
 
             Assert::IsTrue(amp_stl_algorithms::equal(begin(av1), end(av1), begin(av2), pred));
         }
@@ -924,9 +935,14 @@ namespace amp_stl_algorithms_tests
         }
 
         // Customer reported bug. 
-        // See: http://social.msdn.microsoft.com/Forums/vstudio/en-US/d959e3f3-2a85-4646-9c54-cae69c534b64
-
-        TEST_METHOD_CATEGORY(stl_remove_if_performance, "stl")
+        // See: http://social.msdn.stl_remove_if_performance.com/Forums/vstudio/en-US/d959e3f3-2a85-4646-9c54-cae69c534b64
+        BEGIN_TEST_METHOD_ATTRIBUTE(stl_remove_if_performance)
+            TEST_CATEGORY("stl")
+#if (defined(USE_REF) || defined(_DEBUG))
+            TEST_IGNORE()
+#endif
+        END_TEST_METHOD_ATTRIBUTE()
+        TEST_METHOD(stl_remove_if_performance)
         {
             accelerator device(accelerator::default_accelerator);
             accelerator_view view = device.default_view;
@@ -1394,7 +1410,8 @@ namespace amp_stl_algorithms_tests
 
             // Test "transform" by doubling the input elements
 
-            amp_stl_algorithms::transform(begin(av_in), end(av_in), begin(av_out), [] (int x) restrict(amp) {
+            amp_stl_algorithms::transform(begin(av_in), end(av_in), begin(av_out), [] (int x) restrict(amp) 
+            {
                 return 2 * x;
             });
             av_out.synchronize();

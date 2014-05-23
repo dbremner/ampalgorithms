@@ -22,6 +22,7 @@
 
 #include <utility>
 #include <xx_amp_algorithms_impl.h>
+#include <xx_amp_algorithms_impl_inl.h>
 #include <amp_iterators.h>
 
 // TODO: Get the tests, header and internal implementations into the same logical order.
@@ -1029,5 +1030,3 @@ namespace amp_stl_algorithms
         RandomAccessIterator d_first, 
         BinaryPredicate p); 
 }// namespace amp_stl_algorithms
-
-#include <xx_amp_stl_algorithms_impl_inl.h>

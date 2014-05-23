@@ -3,5 +3,6 @@
   <Import Project="..\amp_algorithms_filters.proj" />
   <ItemGroup>
     <ClInclude Include="..\inc\amp_algorithms_direct3d.h" />
+    <ClInclude Include="..\inc\xx_amp_algorithms_direct3d_impl.h" />
   </ItemGroup>
 </Project>

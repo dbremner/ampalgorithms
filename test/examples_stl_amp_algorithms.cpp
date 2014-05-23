@@ -21,6 +21,7 @@
 #include "stdafx.h"
 
 #include <amp_algorithms.h>
+#include <xx_amp_algorithms_impl_inl.h>
 #include <amp_stl_algorithms.h>
 
 #include "testtools.h"
@@ -32,29 +33,80 @@ using namespace amp_stl_algorithms;
 
 namespace examples
 {
-    TEST_CLASS(stl_examples)
-    {
+    TEST_CLASS_CATEGORY(amp_examples, "examples")
+    // {
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
-#if defined(USE_REF)
-            bool set_ok = accelerator::set_default(accelerator::direct3d_ref);
-
-            if (!set_ok)
-            {
-                Logger::WriteMessage("Unable to set default accelerator to REF.");
-            }
-#endif
+            testtools::set_default_accelerator(L"stl_examples");
         }
 
-        // TODO: Replace stl_example_hello_world with SAXPY
+        // SAXPY functor (for both C++ and C++ AMP.
+
+        struct saxpy_functor 
+        {
+            const float a;
+
+            saxpy_functor(float _a) : a(_a) {}
+
+            float operator()(const float& x, const float& y) const restrict(amp, cpu)
+            {
+                return a * x + y;
+            }
+        };
+
+        // Calculate SAXPY, y = a * x + y, for all elements in an array.
+
+        BEGIN_TEST_METHOD_ATTRIBUTE(stl_example_saxpy)
+            TEST_CATEGORY("stl")
+#if (defined(USE_REF) || defined(_DEBUG))
+            TEST_IGNORE()
+#endif
+            END_TEST_METHOD_ATTRIBUTE()
+        TEST_METHOD(stl_example_saxpy)
+        {
+            auto size = testtools::test_array_size<int>();
+
+            {
+                const float a = 2.0f;
+                concurrency::array<float> x(size);
+                array_view<float> x_av(x);
+                amp_stl_algorithms::iota(begin(x_av), end(x_av), 1.0f);
+                concurrency::array<float> y(size);
+                array_view<float> y_av(y);
+                amp_stl_algorithms::iota(begin(y_av), end(y_av), 1.0f);
+
+                amp_stl_algorithms::transform(begin(x_av), end(x_av), begin(y_av), begin(y_av), saxpy_functor(a));
+            }
+
+            // STL Equivalent code.
+            {
+                const float a = 2.0f;
+                std::vector<float> x(size);
+                std::iota(std::begin(x), std::end(x), 1.0f);
+                std::vector<float> y(size);
+                std::iota(std::begin(y), std::end(y), 1.0f);
+
+                std::transform(begin(x), end(x), begin(y), begin(y), saxpy_functor(a));
+            }
+        }
+
+        // Sum of the number of even numbers in an array.
+
+        BEGIN_TEST_METHOD_ATTRIBUTE(stl_example_hello_world)
+            TEST_CATEGORY("stl")
+#if (defined(USE_REF) || defined(_DEBUG))
+            TEST_IGNORE()
+#endif
+        END_TEST_METHOD_ATTRIBUTE()
         TEST_METHOD(stl_example_hello_world)
         {
             auto size = testtools::test_array_size<int>();
+
             {
                 concurrency::array<float> data(size);
                 array_view<float> data_av(data);
-
                 amp_stl_algorithms::iota(begin(data_av), end(data_av), 1.0f);
+
                 auto last = amp_stl_algorithms::remove_if(begin(data_av), end(data_av), 
                     [=](const float& v) restrict(amp) { return int(v) % 2 == 1; });
                 float total = amp_stl_algorithms::reduce(begin(data_av), last, 0.0f);
@@ -67,8 +119,8 @@ namespace examples
             // STL Equivalent code.
             {
                 std::vector<float> data(size);
-
                 std::iota(std::begin(data), std::end(data), 1.0f);
+
                 auto last = std::remove_if(std::begin(data), std::end(data), 
                     [=](const float& v) { return int(v) % 2 == 1; });
                 float total = std::accumulate(begin(data), last, 0.0f);
@@ -79,7 +131,14 @@ namespace examples
             }
         }
 
-        // Calculate the volume of a set of randomly generated tetrahedrons each with one vertex at (0, 0, 0)
+        // Calculate the volume of a set of randomly generated tetrahedrons each with one vertex at (0, 0, 0).
+
+        BEGIN_TEST_METHOD_ATTRIBUTE(stl_example_map_reduce)
+            TEST_CATEGORY("stl")
+#if (defined(USE_REF) || defined(_DEBUG))
+            TEST_IGNORE()
+#endif
+        END_TEST_METHOD_ATTRIBUTE()
         TEST_METHOD(stl_example_map_reduce)
         {
             struct vertices

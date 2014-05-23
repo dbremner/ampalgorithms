@@ -36,13 +36,14 @@ namespace amp_algorithms_tests
         return msg.str();
     }
 
-    TEST_CLASS(amp_scan_tests)
-    {
+    TEST_CLASS_CATEGORY(amp_scan_tests, "amp")
+    // {
+
     private:
 
         // This is to allow the tests to pass when run on the REF accelerator. In all other cases the warp 
         // size should be assumed to be 32.
-#ifdef USE_REF
+#if (defined(USE_REF) || defined(_DEBUG))
         static const int warp_size = 4;
         static const int max_tile_size = warp_size * warp_size;
 #else
@@ -53,203 +54,209 @@ namespace amp_algorithms_tests
     public:
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
-            set_default_accelerator();
+            set_default_accelerator(L"amp_scan_tests");
         }
 
-        TEST_METHOD_CATEGORY(amp_scan_exclusive_single_warp, "amp")
+        TEST_METHOD(amp_scan_exclusive_single_warp)
         {
             std::vector<int> input(warp_size, 1);
-            std::vector<int> result(input.size(), -1);
+            concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 0);
 
-            scan_exclusive_new<warp_size>(begin(input), end(input), begin(result));
-
-            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
+            scan<warp_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
+            
+            input_vw.synchronize();
+            Assert::IsTrue(expected == input, Msg(expected, input).c_str());
         }
 
-        TEST_METHOD_CATEGORY(amp_scan_inclusive_single_warp, "amp")
+        TEST_METHOD(amp_scan_inclusive_single_warp)
         {
             std::vector<int> input(warp_size, 1);
-            std::vector<int> result(input.size(), -1);
+            concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 1);
 
-            scan_inclusive_new<warp_size>(begin(input), end(input), begin(result));
+            scan<warp_size, scan_mode::inclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
-            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
+            input_vw.synchronize();
+            Assert::IsTrue(expected == input, Msg(expected, input).c_str());
         }
 
-        TEST_METHOD_CATEGORY(amp_scan_exclusive_multi_warp, "amp")
+        TEST_METHOD(amp_scan_exclusive_multi_warp)
         {
             std::vector<int> input(max_tile_size, 1);
-            std::vector<int> result(input.size(), -1);
+            concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 0);
 
-            scan_exclusive_new<max_tile_size>(begin(input), end(input), begin(result));
+            scan<max_tile_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
-            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
+            input_vw.synchronize();
+            Assert::IsTrue(expected == input, Msg(expected, input).c_str());
         }
 
-        TEST_METHOD_CATEGORY(amp_scan_inclusive_multi_warp, "amp")
+        TEST_METHOD(amp_scan_inclusive_multi_warp)
         {
             std::vector<int> input(max_tile_size, 1);
-            std::vector<int> result(input.size(), -1);
+            concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 1);
 
-            scan_inclusive_new<max_tile_size>(begin(input), end(input), begin(result));
+            scan<max_tile_size, scan_mode::inclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
-            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
+            input_vw.synchronize();
+            Assert::IsTrue(expected == input, Msg(expected, input).c_str());
         }
 
-        TEST_METHOD_CATEGORY(amp_scan_exclusive_multi_tile, "amp")
+        TEST_METHOD(amp_scan_exclusive_multi_tile)
         {
             std::vector<int> input(warp_size * 4, 1);
-            std::vector<int> result(input.size(), -1);
+            concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 0);
 
-            scan_exclusive_new<warp_size>(begin(input), end(input), begin(result));
+            scan<warp_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
-            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
+            input_vw.synchronize();
+            Assert::IsTrue(expected == input, Msg(expected, input).c_str());
         }
 
-        TEST_METHOD_CATEGORY(amp_scan_inclusive_multi_tile, "amp")
+        TEST_METHOD(amp_scan_inclusive_multi_tile)
         {
             std::vector<int> input(warp_size * 4, 1);
-            std::vector<int> result(input.size(), -1);
+            concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 1);
 
-            scan_inclusive_new<warp_size>(begin(input), end(input), begin(result));
+            scan<warp_size, scan_mode::inclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
-            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
+            input_vw.synchronize();
+            Assert::IsTrue(expected == input, Msg(expected, input).c_str());
         }
 
-        TEST_METHOD_CATEGORY(amp_scan_exclusive_multi_warp_multi_tile, "amp")
+        TEST_METHOD(amp_scan_exclusive_multi_warp_multi_tile)
         {
             std::vector<int> input(warp_size * 4 * 4, 1);
-            std::vector<int> result(input.size(), -1);
+            concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 0);
 
-            scan_exclusive_new<warp_size * 4>(begin(input), end(input), begin(result));
+            scan<warp_size * 4, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
-            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
+            input_vw.synchronize();
+            Assert::IsTrue(expected == input, Msg(expected, input).c_str());
         }
-
-        TEST_METHOD_CATEGORY(amp_scan_inclusive_multi_warp_multi_tile, "amp")
+        
+        TEST_METHOD(amp_scan_inclusive_multi_warp_multi_tile)
         {
             std::vector<int> input(warp_size * 4 * 4, 1);
-            std::vector<int> result(input.size(), -1);
+            concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 1);
 
-            scan_inclusive_new<warp_size * 4>(begin(input), end(input), begin(result));
+            scan<warp_size * 4, scan_mode::inclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
-            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
+            input_vw.synchronize();
+            Assert::IsTrue(expected == input, Msg(expected, input).c_str());
         }
 
-        TEST_METHOD_CATEGORY(amp_scan_exclusive_incomplete_warp, "amp")
+        TEST_METHOD(amp_scan_exclusive_incomplete_warp)
         {
             std::vector<int> input(warp_size + 2, 1);
-            std::vector<int> result(input.size(), -1);
+            concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 0);
 
-            scan_exclusive_new<warp_size>(begin(input), end(input), begin(result));
+            scan<warp_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
-            Assert::IsTrue(expected == result, Msg(expected, result, 36).c_str());
+            input_vw.synchronize();
+            Assert::IsTrue(expected == input, Msg(expected, input).c_str());
         }
-
-        TEST_METHOD_CATEGORY(amp_scan_inclusive_incomplete_warp, "amp")
+        
+        TEST_METHOD(amp_scan_inclusive_incomplete_warp)
         {
             std::vector<int> input(warp_size + 2, 1);
-            std::vector<int> result(input.size(), -1);
+            concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 1);
 
-            scan_inclusive_new<warp_size>(begin(input), end(input), begin(result));
+            scan<warp_size, scan_mode::inclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
-            Assert::IsTrue(expected == result, Msg(expected, result, 36).c_str());
+            input_vw.synchronize();
+            Assert::IsTrue(expected == input, Msg(expected, input).c_str());
         }
 
-        TEST_METHOD_CATEGORY(amp_scan_exclusive_overlapped_input_and_output, "amp")
+        TEST_METHOD(amp_scan_exclusive_recursive_scan)
         {
-            std::vector<int> input(1024);
-            generate_data(input);
+            std::vector<int> input(warp_size * (warp_size + 2), 1);
+            concurrency::array_view<int, 1> input_vw(int(input.size()), input);
+            std::vector<int> expected(input.size());
+            std::iota(begin(expected), end(expected), 0);
+
+            scan<warp_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
+
+            input_vw.synchronize();
+            Assert::IsTrue(expected == input, Msg(expected, input).c_str());
+        }
+
+        TEST_METHOD(amp_scan_inclusive_recursive_scan)
+        {
+            std::vector<int> input(warp_size * (warp_size + 2), 1);
+            concurrency::array_view<int, 1> input_vw(int(input.size()), input);
+            std::vector<int> expected(input.size());
+            std::iota(begin(expected), end(expected), 1);
+
+            scan<warp_size, scan_mode::inclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
+
+            input_vw.synchronize();
+            Assert::IsTrue(expected == input, Msg(expected, input).c_str());
+        }
+
+        TEST_METHOD(amp_scan_exclusive_2)
+        {
+            std::array<int, 12> input_data = { 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1 };
+            std::vector<int> input(32);
+            std::copy(begin(input_data), end(input_data), begin(input));
+            concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             scan_sequential_exclusive(begin(input), end(input), begin(expected));
 
-            scan_exclusive_new<warp_size * 4>(begin(input), end(input), begin(input));
+            scan<warp_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
+            input_vw.synchronize();
             Assert::IsTrue(expected == input, Msg(expected, input).c_str());
         }
 
-        TEST_METHOD_CATEGORY(amp_scan_inclusive_overlapped_input_and_output, "amp")
-        {
-            std::vector<int> input(1024);
-            generate_data(input);
-            std::vector<int> expected(input.size());
-            scan_sequential_inclusive(begin(input), end(input), begin(expected));
-
-            scan_inclusive_new<warp_size * 4>(begin(input), end(input), begin(input));
-
-            Assert::IsTrue(expected == input, Msg(expected, input).c_str());
-        }
-
-        TEST_METHOD_CATEGORY(amp_scan_exclusive_recursive_scan, "amp")
-        {
-            std::vector<int> input(warp_size * (warp_size + 2), 1);
-            std::vector<int> result(input.size(), -1);
-            std::vector<int> expected(input.size()); 
-            std::iota(begin(expected), end(expected), 0);
-
-            scan_exclusive_new<warp_size>(begin(input), end(input), begin(result));
-
-            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
-        }
-
-        TEST_METHOD_CATEGORY(amp_scan_inclusive_recursive_scan, "amp")
-        {
-            std::vector<int> input(warp_size * (warp_size + 2), 1);
-            std::vector<int> result(input.size(), -1);
-            std::vector<int> expected(input.size());
-            std::iota(begin(expected), end(expected), 1);
-
-            scan_inclusive_new<warp_size>(begin(input), end(input), begin(result));
-
-            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
-        }
-
-        TEST_METHOD_CATEGORY(amp_scan_exclusive, "amp")
+        TEST_METHOD(amp_scan_exclusive)
         {
             const int tile_size = warp_size * 4;
             std::vector<int> input(tile_size * (tile_size + 10));
             generate_data(input);
-            std::vector<int> result(input.size(), -1);
+            concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             scan_sequential_exclusive(begin(input), end(input), begin(expected));
 
-            scan_exclusive_new<tile_size>(begin(input), end(input), begin(result));
+            scan<warp_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
-            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
+            input_vw.synchronize();
+            Assert::IsTrue(expected == input, Msg(expected, input).c_str());
         }
 
-        TEST_METHOD_CATEGORY(amp_scan_inclusive, "amp")
+        TEST_METHOD(amp_scan_inclusive)
         {
             const int tile_size = warp_size * 4;
             std::vector<int> input(tile_size * (tile_size + 10));
             generate_data(input);
+            concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> result(input.size(), -1);
             std::vector<int> expected(input.size());
             scan_sequential_inclusive(begin(input), end(input), begin(expected));
 
-            scan_inclusive_new<tile_size>(begin(input), end(input), begin(result));
+            scan<warp_size, scan_mode::inclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
-            Assert::IsTrue(expected == result, Msg(expected, result).c_str());
+            input_vw.synchronize();
+            Assert::IsTrue(expected == input, Msg(expected, input).c_str());
         }
     };
 }

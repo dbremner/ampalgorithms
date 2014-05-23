@@ -59,18 +59,18 @@ namespace amp_algorithms_direct3d_tests
 
     struct bitvector;
 
-    TEST_CLASS(amp_direct3d_scan_tests)
-    {
+    TEST_CLASS_CATEGORY(amp_direct3d_scan_tests, "amp::direct3d")
+    // {
         // Run smaller array sizes in debug mode as the REF accelerator is much slower.
         static const int max_debug_cols = 252;
         static const int max_debug_rows = 3;
 
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
-            set_default_accelerator();
+            set_default_accelerator(L"amp_direct3d_scan_tests");
         }
 
-        TEST_METHOD_CATEGORY(amp_dx_scan_backwards, "amp::direct3d")
+        TEST_METHOD(amp_dx_scan_backwards)
         {
             test_scan<float>(amp_algorithms::direct3d::scan_direction::backward);
             test_scan<unsigned int>(amp_algorithms::direct3d::scan_direction::backward);
@@ -78,7 +78,7 @@ namespace amp_algorithms_direct3d_tests
             test_scan_bitwise_op<int>(amp_algorithms::direct3d::scan_direction::backward);
         }
 
-        TEST_METHOD_CATEGORY(amp_dx_scan_forwards, "amp::direct3d")
+        TEST_METHOD(amp_dx_scan_forwards)
         {
             test_scan<float>(amp_algorithms::direct3d::scan_direction::forward);
             test_scan<unsigned int>(amp_algorithms::direct3d::scan_direction::forward);
@@ -86,7 +86,7 @@ namespace amp_algorithms_direct3d_tests
             test_scan_bitwise_op<int>(amp_algorithms::direct3d::scan_direction::forward);
         }
 
-        TEST_METHOD_CATEGORY(amp_dx_multiscan_backwards, "amp::direct3d")
+        TEST_METHOD(amp_dx_multiscan_backwards)
         {
             test_multiscan<int>(amp_algorithms::direct3d::scan_direction::backward);
             test_multiscan<unsigned int>(amp_algorithms::direct3d::scan_direction::backward);
@@ -94,7 +94,7 @@ namespace amp_algorithms_direct3d_tests
             test_multiscan_bitwise_op<int>(amp_algorithms::direct3d::scan_direction::backward);
         }
 
-        TEST_METHOD_CATEGORY(amp_dx_multiscan_forwards, "amp::direct3d")
+        TEST_METHOD(amp_dx_multiscan_forwards)
         {
             test_multiscan<int>(amp_algorithms::direct3d::scan_direction::forward);
             test_multiscan<unsigned int>(amp_algorithms::direct3d::scan_direction::forward);
@@ -102,7 +102,7 @@ namespace amp_algorithms_direct3d_tests
             test_multiscan_bitwise_op<int>(amp_algorithms::direct3d::scan_direction::forward);
         }
 
-        TEST_METHOD_CATEGORY(amp_dx_segmented_scan_backwards, "amp::direct3d")
+        TEST_METHOD(amp_dx_segmented_scan_backwards)
         {
             test_segmented<int>(amp_algorithms::direct3d::scan_direction::backward);
             test_segmented<unsigned int>(amp_algorithms::direct3d::scan_direction::backward);
@@ -110,7 +110,7 @@ namespace amp_algorithms_direct3d_tests
             test_segmented_bitwise_op<int>(amp_algorithms::direct3d::scan_direction::backward);
         }
 
-        TEST_METHOD_CATEGORY(amp_dx_segmented_scan_forwards, "amp::direct3d")
+        TEST_METHOD(amp_dx_segmented_scan_forwards)
         {
             test_segmented<int>(amp_algorithms::direct3d::scan_direction::forward);
             test_segmented<unsigned int>(amp_algorithms::direct3d::scan_direction::forward);
@@ -118,20 +118,20 @@ namespace amp_algorithms_direct3d_tests
             test_segmented_bitwise_op<int>(amp_algorithms::direct3d::scan_direction::forward);
         }
 
-        TEST_METHOD_CATEGORY(amp_dx_scan_other, "amp::direct3d")
+        TEST_METHOD(amp_dx_scan_other)
         {
             const int elem_count = 10;
             std::vector<unsigned int> in(elem_count, 1);
 
             concurrency::array<unsigned int> input(concurrency::extent<1>(elem_count), in.begin());
             // use max_scan_size and max_scan_count greater than actual usage
-            scan s(2 * elem_count, elem_count);
+            amp_algorithms::direct3d::scan s(2 * elem_count, elem_count);
 
             // 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ->
             s.scan_exclusive(input, input);
             // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ->
             s.scan_exclusive(input, input, amp_algorithms::direct3d::scan_direction::forward, amp_algorithms::plus<unsigned int>());
-            // 0, 0, 1, 3, 6, 10, 15, 21, 28, 36 -> 
+            // 0, 0, 1, 3, 6, 10, 15, 21, 28, 36 ->
 
             unsigned int flg = 8; // 001000 in binary, so our segment is in here: 0, 0, 1, | 3, 6, 10, 15, 21, 28, 36
             concurrency::array<unsigned int> flags(1, &flg);
@@ -148,7 +148,7 @@ namespace amp_algorithms_direct3d_tests
             }
         }
 
-        TEST_METHOD_CATEGORY(amp_dx_scan_error_handling, "amp::direct3d")
+        TEST_METHOD(amp_dx_scan_error_handling)
         {
             accelerator ref(accelerator::direct3d_ref);
             accelerator_view ref_view = ref.create_view();
@@ -159,31 +159,31 @@ namespace amp_algorithms_direct3d_tests
             concurrency::array<unsigned int> input(concurrency::extent<1>(elem_count), in.begin(), ref_view);
 
             Assert::ExpectException<runtime_exception>([&]() {
-                scan s2(2 * elem_count, elem_count, accelerator().default_view);
+                amp_algorithms::direct3d::scan s2(2 * elem_count, elem_count, accelerator().default_view);
                 s2.scan_exclusive(input, input);
             }, 
                 L"Expected exception for non-matching accelerator_view in scan object");
 
             Assert::ExpectException<runtime_exception>([&]() {
-                scan s2(2 * elem_count, elem_count, ref_view);
+                amp_algorithms::direct3d::scan s2(2 * elem_count, elem_count, ref_view);
                 concurrency::array<unsigned int> output(elem_count, ref.create_view());
                 s2.scan_exclusive(input, output);
             },
                 L"Expected exception for non-matching accelerator_view in output");
 
             Assert::ExpectException<runtime_exception>([&]() {
-                scan s2(elem_count-1, ref_view);
+                amp_algorithms::direct3d::scan s2(elem_count - 1, ref_view);
                 s2.scan_exclusive(input, input);
             },
                 L"Expected exception for scan object with max_scan_size < scan_size");
 
             Assert::ExpectException<runtime_exception>([&]() {
-                scan s2(elem_count, 0, ref_view);
+                amp_algorithms::direct3d::scan s2(elem_count, 0, ref_view);
             },
                 L"Expected exception for scan object with max_scan_count == 0");
 
             Assert::ExpectException<runtime_exception>([&]() {
-                scan s2(elem_count, 1, ref_view);
+                amp_algorithms::direct3d::scan s2(elem_count, 1, ref_view);
                 concurrency::array<unsigned int, 2> in2(10, 10);
                 s2.multi_scan_exclusive(in2, in2, amp_algorithms::direct3d::scan_direction::forward, amp_algorithms::plus<unsigned int>());
             },
@@ -216,7 +216,7 @@ namespace amp_algorithms_direct3d_tests
             bitvector flags(column_count);
 
             // Construct scan object
-            scan s(column_count, row_count);
+            amp_algorithms::direct3d::scan s(column_count, row_count);
 
             // Run scan
             if (test_type == scan_type::multiscan)

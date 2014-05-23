@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\inc\amp_algorithms_direct3d.h" />
+    <ClInclude Include="..\inc\xx_amp_algorithms_direct3d_impl.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals" />
   <PropertyGroup Condition="'$(WARNINGS_AS_ERRORS)' == ''">
@@ -107,7 +108,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_CONSOLE;%(PreprocessorDefinitions); $(USE_REF);_DEBUG; USE_REF</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_CONSOLE;%(PreprocessorDefinitions); $(USE_REF);_DEBUG;</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\inc</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>

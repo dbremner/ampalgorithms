@@ -26,9 +26,8 @@
 #pragma once
 
 #include <amp.h>
-#include <wrl\client.h>
 
-#include <xx_amp_algorithms_impl.h>
+#include <xx_amp_algorithms_direct3d_impl.h>
 #include <amp_indexable_view.h>
 
 namespace amp_algorithms
@@ -39,12 +38,13 @@ namespace amp_algorithms
 
     namespace direct3d
     {
+        // direct3d namespace has its own declarations of scan_mode and scan_direction.
+
         enum class scan_mode : int
         {
             exclusive = 0,
             inclusive = 1
         };
-
         // TODO: Duplicated in both amp and direct3d namespaces. Fix this?
         enum class scan_direction : int
         {
@@ -114,7 +114,7 @@ namespace amp_algorithms
                 Microsoft::WRL::ComPtr<ID3D11Buffer> flags_buffer(_details::_get_d3d11_buffer_ptr(flags_array));
                 Microsoft::WRL::ComPtr<ID3D11Buffer> dst_buffer(_details::_get_d3d11_buffer_ptr(output_array));
 
-                // Create typed uavs
+                // Create typed UAVs
                 Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> src_view(_details::_create_d3d11_uav(m_device, src_buffer, _details::_dx_scan_type_helper<T>::dx_view_type));
                 Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> flags_view(_details::_create_d3d11_uav(m_device, flags_buffer, DXGI_FORMAT_R32_UINT));
                 // 2nd view is only needed if destination buffer is different from source buffer (not-in-place scan)
