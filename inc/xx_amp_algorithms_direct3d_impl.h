@@ -16,7 +16,8 @@
 *
 * C++ AMP standard algorithms library.
 *
-* This file contains the helpers templates on which amp_algorithms.h depends.
+* This file contains the helpers templates on which
+* the amp_algorithms_direct3d.h header depends.
 *---------------------------------------------------------------------------*/
 
 #pragma once

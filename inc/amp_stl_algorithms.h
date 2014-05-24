@@ -16,7 +16,7 @@
 * 
 * C++ AMP standard algorithm library.
 *
-* This file contains the C++ AMP standard algorithms
+* This file contains the C++ AMP standard library algorithms
 *---------------------------------------------------------------------------*/
 #pragma once
 

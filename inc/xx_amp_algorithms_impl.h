@@ -16,7 +16,8 @@
 * 
 * C++ AMP standard algorithms library.
 *
-* This file contains the helpers classes in amp_algorithms::_details namespace
+* This file contains the helpers templates on which the amp_algorithms.h 
+* header depends.
 *---------------------------------------------------------------------------*/
 
 #pragma once

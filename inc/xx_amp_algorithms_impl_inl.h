@@ -23,16 +23,4 @@
 
 namespace amp_algorithms
 {
-    //enum class scan_mode : int
-    //{
-    //    exclusive = 0,
-    //    inclusive = 1
-    //};
-
-    //// TODO: Duplicated in both amp and direct3d namespaces. Fix this?
-    //enum class scan_direction : int
-    //{
-    //    forward = 0,
-    //    backward = 1
-    //};
 }

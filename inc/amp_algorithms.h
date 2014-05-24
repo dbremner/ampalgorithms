@@ -32,7 +32,9 @@
 
 namespace amp_algorithms
 {
+
 #pragma region Arithmetic, comparison, logical and bitwise operators
+
     //----------------------------------------------------------------------------
     // Arithmetic operations
     //----------------------------------------------------------------------------
@@ -319,6 +321,8 @@ namespace amp_algorithms
 
     // TODO: Implement not1() and not2() if appropriate.
 
+#pragma endregion
+
     //----------------------------------------------------------------------------
     // Byte pack and unpack
     //----------------------------------------------------------------------------
@@ -345,10 +349,8 @@ namespace amp_algorithms
         return (value >> (index * 8)) & 0xFF;
     }
 
-#pragma endregion
-
     //----------------------------------------------------------------------------
-    // padded_read & padded_write
+    // container padded_read & padded_write
     //----------------------------------------------------------------------------
 
     template <typename InputIndexableView, int N>

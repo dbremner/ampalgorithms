@@ -17,12 +17,11 @@
 *
 * C++ AMP algorithms library.
 *
-* This file contains the C++ AMP algorithms
+* This file contains the C++ AMP DirectX algorithms 
 *---------------------------------------------------------------------------*/
 
 // TODO: Here the functions are defined here. In the STL implementation they are defined in the main header file 
 // and just declared in the public one. Is this by design?
-
 #pragma once
 
 #include <amp.h>
@@ -45,7 +44,7 @@ namespace amp_algorithms
             exclusive = 0,
             inclusive = 1
         };
-        // TODO: Duplicated in both amp and direct3d namespaces. Fix this?
+
         enum class scan_direction : int
         {
             forward = 0,
