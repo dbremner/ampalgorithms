@@ -31,6 +31,7 @@
 
 namespace amp_algorithms
 {
+    // This header needs these enums but they also have to be defined in the main header.
 #if !defined(AMP_ALGORITHMS_ENUMS)
 #define AMP_ALGORITHMS_ENUMS
     enum class scan_mode : int
@@ -39,7 +40,6 @@ namespace amp_algorithms
         inclusive = 1
     };
 
-    // TODO: Duplicated in both amp and direct3d namespaces. Fix this?
     enum class scan_direction : int
     {
         forward = 0,

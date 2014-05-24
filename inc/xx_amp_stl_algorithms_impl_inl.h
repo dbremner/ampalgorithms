@@ -44,7 +44,6 @@ namespace amp_stl_algorithms
 
     // TODO: Get the tests, header and internal implementations into the same logical order.
     // TODO: Lots of the algorithms that typically do a small amount of work per thread should use tiling to save the runtime overhead of having to do this. 
-    // TODO: Should be more consistent with parameter names begin/end or first/last, result/d_first or dest_first
 
     //----------------------------------------------------------------------------
     // adjacent_difference
@@ -110,7 +109,7 @@ namespace amp_stl_algorithms
     // all_of, any_of, none_of
     //----------------------------------------------------------------------------
 
-    template<typename ConstRandomAccessIterator,  typename UnaryPredicate >
+    template<typename ConstRandomAccessIterator,  typename UnaryPredicate>
     bool all_of(ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate p ) 
     {
         return !amp_stl_algorithms::any_of(
@@ -121,11 +120,11 @@ namespace amp_stl_algorithms
 
     // Non-standard, OutputIterator must yield an int reference, where the result will be
     // stored. This allows the function to eschew synchronization
-    template<typename ConstRandomAccessIterator, typename UnaryPredicate, typename OutputIterator >
-    void any_of(ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate p,  OutputIterator dest)
+    template<typename ConstRandomAccessIterator, typename UnaryPredicate, typename OutputIterator>
+    void any_of(ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate p, OutputIterator dest_first)
     {
         // TODO: Shouldn't any_of be tiled for slightly better performance?
-        auto section_view = _details::create_section(dest, 1);
+        auto section_view = _details::create_section(dest_first, 1);
         amp_stl_algorithms::for_each_no_return(
             first, last, 
             [section_view, p] (const decltype(*first)& val) restrict(amp) 
@@ -360,15 +359,15 @@ namespace amp_stl_algorithms
     //----------------------------------------------------------------------------
 
     template<typename RandomAccessIterator, typename T>
-    void fill( RandomAccessIterator begin, RandomAccessIterator end, const T& value )
+    void fill( RandomAccessIterator first, RandomAccessIterator last, const T& value )
     {
-        amp_stl_algorithms::generate(begin, end, [value] () restrict(amp) { return value; });
+        amp_stl_algorithms::generate(first, last, [value]() restrict(amp) { return value; });
     }
 
     template<typename RandomAccessIterator, typename Size, typename T>
-    void fill_n( RandomAccessIterator begin, Size count, const T& value )
+    void fill_n( RandomAccessIterator first, Size count, const T& value )
     {
-        amp_stl_algorithms::generate_n(begin, count, [value] () restrict(amp) { return value; });
+        amp_stl_algorithms::generate_n(first, count, [value]() restrict(amp) { return value; });
     }
 
     //----------------------------------------------------------------------------
@@ -524,13 +523,13 @@ namespace amp_stl_algorithms
     //----------------------------------------------------------------------------
 
     template<typename RandomAccessIterator, typename Size, typename Generator>
-    void generate_n(RandomAccessIterator begin, Size count, Generator g)
+    void generate_n(RandomAccessIterator first, Size count, Generator g)
     {
         if (count <= 0) 
         {
             return;
         }
-        auto section_view = _details::create_section(begin, count);
+        auto section_view = _details::create_section(first, count);
 
         concurrency::parallel_for_each(section_view.extent, [g,section_view] (concurrency::index<1> idx) restrict(amp) {
             section_view[idx] = g();
@@ -538,13 +537,13 @@ namespace amp_stl_algorithms
     }
 
     template <typename RandomAccessIterator, typename Generator>
-    void generate(RandomAccessIterator begin, RandomAccessIterator end, Generator g)
+    void generate(RandomAccessIterator first, RandomAccessIterator last, Generator g)
     {
         typedef std::iterator_traits<RandomAccessIterator>::difference_type difference_type;
 
-        difference_type element_count = std::distance(begin, end);
+        difference_type element_count = std::distance(first, last);
 
-        amp_stl_algorithms::generate_n(begin, element_count, g);
+        amp_stl_algorithms::generate_n(first, element_count, g);
     }
 
     //----------------------------------------------------------------------------
@@ -974,54 +973,54 @@ namespace amp_stl_algorithms
     // The functor needs to be blittable and cannot contain any array, array_view, or textures.
 
     template<typename ConstRandomAccessIterator,typename RandomAccessIterator, typename UnaryFunction>
-    RandomAccessIterator transform( ConstRandomAccessIterator begin1, 
-        ConstRandomAccessIterator end1, 
-        RandomAccessIterator result_begin,
+    RandomAccessIterator transform( ConstRandomAccessIterator first, 
+        ConstRandomAccessIterator last, 
+        RandomAccessIterator dest_first,
         UnaryFunction func)
     {
         typedef std::iterator_traits<ConstRandomAccessIterator>::difference_type difference_type;
 
-        difference_type element_count = std::distance(begin1, end1);
+        difference_type element_count = std::distance(first, last);
         if (element_count <= 0)
         {
-            return result_begin;
+            return dest_first;
         }
-        auto input_view = _details::create_section(begin1, element_count);
-        auto output_view = _details::create_section(result_begin, element_count);
+        auto input_view = _details::create_section(first, element_count);
+        auto output_view = _details::create_section(dest_first, element_count);
 
         concurrency::parallel_for_each(output_view.extent, [func,input_view,output_view] (concurrency::index<1> idx) restrict(amp) {
             output_view[idx] = func(input_view[idx]);
         });
 
-        return result_begin;
+        return dest_first;
     }
 
     // The "BinaryFunction" functor needs to be callable as "func(ConstRandomAccessIterator1::value_type, ConstRandomAccessIterator2::value_type)".
     // The functor needs to be blittable and cannot contain any array, array_view, or textures.
 
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2,typename RandomAccessIterator, typename BinaryFunction>
-    RandomAccessIterator transform( ConstRandomAccessIterator1 begin1, 
-        ConstRandomAccessIterator1 end1,
-        ConstRandomAccessIterator2 begin2, 
-        RandomAccessIterator result_begin,
+    RandomAccessIterator transform( ConstRandomAccessIterator1 first1, 
+        ConstRandomAccessIterator1 last1,
+        ConstRandomAccessIterator2 first2, 
+        RandomAccessIterator dest_first,
         BinaryFunction func)
     {
         typedef std::iterator_traits<ConstRandomAccessIterator1>::difference_type difference_type;
 
-        difference_type element_count = std::distance(begin1, end1);
+        difference_type element_count = std::distance(first1, last1);
         if (element_count <= 0)
         {
-            return result_begin;
+            return dest_first;
         }
-        auto input1_view = _details::create_section(begin1, element_count);
-        auto input2_view = _details::create_section(begin2, element_count);
-        auto output_view = _details::create_section(result_begin, element_count);
+        auto input1_view = _details::create_section(first1, element_count);
+        auto input2_view = _details::create_section(first2, element_count);
+        auto output_view = _details::create_section(dest_first, element_count);
 
         concurrency::parallel_for_each(output_view.extent, [func,input1_view,input2_view,output_view] (concurrency::index<1> idx) restrict(amp) {
             output_view[idx] = func(input1_view[idx], input2_view[idx]);
         });
 
-        return result_begin;
+        return dest_first;
     }
 
     //----------------------------------------------------------------------------

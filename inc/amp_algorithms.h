@@ -19,6 +19,7 @@
 * This file contains the C++ AMP algorithms
 *---------------------------------------------------------------------------*/
 
+// TODO: Does it really make a lot of sense to declare two namespaces or should everything be flattened into amp_algorithms?
 // TODO: Here the functions are defined here. In the STL implementation they are defined in the main header file 
 // and just declared in the public one. Is this by design?
 
@@ -255,8 +256,6 @@ namespace amp_algorithms
         }
     };
 
-    // TODO: Where should these be declared? Technically they are STL algorithms but they are already used by the direct3d namespace
-    // TODO: Does it really make a lot of sense to declare two namespaces or should everything be flattened into amp_algorithms?
 #ifdef max
 #error amp_algorithms encountered a definition of the macro max.
 #endif
@@ -319,7 +318,7 @@ namespace amp_algorithms
         }
     };
 
-    // TODO: Implement not1() and not2() if appropriate.
+    // TODO_NOT_IMPLEMENTED: Implement not1() and not2() if appropriate.
 
 #pragma endregion
 
@@ -418,13 +417,13 @@ namespace amp_algorithms
     // merge_sort
     //----------------------------------------------------------------------------
 
-    // TODO: NOT IMPLEMENTED radix_sort
+    // TODO_NOT_IMPLEMENTED: radix_sort
     template <typename T, typename BinaryOperator>
     void merge_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<unsigned int>& input_view, BinaryOperator op)
     {
     }
 
-    // TODO: NOT IMPLEMENTED radix_sort
+    // TODO_NOT_IMPLEMENTED: radix_sort
     template <typename T>
     void merge_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<unsigned int>& input_view)
     {
@@ -621,7 +620,7 @@ namespace amp_algorithms
         }
     }
 
-    // TODO: NOT IMPLEMENTED radix_sort
+    // TODO_NOT_IMPLEMENTED: radix_sort
     inline void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<int>& input_view)
     {
         static const int bin_width = 4;
@@ -629,7 +628,7 @@ namespace amp_algorithms
         _details::radix_sort<int, bin_width, tile_size>(accl_view, input_view);
     }
 
-    // TODO: NOT IMPLEMENTED radix_sort
+    // TODO_NOT_IMPLEMENTED: radix_sort
     inline void radix_sort(concurrency::array_view<int>& input_view)
     {
         radix_sort(_details::auto_select_target(), input_view);
@@ -689,6 +688,8 @@ namespace amp_algorithms
     // TODO: Scan does not support segmented scan or forwards/backwards.
     // TODO: IMPORTANT! Scan uses information about the warp size. Consider using an algorithm that does not need to use this.
 
+    // This header needs these enums but they also have to be defined in the _impl header for use by the 
+    // main STL header, which includes the _impl.
 #if !defined(AMP_ALGORITHMS_ENUMS)
 #define AMP_ALGORITHMS_ENUMS
     enum class scan_mode : int
@@ -697,7 +698,6 @@ namespace amp_algorithms
         inclusive = 1
     };
 
-    // TODO: Duplicated in both amp and direct3d namespaces. Fix this?
     enum class scan_direction : int
     {
         forward = 0,

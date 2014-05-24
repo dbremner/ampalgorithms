@@ -37,13 +37,13 @@ namespace amp_stl_algorithms
 
         inline void amp_assert(bool cond) restrict(amp)
         {
-            // TODO: NOT IMPLEMENTED amp_assert
+            // TODO_NOT_IMPLEMENTED: amp_assert
         }
 
         template <typename array_type>
         inline void assert_arrays_are_same_toplevel_resource(const array_type& a1, const array_type& a2) restrict(cpu,amp)
         {
-            // TODO: NOT IMPLEMENTED assert_arrays_are_same_toplevel_resource
+            // TODO_NOT_IMPLEMENTED: assert_arrays_are_same_toplevel_resource
         }
 
         //////////////////////////////////////////////////////////////////////////
