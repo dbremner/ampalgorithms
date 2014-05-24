@@ -19,8 +19,25 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\inc\amp_algorithms_direct3d.h" />
-    <ClInclude Include="..\inc\xx_amp_algorithms_direct3d_impl.h" />
+    <ClInclude Include="..\inc\amp_algorithms.h" />
+    <ClInclude Include="..\inc\amp_indexable_view.h" />
+    <ClInclude Include="..\inc\xx_amp_algorithms_impl.h" />
+    <ClInclude Include="..\inc\xx_amp_algorithms_impl_inl.h" />
+    <ClInclude Include="..\test\testtools.h" />
+    <ClInclude Include="..\test\stdafx.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\test\stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_algorithms.cpp" />
+    <ClCompile Include="..\test\test_amp_algorithms_direct3d_scan.cpp" />
+    <ClCompile Include="..\test\test_testtools.cpp" />
+    <ClCompile Include="..\test\test_amp_algorithms_sort.cpp" />
+    <ClCompile Include="..\test\test_amp_algorithms_scan.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals" />
   <PropertyGroup Condition="'$(WARNINGS_AS_ERRORS)' == ''">
@@ -196,7 +213,6 @@
       <Message>copy d3dcsx dll</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-  <Import Project="..\amp_algorithms_sources.proj" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

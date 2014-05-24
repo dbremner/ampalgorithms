@@ -59,6 +59,28 @@
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
+  <ItemGroup>
+    <ClInclude Include="..\inc\amp_iterators.h" />
+    <ClInclude Include="..\inc\amp_stl_algorithms.h" />
+    <ClInclude Include="..\inc\xx_amp_stl_algorithms_impl.h" />
+    <ClInclude Include="..\inc\xx_amp_stl_algorithms_impl_inl.h" />
+    <ClInclude Include="..\test\stdafx.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\test\examples_stl_amp_algorithms.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\test\stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms.cpp" />
+    <ClCompile Include="..\test\test_amp_stl_iterators.cpp" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
@@ -181,7 +203,6 @@
       <Command>@echo BUILD SUCCEEDED</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-  <Import Project="..\amp_stl_algorithms_sources.proj" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
