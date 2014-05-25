@@ -208,7 +208,7 @@ namespace amp_algorithms
 
                     int idx = tid.global[0];
 
-                    // this threads's shared memory pointer
+                    // this thread's shared memory pointer
                     result_type& smem = local_buffer[tid.local[0]];
 
                     // this variable is used to test if we are on the edge of data within tile

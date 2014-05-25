@@ -293,7 +293,6 @@ namespace amp_stl_algorithms_tests
         //----------------------------------------------------------------------------
         // copy, copy_if, copy_n, copy_backward
         //----------------------------------------------------------------------------
-
         TEST_METHOD_CATEGORY(stl_copy, "stl")
         {
             test_copy(1024);
@@ -611,7 +610,8 @@ namespace amp_stl_algorithms_tests
             array_view<int> av(1024, vec);
             av.discard_data();
 
-            amp_stl_algorithms::generate(begin(av), end(av), [] () restrict(amp) {
+            amp_stl_algorithms::generate(begin(av), end(av), [] () restrict(amp) 
+            {
                 return 7;
             });
             av.synchronize();
@@ -628,7 +628,8 @@ namespace amp_stl_algorithms_tests
             array_view<int> av(1024, vec);
             av.discard_data();
 
-            amp_stl_algorithms::generate_n(begin(av), av.extent.size(), [] () restrict(amp) {
+            amp_stl_algorithms::generate_n(begin(av), av.extent.size(), [] () restrict(amp) 
+            {
                 return 616;
             });
             av.synchronize();
@@ -637,6 +638,40 @@ namespace amp_stl_algorithms_tests
             {
                 Assert::AreEqual(616, element);
             }
+        }
+
+        //----------------------------------------------------------------------------
+        // inner_product
+        //----------------------------------------------------------------------------
+
+        TEST_METHOD_CATEGORY(stl_inner_product, "stl")
+        {
+            std::vector<int> vec1(1024);
+            std::fill(begin(vec1), end(vec1), 1);
+            array_view<int> av1(1024, vec1);
+            std::vector<int> vec2(1024);
+            std::fill(begin(vec2), end(vec2), 2);
+            array_view<int> av2(1024, vec2);
+            int expected = std::inner_product(begin(vec1), end(vec1), begin(vec2), 2);
+
+            int result = amp_stl_algorithms::inner_product(begin(av1), end(av1), begin(av2), 2);
+
+            Assert::AreEqual(expected, result);
+        }
+
+        TEST_METHOD_CATEGORY(stl_inner_product_pred, "stl")
+        {
+            std::vector<int> vec1(1024);
+            std::fill(begin(vec1), end(vec1), 1);
+            array_view<int> av1(1024, vec1);
+            std::vector<int> vec2(1024);
+            std::fill(begin(vec2), end(vec2), 2);
+            array_view<int> av2(1024, vec2);
+            int expected = std::inner_product(begin(vec1), end(vec1), begin(vec2), 2, std::plus<int>(), std::plus<int>());
+
+            int result = amp_stl_algorithms::inner_product(begin(av1), end(av1), begin(av2), 2, amp_algorithms::plus<int>(), amp_algorithms::plus<int>());
+
+            Assert::AreEqual(expected, result);
         }
 
         //----------------------------------------------------------------------------

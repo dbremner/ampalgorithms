@@ -421,7 +421,7 @@ namespace amp_stl_algorithms
     {
         template<typename ConstRandomAccessIterator, typename Predicate>
         ConstRandomAccessIterator adjacent_find (ConstRandomAccessIterator first, 
-            const typename std::iterator_traits<ConstRandomAccessIterator>::difference_type element_count, Predicate p)
+            const typename std::iterator_traits<ConstRandomAccessIterator>::difference_type element_count, Predicate pred)
         {
             static const int tile_size = 512;
 
@@ -445,7 +445,7 @@ namespace amp_stl_algorithms
 
                 tidx.barrier.wait_with_all_memory_fence();
 
-                if ((idx < element_count) && p(local_buffer[i], local_buffer[i + 1]) )
+                if ((idx < element_count) && pred(local_buffer[i], local_buffer[i + 1]))
                 {
                     concurrency::atomic_fetch_min(&last_sorted_idx_av(0), idx);
                 }
@@ -530,8 +530,8 @@ namespace amp_stl_algorithms
             return;
         }
         auto section_view = _details::create_section(first, count);
-
-        concurrency::parallel_for_each(section_view.extent, [g,section_view] (concurrency::index<1> idx) restrict(amp) {
+        concurrency::parallel_for_each(section_view.extent, [g,section_view] (concurrency::index<1> idx) restrict(amp) 
+        {
             section_view[idx] = g();
         });
     }
@@ -540,9 +540,7 @@ namespace amp_stl_algorithms
     void generate(RandomAccessIterator first, RandomAccessIterator last, Generator g)
     {
         typedef std::iterator_traits<RandomAccessIterator>::difference_type difference_type;
-
         difference_type element_count = std::distance(first, last);
-
         amp_stl_algorithms::generate_n(first, element_count, g);
     }
 
@@ -554,6 +552,30 @@ namespace amp_stl_algorithms
     // inner_product
     //----------------------------------------------------------------------------
     
+    template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2, typename T, typename BinaryOperation1, typename BinaryOperation2>
+    T inner_product(ConstRandomAccessIterator1 first1, ConstRandomAccessIterator1 last1, ConstRandomAccessIterator2 first2, const T value,
+        const BinaryOperation1& binary_op1, const BinaryOperation2& binary_op2)
+    {
+        typedef std::iterator_traits<ConstRandomAccessIterator1>::difference_type difference_type;
+        difference_type element_count = std::distance(first1, last1);
+        if (element_count <= 0)
+        {
+            return value;
+        }
+        auto section1_view = _details::create_section(first1, element_count);
+        auto section2_view = _details::create_section(first2, element_count);
+
+        concurrency::array<T> map(element_count);
+        concurrency::array_view<T> map_vw(map);
+        map_vw.discard_data();
+        concurrency::parallel_for_each(map_vw.extent, [=](concurrency::index<1> idx) restrict(amp)
+        {
+            map_vw[idx] = binary_op2(section1_view[idx], section2_view[idx]);
+        });
+        map_vw.synchronize();
+        return binary_op1(value, amp_algorithms::reduce(map_vw, binary_op1));
+    }
+
     //----------------------------------------------------------------------------
     // iota
     //----------------------------------------------------------------------------
@@ -624,19 +646,19 @@ namespace amp_stl_algorithms
     //----------------------------------------------------------------------------
 
     template<typename ConstRandomAccessIterator, typename T, typename BinaryOperation>
-    T reduce( ConstRandomAccessIterator first, ConstRandomAccessIterator last, T init, BinaryOperation op )
+    T reduce( ConstRandomAccessIterator first, ConstRandomAccessIterator last, T initial_value, BinaryOperation op )
     {
         typedef typename std::iterator_traits<ConstRandomAccessIterator>::difference_type diff_type;
         diff_type element_count = std::distance(first, last);
         auto section_view = _details::create_section(first, element_count);
 
-        return op(init, amp_algorithms::reduce(section_view, op));
+        return op(initial_value, amp_algorithms::reduce(section_view, op));
     }
 
     template<typename ConstRandomAccessIterator, typename T>
-    T reduce( ConstRandomAccessIterator first, ConstRandomAccessIterator last, T init )
+    T reduce( ConstRandomAccessIterator first, ConstRandomAccessIterator last, T initial_value )
     {
-        return amp_stl_algorithms::reduce(first, last, init, amp_algorithms::plus<std::remove_const<typename std::iterator_traits<ConstRandomAccessIterator>::value_type>::type>());
+        return amp_stl_algorithms::reduce(first, last, initial_value, amp_algorithms::plus<std::remove_const<typename std::iterator_traits<ConstRandomAccessIterator>::value_type>::type>());
     }
 
     //----------------------------------------------------------------------------
@@ -651,7 +673,7 @@ namespace amp_stl_algorithms
 
     // TODO: Is is possible to remove elements in place and save having to copy?
     template<typename RandomAccessIterator, typename UnaryPredicate>
-    RandomAccessIterator remove_if(RandomAccessIterator first, RandomAccessIterator last, UnaryPredicate p)
+    RandomAccessIterator remove_if(RandomAccessIterator first, RandomAccessIterator last, UnaryPredicate pred)
     {
         typedef typename std::iterator_traits<RandomAccessIterator>::difference_type diff_type;
         typedef typename std::iterator_traits<RandomAccessIterator>::value_type T;
@@ -668,9 +690,9 @@ namespace amp_stl_algorithms
 
         //  Here copy_if() is used with the predicate inverted
         auto last_element =  amp_stl_algorithms::copy_if(first, last, begin(tmp_view), 
-            [p](const T& i) restrict(amp)
+            [pred](const T& i) restrict(amp)
         {
-            return static_cast<unsigned int>(!p(i));
+            return static_cast<unsigned int>(!pred(i));
         });
         const int remaining_elements = static_cast<int>(std::distance(begin(tmp_view), last_element));
         if (remaining_elements > 0)

@@ -401,45 +401,33 @@ namespace amp_stl_algorithms
     // includes
     //----------------------------------------------------------------------------
 
-    // TODO_NOT_IMPLEMENTED: includes
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2>
-    bool includes( ConstRandomAccessIterator1 first1, 
-        ConstRandomAccessIterator1 last1,
-        ConstRandomAccessIterator2 first2, 
-        ConstRandomAccessIterator2 last2 ); 
+    bool includes(ConstRandomAccessIterator1 first1, ConstRandomAccessIterator1 last1,
+        ConstRandomAccessIterator2 first2, ConstRandomAccessIterator2 last2)
+    {
+        return includes(first1, last1, first2, last2, amp_algorithms::equal_to());
+    }
 
-    // NOT IMPLEMENTED
+    // TODO_NOT_IMPLEMENTED: includes
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2, typename Compare>
-    bool includes( ConstRandomAccessIterator1 first1, 
-        ConstRandomAccessIterator1 last1,
-        ConstRandomAccessIterator2 first2, 
-        ConstRandomAccessIterator2 last2, 
+    bool includes( ConstRandomAccessIterator1 first1, ConstRandomAccessIterator1 last1,
+        ConstRandomAccessIterator2 first2, ConstRandomAccessIterator2 last2, 
         Compare comp );
 
     //----------------------------------------------------------------------------
     // inner_product
     //----------------------------------------------------------------------------
 
-    // TODO_NOT_IMPLEMENTED: inner_product
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2, typename T>
-    T inner_product( ConstRandomAccessIterator1 first1, 
-        ConstRandomAccessIterator1 last1,
-        ConstRandomAccessIterator2 first2, 
-        T value ); 
+    T inner_product(ConstRandomAccessIterator1 first1, ConstRandomAccessIterator1 last1, ConstRandomAccessIterator2 first2, const T value)
+    {
+        return amp_stl_algorithms::inner_product(first1, last1, first2, value, amp_algorithms::plus<T>(), amp_algorithms::multiplies<T>());
+    }
 
-    // NOT IMPLEMENTED
-    template<
-        typename ConstRandomAccessIterator1,
-        typename ConstRandomAccessIterator2,
-        typename T,
-        typename BinaryOperation1,
-        typename BinaryOperation2>
-        T inner_product( ConstRandomAccessIterator1 first1, 
-        ConstRandomAccessIterator1 last1,
-        ConstRandomAccessIterator2 first2,
-        T value,
-        BinaryOperation1 op1,
-        BinaryOperation2 op2 ); 
+    template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2, typename T,
+        typename BinaryOperation1, typename BinaryOperation2>
+    T inner_product(ConstRandomAccessIterator1 first1, ConstRandomAccessIterator1 last1, ConstRandomAccessIterator2 first2, const T value,
+        const BinaryOperation1& binary_op1, const BinaryOperation2& binary_op2);
 
     //----------------------------------------------------------------------------
     // iota
