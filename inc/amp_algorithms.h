@@ -326,25 +326,31 @@ namespace amp_algorithms
     // Byte pack and unpack
     //----------------------------------------------------------------------------
 
-    template<int index>
-    inline unsigned pack_byte(const unsigned value) restrict(cpu, amp)
+    template<int index, typename T>
+    inline unsigned pack_byte(const T& value) restrict(cpu, amp)
     {
+        static_assert(index < sizeof(T), "Index out of range.");
         return (value && 0xFF) << (index * 8);
     }
 
-    inline unsigned pack_byte(const unsigned value, unsigned index) restrict(cpu, amp)
+    template<typename T>
+    inline unsigned pack_byte(const T& value, unsigned index) restrict(cpu, amp)
     {
+        //assert(index < sizeof(T));
         return (value && 0xFF) << (index * 8);
     }
 
-    template<int index>
-    inline unsigned unpack_byte(const unsigned value) restrict(cpu, amp)
+    template<int index, typename T>
+    inline unsigned unpack_byte(const T& value) restrict(cpu, amp)
     {
+        static_assert(index < sizeof(T), "Index out of range.");
         return (value >> (index * 8)) & 0xFF;
     }
 
-    inline unsigned unpack_byte(const unsigned value, unsigned index) restrict(cpu, amp)
+    template<typename T>
+    inline unsigned unpack_byte(const T& value, unsigned index) restrict(cpu, amp)
     {
+        //assert(index < sizeof(T));
         return (value >> (index * 8)) & 0xFF;
     }
 
@@ -417,13 +423,12 @@ namespace amp_algorithms
     // merge_sort
     //----------------------------------------------------------------------------
 
-    // TODO_NOT_IMPLEMENTED: radix_sort
+    // TODO_NOT_IMPLEMENTED: merge_sort
     template <typename T, typename BinaryOperator>
     void merge_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<unsigned int>& input_view, BinaryOperator op)
     {
     }
 
-    // TODO_NOT_IMPLEMENTED: radix_sort
     template <typename T>
     void merge_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<unsigned int>& input_view)
     {
@@ -443,10 +448,9 @@ namespace amp_algorithms
     // http://xxx.lanl.gov/pdf/1008.2849
     // http://www.rebe.rau.ro/RePEc/rau/jisomg/WI12/JISOM-WI12-A11.pdf
     //
-    //
     // "Histogram Calculation in CUDA" http://docs.nvidia.com/cuda/samples/3_Imaging/histogram/doc/histogram.pdf
     //
-    // TODO: Move this to the impl file?
+    // TODO: Move this to the _impl file?
     namespace _details
     {
         template<typename T, int key_bit_width>

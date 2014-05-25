@@ -26,7 +26,6 @@
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace concurrency;
 using namespace amp_algorithms;
-using namespace amp_algorithms::_details;
 using namespace testtools;
 
 namespace amp_algorithms_tests
@@ -58,7 +57,7 @@ namespace amp_algorithms_tests
             
             for (auto t : theories)
             {
-                int result = radix_key_value<int, 2>(std::get<parameter::value>(t), std::get<parameter::index>(t));
+                int result = amp_algorithms::_details::radix_key_value<int, 2>(std::get<parameter::value>(t), std::get<parameter::index>(t));
                 Assert::AreEqual(std::get<parameter::expected>(t), result);
             }
         }
@@ -131,7 +130,7 @@ namespace amp_algorithms_tests
             std::array<unsigned, 16> output;
             array_view<unsigned> input_av(int(input.size()), input);
             array_view<unsigned> output_av(int(output.size()), output);
-            radix_sort_by_key<unsigned, 2, 4>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
+            amp_algorithms::_details::radix_sort_by_key<unsigned, 2, 4>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
 
             output_av.synchronize();
 
