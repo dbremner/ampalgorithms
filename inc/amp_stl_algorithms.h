@@ -631,23 +631,6 @@ namespace amp_stl_algorithms
         RandomAccessIterator last, Compare comp ); 
 
     //----------------------------------------------------------------------------
-    // partial sum
-    //----------------------------------------------------------------------------
-
-    // TODO_NOT_IMPLEMENTED: partial_sum
-    template <typename ConstRandomAccessIterator,typename RandomAccessIterator>
-    RandomAccessIterator partial_sum( ConstRandomAccessIterator first, 
-        ConstRandomAccessIterator last,
-        RandomAccessIterator dest_first);
-
-    // NOT IMPLEMENTED
-    template <typename ConstRandomAccessIterator,typename RandomAccessIterator, typename BinaryOperation>
-    RandomAccessIterator partial_sum( ConstRandomAccessIterator first, 
-        ConstRandomAccessIterator last,
-        RandomAccessIterator dest_first,
-        BinaryOperation binary_op );
-
-    //----------------------------------------------------------------------------
     // partition, stable_partition, partition_point, is_partitioned
     //----------------------------------------------------------------------------
 
