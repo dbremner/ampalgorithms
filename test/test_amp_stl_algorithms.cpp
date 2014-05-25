@@ -1067,6 +1067,34 @@ namespace amp_stl_algorithms_tests
         }
 
         //----------------------------------------------------------------------------
+        // rotate_copy
+        //----------------------------------------------------------------------------
+
+        TEST_METHOD_CATEGORY(stl_rotate_copy, "stl")
+        {
+            test_rotate_copy(1023, 200);
+            test_rotate_copy(1, 0);
+            test_rotate_copy(1024, 713);
+        }
+
+        void test_rotate_copy(const int size, const int middle_offset)
+        {
+            std::vector<int> vec(size);
+            std::iota(begin(vec), end(vec), 0);
+            array_view<int> av(size, vec);
+
+            std::vector<int> result(size, 0);
+            concurrency::array_view<int> result_av(size, result);
+            std::vector<int> expected_result(size, 0);
+            auto expected_end = std::rotate_copy(begin(vec), begin(vec) + middle_offset, end(vec), begin(expected_result));
+
+            auto result_end = amp_stl_algorithms::rotate_copy(begin(av), begin(av) + middle_offset, end(av), begin(result_av));
+
+            Assert::IsTrue(are_equal(expected_result, result_av));
+            Assert::AreEqual((size_t)std::distance(begin(expected_result), expected_end), (size_t)std::distance(begin(av), result_end));
+        }
+
+        //----------------------------------------------------------------------------
         // sort, partial_sort, partial_sort_copy, stable_sort, is_sorted, is_sorted_until
         //----------------------------------------------------------------------------
 

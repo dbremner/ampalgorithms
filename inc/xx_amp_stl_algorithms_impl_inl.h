@@ -879,6 +879,26 @@ namespace amp_stl_algorithms
     // rotate, rotate_copy
     //----------------------------------------------------------------------------
 
+    template<typename ConstRandomAccessIterator, typename RandomAccessIterator>
+    RandomAccessIterator rotate_copy(ConstRandomAccessIterator first,
+        ConstRandomAccessIterator middle,
+        ConstRandomAccessIterator last,
+        RandomAccessIterator dest_first)
+    {
+        typedef typename std::iterator_traits<RandomAccessIterator>::difference_type diff_type;
+        const diff_type element_count = std::distance(first, last);
+        const diff_type middle_offset = std::distance(first, middle);
+
+        auto src_view = _details::create_section(first, element_count);
+        auto dest_view = _details::create_section(dest_first, element_count);
+
+        concurrency::parallel_for_each(dest_view.extent, [=](concurrency::index<1> idx) restrict(amp)
+        {
+            dest_view[idx] = src_view[(idx + middle_offset) % element_count];
+        });
+        return dest_first + element_count;
+    }
+
     //----------------------------------------------------------------------------
     // search, search_n, binary_search
     //----------------------------------------------------------------------------

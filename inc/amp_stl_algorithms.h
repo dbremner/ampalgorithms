@@ -440,14 +440,16 @@ namespace amp_stl_algorithms
     // lexographical_compare
     //----------------------------------------------------------------------------
 
-    // TODO_NOT_IMPLEMENTED: lexicographical_compare
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2>
-    bool lexicographical_compare( ConstRandomAccessIterator1 first1, 
+    bool lexicographical_compare(ConstRandomAccessIterator1 first1,
         ConstRandomAccessIterator1 last1,
-        ConstRandomAccessIterator2 first2, 
-        ConstRandomAccessIterator2 last2 ); 
+        ConstRandomAccessIterator2 first2,
+        ConstRandomAccessIterator2 last2)
+    {
+        return amp_stl_algorithms::lexicographical_compare(first1, last1, first2, last2, amp_algorithms::less());
+    }
 
-    // NOT IMPLEMENTED
+    // TODO_NOT_IMPLEMENTED: lexicographical_compare
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2, typename Compare>
     bool lexicographical_compare( ConstRandomAccessIterator1 first1, 
         ConstRandomAccessIterator1 last1,
@@ -587,7 +589,7 @@ namespace amp_stl_algorithms
 
     // TODO_NOT_IMPLEMENTED: mismatch
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2>
-    std::pair<ConstRandomAccessIterator1,ConstRandomAccessIterator2>
+    std::pair<ConstRandomAccessIterator1, ConstRandomAccessIterator2>
         mismatch( ConstRandomAccessIterator1 first1, ConstRandomAccessIterator1 last1, ConstRandomAccessIterator2 first2 );
 
     // NOT IMPLEMENTED 
@@ -734,12 +736,11 @@ namespace amp_stl_algorithms
     template<typename RandomAccessIterator>
     void rotate( RandomAccessIterator first, RandomAccessIterator middle, RandomAccessIterator last);
 
-    // TODO_NOT_IMPLEMENTED: rotate_copy
     template<typename ConstRandomAccessIterator,typename RandomAccessIterator>
-    RandomAccessIterator rotate_copy( ConstRandomAccessIterator first, 
-        ConstRandomAccessIterator n_first,
+    RandomAccessIterator rotate_copy(ConstRandomAccessIterator first, 
+        ConstRandomAccessIterator middle,
         ConstRandomAccessIterator last, 
-        RandomAccessIterator d_first );
+        RandomAccessIterator dest_first);
 
     //----------------------------------------------------------------------------
     // search, search_n, binary_search
