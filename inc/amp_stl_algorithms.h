@@ -294,7 +294,7 @@ namespace amp_stl_algorithms
 
     // TODO_NOT_IMPLEMENTED: equal_range
     template<typename ConstRandomAccessIterator, typename T>
-    std::pair<ConstRandomAccessIterator,ConstRandomAccessIterator> 
+    std::pair<ConstRandomAccessIterator, ConstRandomAccessIterator> 
         equal_range( ConstRandomAccessIterator first, 
         ConstRandomAccessIterator last,
         const T& value ); 
@@ -342,7 +342,6 @@ namespace amp_stl_algorithms
         ConstRandomAccessIterator2 first2, 
         ConstRandomAccessIterator2 last2);
 
-    //TODO_NOT_IMPLEMENTED: 
     template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2, typename Predicate>
     ConstRandomAccessIterator1 find_end ( ConstRandomAccessIterator1 first1, 
         ConstRandomAccessIterator1 last1,
