@@ -543,52 +543,57 @@ namespace amp_algorithms
             concurrency::array<unsigned> histogram_bins(bin_count, accl_view);
             concurrency::array_view<unsigned> histogram_bins_vw(histogram_bins);
 
-            concurrency::tiled_extent<tile_size> compute_domain = input_view.get_extent().tile<tile_size>().pad();
+            const concurrency::tiled_extent<tile_size> compute_domain = input_view.get_extent().tile<tile_size>().pad();
 
             concurrency::parallel_for_each(accl_view, compute_domain, [=, &histogram_bins](concurrency::tiled_index<tile_size> tidx) restrict(amp)
             {
-                // Each thread has its own histogram
+                // Each thread has its own set of histograms on for each bin.
                 tile_static unsigned tile_bins[tile_size][bin_count];
                 tile_static T tile_data[tile_size];
                 const int gidx = tidx.global[0];
                 const int idx = tidx.local[0];
-                const int start_elem = idx * elements_per_thread;
+
+                // 1. Count
 
                 // One thread initializes the global histogram bins.
                 if (gidx == 0)
                 {
-                    //initialize_bins(histogram_bins_vw[b], bin_count);
+                    for (int b = 0; b < bin_count; ++b)
+                    {
+                        histogram_bins_vw[b] = 0;
+                    }
                 }
+                // Each thread on the tile initializes it's bins.
                 initialize_bins(tile_bins[idx], bin_count);
 
-                // Increment bins for each element.
+                // Increment bins for each element on each tile.
                 if (gidx < input_view.extent[0])
                 {
                     tile_bins[idx][_details::radix_key_value<T, key_bit_width>(input_view[gidx], key_idx)]++;
                 }
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
+                // One thread per tile collapse tile values and copies the results into the global histogram.
                 // TODO: This could be more efficient. Don't do it all on one thread.
                 if (idx == 0)
                 {
-                    // Thread zero merges local histograms.
                     for (int i = 1; i < tile_size; ++i)
                     {
                         merge_bins(tile_bins[0], tile_bins[i], bin_count);
                     }
-
-                    // TODO: This isn't smart either but it'll get things working.
-
-                    // Thread zero copies and merges data with global histogram.
                     for (int b = 0; b < bin_count; ++b)
                     {
                         concurrency::atomic_fetch_add(&histogram_bins_vw(b), tile_bins[0][b]);
                     }
-
-                    //_details::scan_tile<tile_size, amp_algorithms::scan_mode::exclusive>(tile_bins[0], tidx, amp_algorithms::plus<T>());
                 }
 
-                // Sort tiles by 
+                // 2. Prefix scan
+
+                //scan_tile<tile_size, scan_mode::exclusive>()
+
+                // 3. Reorder
+
+                // Sort tiles by sub-keys.
                 tidx.barrier.wait();
                 for (int i = 0; i < (key_bit_width / 2); ++i)
                 {
@@ -624,7 +629,6 @@ namespace amp_algorithms
         }
     }
 
-    // TODO_NOT_IMPLEMENTED: radix_sort
     inline void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<int>& input_view)
     {
         static const int bin_width = 4;
@@ -632,7 +636,6 @@ namespace amp_algorithms
         _details::radix_sort<int, bin_width, tile_size>(accl_view, input_view);
     }
 
-    // TODO_NOT_IMPLEMENTED: radix_sort
     inline void radix_sort(concurrency::array_view<int>& input_view)
     {
         radix_sort(_details::auto_select_target(), input_view);
