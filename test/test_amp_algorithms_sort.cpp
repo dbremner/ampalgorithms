@@ -73,10 +73,9 @@ namespace amp_algorithms_tests
             //  6 0110  1  2       14 1110  3  2
             //  7 0111  1  3       15 1111  3  3
 
-            std::array<unsigned, 16> input =     { 3,  2,  1,  6, 10, 11, 13,  0, 15, 10,  5, 14,  4, 12,  9,  8 };
-            // Key 0 values, 2 bit key:            3   2   1   2   2   3   1   0   3   2   1   2   0   0   1   0
-            std::array<unsigned, 16> expected  = { 1,  2,  6,  3,  0, 13, 10, 11,  5, 10, 14, 15,  4, 12,  8,  9 };
-
+            std::array<unsigned, 16> input =     { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,   4, 12,  9,  8 };
+            // Key 0 values, 2 bit key:            3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
+            std::array<unsigned, 16> expected  = { 1,  2,  6,  3,    0, 13, 10, 11,    5, 10, 14, 15,   4, 12,  8,  9 };
             array_view<unsigned> input_av(int(input.size()), input);
 
             concurrency::tiled_extent<4> compute_domain = input_av.get_extent().tile<4>().pad();
@@ -99,16 +98,15 @@ namespace amp_algorithms_tests
 
         TEST_METHOD(amp_details_radix_sort_tile_by_key_1)
         {
-            std::array<unsigned, 16> input  =    { 1,  2,  6,  3,  0, 13, 10, 11,  5, 10, 14, 15,  4, 12,  8,  9 };
-            // Key 1 values, 2 bit key:            0   0   1   0   0   3   2   2   1   2   3   3   1   3   2   2
-            std::array<unsigned, 16> expected  = { 1,  2,  3,  6,  0, 10, 11, 13,  5, 10, 14, 15,  4,  8,  9, 12 };
+            std::array<unsigned, 16> input  =    { 1,  2,  6,  3,   0, 13, 10, 11,   5, 10, 14, 15,   4, 12,  8,  9 };
+            // Key 1 values, 2 bit key:            0   0   1   0    0   3   2   2    1   2   3   3    1   3   2   2
+            std::array<unsigned, 16> expected  = { 1,  2,  3,  6,   0, 10, 11, 13,   5, 10, 14, 15,   4,  8,  9, 12 };
 
             array_view<unsigned> input_av(int(input.size()), input);
 
             concurrency::tiled_extent<4> compute_domain = input_av.get_extent().tile<4>().pad();
 
-            concurrency::parallel_for_each(compute_domain,
-                [=](concurrency::tiled_index<4> tidx) restrict(amp)
+            concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<4> tidx) restrict(amp)
             {
                 const int gidx = tidx.global[0];
                 const int idx = tidx.local[0];
@@ -122,21 +120,55 @@ namespace amp_algorithms_tests
             Assert::IsTrue(are_equal(expected, input_av));
         }
 
-#ifdef _DEBUG
         TEST_METHOD(amp_details_radix_sort_by_key)
         {
-            std::array<unsigned, 16> input  =    { 1,  2,  6,  3,  0, 13, 10, 11,  5, 10, 14, 15,  4, 12,  8,  9 };
-            std::array<unsigned, 16> expected  = { 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15 };
-            std::array<unsigned, 16> output;
+            std::array<unsigned, 16> input =     { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,   4, 12,  9,  8 };
+            // Key 0 values, 2 bit key:            3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
+            // Per tile histogram                  0   1   2   1     1   1   1   1     0   1   2   1    3   1   0   0
+            // Global histogram                    4   4   5   3
+            // Global exclusive scan               0   4   8  13
+            // Partially sorted per-tile data      1   2   6   3     0  13  10  11     5  10  14  15    4  12   8   9
+
+            // Step 1: sort by key 0               
+            std::array<unsigned, 16> expected  = { 0,  1,  2,  3,    4,  5,  6,  7,    8,  9, 10, 11,  12, 13, 14, 15 };
+             
             array_view<unsigned> input_av(int(input.size()), input);
+            std::array<unsigned, 16> output;
             array_view<unsigned> output_av(int(output.size()), output);
-            amp_algorithms::_details::radix_sort_by_key<unsigned, 2, 4>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
+            amp_algorithms::fill(output_av, 0);
+            amp_algorithms::_details::radix_sort_by_key<unsigned, /* key width */ 2, /* tile size */ 4>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
+
 
             output_av.synchronize();
 
             Assert::IsTrue(are_equal(expected, output_av));
         }
-#endif
+
+        TEST_METHOD(amp_details_scan_tile)
+        {
+            std::array<unsigned, 16> input =     { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,   4, 12,  9,  8 };
+            std::array<unsigned, 16> expected  = { 0,  3,  5,  6,    0, 10, 21, 34,    0, 15, 25, 30,   0,  4, 16, 25 };
+
+            array_view<unsigned> input_av(int(input.size()), input);
+            std::array<unsigned, 16> output;
+            array_view<unsigned> output_av(int(output.size()), output);
+            amp_algorithms::fill(output_av, 0);
+            concurrency::tiled_extent<4> compute_domain = input_av.get_extent().tile<4>().pad();
+
+            concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<4> tidx) restrict(amp)
+            {
+                const int gidx = tidx.global[0];
+                const int idx = tidx.local[0];
+                tile_static int tile_data[4];
+                tile_data[idx] = input_av[gidx];
+
+                amp_algorithms::_details::scan_tile<4, scan_mode::exclusive>(tile_data, tidx, amp_algorithms::plus<int>());
+
+                output_av[gidx] = tile_data[idx];
+            });
+
+            Assert::IsTrue(are_equal(expected, output_av));
+        }
     };
 }; // namespace amp_algorithms_tests
 
