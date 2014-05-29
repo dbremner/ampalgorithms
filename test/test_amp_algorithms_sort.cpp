@@ -105,7 +105,6 @@ namespace amp_algorithms_tests
             array_view<unsigned> input_av(int(input.size()), input);
 
             concurrency::tiled_extent<4> compute_domain = input_av.get_extent().tile<4>().pad();
-
             concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<4> tidx) restrict(amp)
             {
                 const int gidx = tidx.global[0];
@@ -123,24 +122,25 @@ namespace amp_algorithms_tests
         TEST_METHOD(amp_details_radix_sort_by_key)
         {
             std::array<unsigned, 16> input =     { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,   4, 12,  9,  8 };
-            // Key 0 values, 2 bit key:            3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
+            // Key 0 values, 2 bit key             3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
             // Per tile histogram                  0   1   2   1     1   1   1   1     0   1   2   1    3   1   0   0
             // Global histogram                    4   4   5   3
-            // Global exclusive scan               0   4   8  13
+            // Global offsets *                    0   4   8  13
             // Partially sorted per-tile data      1   2   6   3     0  13  10  11     5  10  14  15    4  12   8   9
+            // Per tile offsets *                  0   0   1   3     0   1   2   3     0   0   1   3    0   3   4   4
+            // Step 1: sort by key 0
+            std::array<unsigned, 16> expected  = { 1,  2,  6,  3,    0, 13, 10, 11,    5, 10, 14, 15,   4, 12,  8,  9 };
 
-            // Step 1: sort by key 0               
-            std::array<unsigned, 16> expected  = { 0,  1,  2,  3,    4,  5,  6,  7,    8,  9, 10, 11,  12, 13, 14, 15 };
+//          std::array<unsigned, 16> expected  = { 0,  1,  2,  3,    4,  5,  6,  7,    8,  9, 10, 11,  12, 13, 14, 15 };
              
             array_view<unsigned> input_av(int(input.size()), input);
             std::array<unsigned, 16> output;
             array_view<unsigned> output_av(int(output.size()), output);
             amp_algorithms::fill(output_av, 0);
-            amp_algorithms::_details::radix_sort_by_key<unsigned, /* key width */ 2, /* tile size */ 4>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
 
+            amp_algorithms::_details::radix_sort_by_key<unsigned, /* key width */ 4, /* tile size */ 4>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
 
             output_av.synchronize();
-
             Assert::IsTrue(are_equal(expected, output_av));
         }
 

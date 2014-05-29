@@ -555,7 +555,6 @@ namespace amp_algorithms
                 tile_static T tile_data[tile_size];
                 // Each thread has its own set of histogram bins to prevent contention when counting.
                 tile_static unsigned tile_bins[tile_size][bin_count];
-                tile_static unsigned tile_histogram[32];
 
                 // 1. Initialize tile and global histogram bins. Copy tile data.
 
@@ -588,8 +587,7 @@ namespace amp_algorithms
                 tidx.barrier.wait_with_all_memory_fence();
 
                 // Dump per-tile histograms
-                //if ((idx < bin_count))
-                //    output_view[gidx] = tile_bins[0][idx];
+                //if ((idx < bin_count)) { output_view[gidx] = tile_bins[0][idx]; }
 
                 // First bin_count threads per tile increment counts for global histogram.
                 if (idx < bin_count)
@@ -600,29 +598,26 @@ namespace amp_algorithms
                 tidx.barrier.wait();
 
                 // Dump global histogram
-                //if (idx < bin_count)
-                //    output_view[idx] = histogram_bins[idx];
-
-                // GOOD TO HERE
+                //if (idx < bin_count) { output_view[idx] = histogram_bins[idx]; }
 
                 // 3. Exclusive scan the histogram to calculate offsets.
 
                 // TODO: This only works if the tile_size is equal to the bin_count! Doh!
-                //tile_histogram[idx] = histogram_bins[idx];
-                //tidx.barrier.wait_with_all_memory_fence();
-                //_details::scan_warp<scan_mode::exclusive>(tile_histogram, idx, amp_algorithms::plus<T>());
-                if (idx == 0)
-                {
-                    histogram_bins_scan[0] = 0;
-                    histogram_bins_scan[1] = histogram_bins[0];
-                    histogram_bins_scan[2] = histogram_bins_scan[1] + histogram_bins[1];
-                    histogram_bins_scan[3] = histogram_bins_scan[2] + histogram_bins[2];
-                }
-//                histogram_bins[idx] = tile_histogram[idx];
+                tile_static unsigned tile_offsets[bin_count];
+                if (idx < bin_count)
+                    tile_offsets[idx] = tile_bins[0][idx];
+                _details::scan_tile<tile_size, scan_mode::exclusive>(tile_offsets, tidx, amp_algorithms::plus<T>());
 
-                // Dump global histogram scan
-                //if (idx < bin_count)
-                //    output_view[idx] = histogram_bins_scan[idx];
+                // Dump per-tile offsets
+                //if (idx < bin_count) { output_view[gidx] = tile_offsets[idx]; }
+                
+                tile_static unsigned global_offsets[bin_count];
+                if (idx < bin_count)
+                    global_offsets[idx] = histogram_bins[idx];
+                _details::scan_tile<tile_size, scan_mode::exclusive>(global_offsets, tidx, amp_algorithms::plus<T>());
+
+                // Dump global offsets *
+                //if (idx < bin_count) { output_view[gidx] = global_offsets[idx]; }
 
                 // 4. Reorder elements.
 
@@ -632,13 +627,16 @@ namespace amp_algorithms
                 }
 
                 // Dump partially sorted per-tile data
-                //output_view[gidx] = tile_data[idx];
+                output_view[gidx] = tile_data[idx];
 
                 const T tmp = tile_data[idx];
-                const unsigned r = _details::radix_key_value<T, key_bit_width>(tmp, key_idx);
                 tidx.barrier.wait_with_tile_static_memory_fence();
-                int i = idx - tile_bins[0][r] + histogram_bins_scan[r];
-                output_view[i] = tmp;
+                const unsigned r = _details::radix_key_value<T, key_bit_width>(tmp, key_idx);
+                int i = global_offsets[r] + (idx - tile_offsets[r]);
+                // Dump move offsets
+                //output_view[gidx] = i;
+
+                //output_view[i] = tmp;
             });
         }
 
