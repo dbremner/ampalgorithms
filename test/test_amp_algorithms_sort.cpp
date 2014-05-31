@@ -37,6 +37,15 @@ namespace amp_algorithms_tests
             set_default_accelerator(L"amp_sort_tests");
         }
 
+        //  0 0000  0  0        8 1000  2  0
+        //  1 0001  0  1        9 1001  2  1
+        //  2 0010  0  2       10 1010  2  2
+        //  3 0011  0  3       11 1011  2  3
+        //  4 0100  1  0       12 1100  3  0
+        //  5 0101  1  1       13 1101  3  1
+        //  6 0110  1  2       14 1110  3  2
+        //  7 0111  1  3       15 1111  3  3
+
         TEST_METHOD(amp_details_radix_key_value_tests)
         {
             enum parameter
@@ -64,15 +73,6 @@ namespace amp_algorithms_tests
 
         TEST_METHOD(amp_details_radix_sort_tile_by_key_0)
         {
-            //  0 0000  0  0        8 1000  2  0
-            //  1 0001  0  1        9 1001  2  1
-            //  2 0010  0  2       10 1010  2  2
-            //  3 0011  0  3       11 1011  2  3
-            //  4 0100  1  0       12 1100  3  0
-            //  5 0101  1  1       13 1101  3  1
-            //  6 0110  1  2       14 1110  3  2
-            //  7 0111  1  3       15 1111  3  3
-
             std::array<unsigned, 16> input =     { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,   4, 12,  9,  8 };
             // Key 0 values, 2 bit key:            3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
             std::array<unsigned, 16> expected  = { 1,  2,  6,  3,    0, 13, 10, 11,    5, 10, 14, 15,   4, 12,  8,  9 };
@@ -119,26 +119,27 @@ namespace amp_algorithms_tests
             Assert::IsTrue(are_equal(expected, input_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_by_key)
+        TEST_METHOD(amp_details_radix_sort_by_key_0)
         {
             std::array<unsigned, 16> input =     { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,   4, 12,  9,  8 };
             // Key 0 values, 2 bit key             3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
             // Per tile histogram                  0   1   2   1     1   1   1   1     0   1   2   1    3   1   0   0
             // Global histogram                    4   4   5   3
             // Global offsets *                    0   4   8  13
-            // Partially sorted per-tile data      1   2   6   3     0  13  10  11     5  10  14  15    4  12   8   9
+            // Sorted per-tile data *              1   2   6   3     0  13  10  11     5  10  14  15    4  12   8   9
             // Per tile offsets *                  0   0   1   3     0   1   2   3     0   0   1   3    0   3   4   4
+            // Result offset *                    13   8   5   9     6  14 
             // Step 1: sort by key 0
-            std::array<unsigned, 16> expected  = { 1,  2,  6,  3,    0, 13, 10, 11,    5, 10, 14, 15,   4, 12,  8,  9 };
+            std::array<unsigned, 16> expected  = { 0,  4, 12,  8,    1, 13,  5,  9,    2,  6, 10, 10,  14,  3, 11,  15 };
+            // Key 1 values, 2 bit key             0   1   3   2     0   3   1   2     0   1   2   2    3   0   2   3
+            //std::array<unsigned, 16> expected  = { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,  12, 13, 15,  15 };
 
-//          std::array<unsigned, 16> expected  = { 0,  1,  2,  3,    4,  5,  6,  7,    8,  9, 10, 11,  12, 13, 14, 15 };
-             
             array_view<unsigned> input_av(int(input.size()), input);
             std::array<unsigned, 16> output;
             array_view<unsigned> output_av(int(output.size()), output);
             amp_algorithms::fill(output_av, 0);
 
-            amp_algorithms::_details::radix_sort_by_key<unsigned, /* key width */ 4, /* tile size */ 4>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
+            amp_algorithms::_details::radix_sort_by_key<unsigned, /* key width */ 2, /* tile size */ 4>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
 
             output_av.synchronize();
             Assert::IsTrue(are_equal(expected, output_av));
