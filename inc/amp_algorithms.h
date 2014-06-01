@@ -606,10 +606,11 @@ namespace amp_algorithms
                 if (idx < bin_count)
                 {
                     concurrency::atomic_fetch_add(&global_offsets[idx], tile_offsets[idx]);
-                    for (int t = tlx; t < tile_count; ++t)
-                    {
-                        concurrency::atomic_fetch_add(&per_tile_offsets[t][idx], tile_offsets[idx]);
-                    }
+                    per_tile_offsets[tlx][idx] = tile_offsets[idx];
+                    //for (int t = tlx; t < tile_count; ++t)
+                    //{
+                    //    concurrency::atomic_fetch_add(&per_tile_offsets[t][idx], tile_offsets[idx]);
+                    //}
                 }
             });
             
@@ -651,7 +652,10 @@ namespace amp_algorithms
                 const unsigned rdx = _details::radix_key_value<T, key_bit_width>(tile_data[idx], key_idx);
 
                 int i = idx - per_tile_offsets[tlx][rdx] + global_offsets[rdx];
-
+                for (int t = 0; t < tlx; ++t)
+                {
+                    i += per_tile_offsets[t][idx];
+                }
                 // Dump destination indices
                 output_view[gidx] = i;
             });

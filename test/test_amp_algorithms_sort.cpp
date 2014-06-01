@@ -129,15 +129,15 @@ namespace amp_algorithms_tests
             std::array<unsigned, 16> global_histogram =        { 4,  4,  5,  3,                             0,0,0,0,0,0,0,0,0,0,0,0 };
             std::array<unsigned, 16> global_offsets =          { 0,  4,  8, 13,                             0,0,0,0,0,0,0,0,0,0,0,0 };
 
-            //std::array<unsigned, 16> per_tile_offsets =        { 0,  0,  1,  3,    0,  1,  2,  3,    0,  0,  1,  3,   0,  3,  4,  4 };
-            std::array<unsigned, 16> per_tile_offsets =        { 0,  0,  0,  0,    0,  1,  3,  6,    0,  1,  4,  9,   0,  4,  8, 13 };
+            std::array<unsigned, 16> per_tile_offsets =        { 0,  0,  1,  3,    0,  1,  2,  3,    0,  0,  1,  3,   0,  3,  4,  4 };
+            //std::array<unsigned, 16> per_tile_offsets =        { 0,  0,  0,  0,    0,  1,  3,  6,    0,  1,  4,  9,   0,  4,  8, 13 };
 
             std::array<unsigned, 16> sorted_per_tile =         { 1,  2,  6,  3,    0, 13, 10, 11,    5, 10, 14, 15,   4, 12,  8,  9 };
-            //std::array<unsigned, 16> key_0 =                   { 1,  2,  2,  3,    0,  1,  2,  3,    1,  2,  2,  3,   0,  0,  0,  1 };
+            // key_0 =                                           1,  2,  2,  3,    0,  1,  2,  3,    1,  2,  2,  3,   0,  0,  0,  1
             //                                                                     0 => 0 - 0 + 0 = 0
             //                                                                         1 => 1 - 1 + 4 = 4
             //                                                                             2 => 2 - 2 + 8 = 10
-            //                                                                                 3 => 3 - 2 + 8 = 9
+            //                                                                                 3 => 3 - 3 + 8 = 8
             //                                                                                       1 => 0 - 0 + 4 = 4
             //                                                                                           2 => 1 - 1 + 8 = 8
             //                                                                                               2 => 2 - 1 + 8 = 9
