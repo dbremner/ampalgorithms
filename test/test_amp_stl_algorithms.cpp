@@ -18,6 +18,7 @@
 *
 * This file contains the unit tests.
 *---------------------------------------------------------------------------*/
+
 #include "stdafx.h"
 
 #include <amp_stl_algorithms.h>

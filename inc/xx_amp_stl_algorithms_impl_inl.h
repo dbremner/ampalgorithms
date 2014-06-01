@@ -18,6 +18,7 @@
 *
 * This file contains the implementation for C++ AMP standard algorithms
 *---------------------------------------------------------------------------*/
+
 #pragma once
 
 #include <functional>

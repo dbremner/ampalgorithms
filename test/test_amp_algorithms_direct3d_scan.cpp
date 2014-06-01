@@ -18,6 +18,7 @@
 *
 * This file contains the unit tests for scan.
 *---------------------------------------------------------------------------*/
+
 #include "stdafx.h"
 
 #include <amp_algorithms_direct3d.h>
