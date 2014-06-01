@@ -121,18 +121,21 @@ namespace amp_algorithms_tests
 
         TEST_METHOD(amp_details_radix_sort_by_key_0)
         {
-            std::array<unsigned, 16> input =     { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,   4, 12,  9,  8 };
-            // Key 0 values, 2 bit key             3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
-            // Per tile histogram                  0   1   2   1     1   1   1   1     0   1   2   1    3   1   0   0
-            // Global histogram                    4   4   5   3
-            // Global offsets *                    0   4   8  13
-            // Sorted per-tile data *              1   2   6   3     0  13  10  11     5  10  14  15    4  12   8   9
-            // Per tile offsets *                  0   0   1   3     0   1   2   3     0   0   1   3    0   3   4   4
-            // Result offset *                    13   8   5   9     6  14 
+            //                                                   0                 4                 8               12
+            std::array<unsigned, 16> input =                   { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,   4, 12,  9,  8 };
+            std::array<unsigned, 16> key_0 =                   { 3,  2,  1,  2,    2,  3,  1,  0,    3,  2,  1,  2,   0,  0,  1,  0 };
+            std::array<unsigned, 16> per_tile_histogram =      { 0,  1,  2,  1,    1,  1,  1,  1,    0,  1,  2,  1,   3,  1,  0,  0 };
+            std::array<unsigned, 16> global_histogram =        { 4,  4,  5,  3,                             0,0,0,0,0,0,0,0,0,0,0,0 };
+            std::array<unsigned, 16> global_offsets =          { 0,  4,  8, 13,                             0,0,0,0,0,0,0,0,0,0,0,0 };
+            std::array<unsigned, 16> per_tile_offsets =        { 0,  0,  1,  3,    0,  1,  2,  3,    0,  0,  1,  3,   0,  3,  4,  4 };
+            std::array<unsigned, 16> sorted_per_tile =         { 1,  2,  6,  3,    0, 13, 10, 11,    5, 10, 14, 15,   4, 12,  8,  9 };
+
+            std::array<unsigned, 16> dest_index =              { 4,  8,  9, 13,    0,  5, 10, 14,    6, 11, 12, 15,   1,  2,  3,  7 }; 
+            // Result offset *                    13,  8,  5,  9,  6,  14,  
             // Step 1: sort by key 0
-            std::array<unsigned, 16> expected  = { 0,  4, 12,  8,    1, 13,  5,  9,    2,  6, 10, 10,  14,  3, 11,  15 };
-            // Key 1 values, 2 bit key             0   1   3   2     0   3   1   2     0   1   2   2    3   0   2   3
-            //std::array<unsigned, 16> expected  = { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,  12, 13, 15,  15 };
+            std::array<unsigned, 16> sort_by_key_0 =           { 0,  4, 12,  8,    1, 13,  5,  9,    2,  6, 10, 10,  14,  3, 11,  15 };
+            std::array<unsigned, 16> key_1 =                   { 0,  1,  3,  2,    0,  3,  1,  2,    0,  1,  2,  2,   3,  0,  2,  3  };
+            std::array<unsigned, 16> sort_by_key_1 =           { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,  12, 13, 15,  15 };
 
             array_view<unsigned> input_av(int(input.size()), input);
             std::array<unsigned, 16> output;
@@ -142,7 +145,7 @@ namespace amp_algorithms_tests
             amp_algorithms::_details::radix_sort_by_key<unsigned, /* key width */ 2, /* tile size */ 4>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
 
             output_av.synchronize();
-            Assert::IsTrue(are_equal(expected, output_av));
+            Assert::IsTrue(are_equal(dest_index, output_av));
         }
 
         TEST_METHOD(amp_details_scan_tile)
