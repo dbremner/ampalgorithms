@@ -121,21 +121,31 @@ namespace amp_algorithms_tests
 
         TEST_METHOD(amp_details_radix_sort_by_key_0)
         {
-            //                                                   0                 4                 8               12
+            //                                                   0   1   2   3     4   5   6   7     8   9  10  11   12  13  14  15
             std::array<unsigned, 16> input =                   { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,   4, 12,  9,  8 };
             std::array<unsigned, 16> key_0 =                   { 3,  2,  1,  2,    2,  3,  1,  0,    3,  2,  1,  2,   0,  0,  1,  0 };
+
             std::array<unsigned, 16> per_tile_histogram =      { 0,  1,  2,  1,    1,  1,  1,  1,    0,  1,  2,  1,   3,  1,  0,  0 };
             std::array<unsigned, 16> global_histogram =        { 4,  4,  5,  3,                             0,0,0,0,0,0,0,0,0,0,0,0 };
             std::array<unsigned, 16> global_offsets =          { 0,  4,  8, 13,                             0,0,0,0,0,0,0,0,0,0,0,0 };
-            std::array<unsigned, 16> per_tile_offsets =        { 0,  0,  1,  3,    0,  1,  2,  3,    0,  0,  1,  3,   0,  3,  4,  4 };
-            std::array<unsigned, 16> sorted_per_tile =         { 1,  2,  6,  3,    0, 13, 10, 11,    5, 10, 14, 15,   4, 12,  8,  9 };
 
+            //std::array<unsigned, 16> per_tile_offsets =        { 0,  0,  1,  3,    0,  1,  2,  3,    0,  0,  1,  3,   0,  3,  4,  4 };
+            std::array<unsigned, 16> per_tile_offsets =        { 0,  0,  0,  0,    0,  1,  3,  6,    0,  1,  4,  9,   0,  4,  8, 13 };
+
+            std::array<unsigned, 16> sorted_per_tile =         { 1,  2,  6,  3,    0, 13, 10, 11,    5, 10, 14, 15,   4, 12,  8,  9 };
+            //std::array<unsigned, 16> key_0 =                   { 1,  2,  2,  3,    0,  1,  2,  3,    1,  2,  2,  3,   0,  0,  0,  1 };
+            //                                                                     0 => 0 - 0 + 0 = 0
+            //                                                                         1 => 1 - 1 + 4 = 4
+            //                                                                             2 => 2 - 2 + 8 = 10
+            //                                                                                 3 => 3 - 2 + 8 = 9
+            //                                                                                       1 => 0 - 0 + 4 = 4
+            //                                                                                           2 => 1 - 1 + 8 = 8
+            //                                                                                               2 => 2 - 1 + 8 = 9
             std::array<unsigned, 16> dest_index =              { 4,  8,  9, 13,    0,  5, 10, 14,    6, 11, 12, 15,   1,  2,  3,  7 }; 
-            // Result offset *                    13,  8,  5,  9,  6,  14,  
-            // Step 1: sort by key 0
-            std::array<unsigned, 16> sort_by_key_0 =           { 0,  4, 12,  8,    1, 13,  5,  9,    2,  6, 10, 10,  14,  3, 11,  15 };
-            std::array<unsigned, 16> key_1 =                   { 0,  1,  3,  2,    0,  3,  1,  2,    0,  1,  2,  2,   3,  0,  2,  3  };
-            std::array<unsigned, 16> sort_by_key_1 =           { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,  12, 13, 15,  15 };
+
+            std::array<unsigned, 16> sorted_by_key_0 =         { 0,  4, 12,  8,    1, 13,  5,  9,    2,  6, 10, 10,  14,  3, 11, 15 };
+            std::array<unsigned, 16> key_1 =                   { 0,  1,  3,  2,    0,  3,  1,  2,    0,  1,  2,  2,   3,  0,  2,  3 };
+            std::array<unsigned, 16> sorted_by_key_1 =         { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,  12, 13, 15, 15 };
 
             array_view<unsigned> input_av(int(input.size()), input);
             std::array<unsigned, 16> output;
