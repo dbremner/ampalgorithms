@@ -528,25 +528,26 @@ namespace amp_algorithms
         }
 
         template <typename T, int key_bit_width, int tile_size>
-        void radix_sort_by_key(const concurrency::accelerator_view& accl_view, const concurrency::array_view<T>& input_view, concurrency::array_view<T>& output_view, const int key_idx)
+        void radix_sort_by_key(const concurrency::accelerator_view& accl_view, concurrency::array_view<T>& input_view, concurrency::array_view<T>& output_view, const int key_idx)
         {
             static const int tile_key_bit_width = 2;
             static const unsigned type_width = sizeof(T) * 8;
+            static const int bin_count = 1 << key_bit_width;
 
+            static_assert((tile_size >= bin_count), "The tile size must be greater than or equal to the tile bin count.");
             static_assert((type_width % key_bit_width == 0), "The sort key width must be divisible by the type width.");
             static_assert((key_bit_width % tile_key_bit_width == 0), "The key bit width must be divisible by the tile key bit width.");
             
-            static const int bin_count = 1 << key_bit_width;
             const concurrency::tiled_extent<tile_size> compute_domain = output_view.get_extent().tile<tile_size>().pad();
             const int tile_count = compute_domain.size() / tile_size;
             static const int elements_per_thread = 1;          // TODO: Doesn't have to be a constant?
 
-            concurrency::array<int, 2> per_tile_offsets(concurrency::extent<2>(bin_count, tile_count), accl_view);
-            concurrency::array<int, 2> _offsets(concurrency::extent<2>(tile_count, bin_count), accl_view);
+            concurrency::array<int, 2> per_tile_offsets(concurrency::extent<2>(tile_count, bin_count), accl_view);
             // histogram all elements in a block
             concurrency::array<int> global_histogram(bin_count, accl_view);
+            concurrency::array<int, 2> tile_histograms(concurrency::extent<2>(tile_count, bin_count), accl_view);
        
-            concurrency::parallel_for_each(accl_view, compute_domain, [=, &per_tile_offsets, &_offsets, &global_histogram](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+            concurrency::parallel_for_each(accl_view, compute_domain, [=, &per_tile_offsets, &global_histogram, &tile_histograms](concurrency::tiled_index<tile_size> tidx) restrict(amp)
             {
                 const int tile_totals = 0;
                 const int gidx = tidx.global[0];
@@ -563,7 +564,7 @@ namespace amp_algorithms
                 // 2. Count
 
                 // Increment bins for each element on each tile.
-                if (gidx < input_view.extent[0])
+                if (gidx < int(input_view.extent.size()))
                 {
                     const unsigned rdx = _details::radix_key_value<T, key_bit_width>(tile_data[idx], key_idx);
                     per_tile_histograms[idx][rdx]++;
@@ -585,11 +586,12 @@ namespace amp_algorithms
                 if (idx < bin_count)
                 {
                     int i = (tlx + idx) % bin_count;                                           // TODO: Is this shuffling correct and does it help?
-                    concurrency::atomic_fetch_add(&global_histogram[i], per_tile_histograms[0][i]);
+                    concurrency::atomic_fetch_add(&global_histogram[i], per_tile_histograms[tile_totals][i]);
+                    tile_histograms[tlx][idx] = per_tile_histograms[tile_totals][idx];
                 }
                 tidx.barrier.wait();
 
-                //if (idx < bin_count) { output_view[gidx] = per_tile_histograms[0][idx]; }     // Dump per-tile histograms **OK**
+                //if (idx < bin_count) { output_view[gidx] = per_tile_histograms[tile_totals][idx]; }     // Dump per-tile histograms **OK**
 
                 // 3. Exclusive scan the histogram to calculate offsets.
 
@@ -603,38 +605,60 @@ namespace amp_algorithms
 
                 if (idx < bin_count)
                 {
-                    per_tile_offsets[idx][tlx] = tile_offsets[idx];
+                    per_tile_offsets[tlx][idx] = tile_offsets[idx];
                 }
-
-                if (idx < bin_count) { output_view[gidx] = per_tile_offsets[idx][tlx]; }           // Dump per tile offsets **OK**
-
-//                if (idx < bin_count)
-//                {
-//                    concurrency::atomic_fetch_add(&_offsets[tlx][idx], per_tile_histograms[idx]);
-//                }
             });
             
-            concurrency::parallel_for_each(accl_view, compute_domain, [=, &per_tile_offsets, &global_histogram](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+            concurrency::parallel_for_each(accl_view, compute_domain, [=, &tile_histograms, &global_histogram](concurrency::tiled_index<tile_size> tidx) restrict(amp)
             {
                 const int gidx = tidx.global[0];
                 const int tlx = tidx.tile[0];
                 const int idx = tidx.local[0];
 
+                //if (idx < bin_count) { output_view[gidx] = tile_histograms[tlx][idx]; }         // Dump per-tile histograms **OK**
+
+                tile_static int tile_offsets[bin_count];
+                if (idx < bin_count)
+                {
+                    tile_offsets[idx] = tile_histograms[idx][tlx];
+                }
+                _details::scan_tile<tile_size, scan_mode::exclusive>(tile_offsets, tidx, amp_algorithms::plus<T>());
+
+                if (idx < bin_count)
+                {
+                    tile_histograms[idx][tlx] = tile_offsets[idx];
+                }
+
                 tile_static int global_offsets[bin_count];
                 if (idx < bin_count)
+                {
                     global_offsets[gidx] = global_histogram[idx];
+                }
                 tidx.barrier.wait();
                 _details::scan_tile<tile_size, scan_mode::exclusive>(global_offsets, tidx, amp_algorithms::plus<T>());
+                tidx.barrier.wait();
 
-                //if (gidx < bin_count) { output_view[gidx] = global_offsets[gidx]; }           // Dump global histogram **OK**
+                if (gidx < bin_count)
+                {
+                    global_histogram[gidx] = global_offsets[gidx];
+                }
+            });
 
+            concurrency::parallel_for_each(accl_view, compute_domain, [=, &per_tile_offsets, &tile_histograms, &global_histogram](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+            {
+                const int gidx = tidx.global[0];
+                const int tlx = tidx.tile[0];
+                const int idx = tidx.local[0];
 
+                //if (idx < bin_count) { output_view[gidx] = per_tile_offsets[tlx][idx]; }      // Dump per tile offsets **OK**
+                //if (idx < bin_count) { output_view[gidx] = tile_histograms[tlx][idx]; }       // Dump tile offsets;
+                //if (gidx < bin_count) { output_view[gidx] = global_histogram[gidx]; }         // Dump global offsets **OK**
 
                 // 4. Sort elements within each tile.
 
                 tile_static T tile_data[tile_size];
                 tile_data[idx] = input_view[gidx];
-                tidx.barrier.wait_with_tile_static_memory_fence();
+                tidx.barrier.wait();
                 const int keys_per_tile = (key_bit_width / tile_key_bit_width);
                 for (int k = (keys_per_tile * key_idx); k < (keys_per_tile * (key_idx + 1)); ++k)
                 {
@@ -646,51 +670,42 @@ namespace amp_algorithms
 
                 // 5. Move tile sorted elements to global destination.
 
-                const unsigned rdx = _details::radix_key_value<T, key_bit_width>(tile_data[idx], key_idx);
+                const int rdx = _details::radix_key_value<T, key_bit_width>(tile_data[idx], key_idx);
 
-                int dest_gidx = idx - per_tile_offsets[tlx][rdx] + global_offsets[rdx];
-
-                // Dump destination indexes
-                //output_view[gidx] = dest_gidx;
-
-                //output_view[dest_gidx] = tile_data[idx];
+                const int dest_gidx = idx - per_tile_offsets[tlx][rdx] + tile_histograms[tlx][rdx] + global_histogram[rdx];
+                output_view[dest_gidx] = tile_data[idx];
             });
         }
 
-        template <typename T, int bin_width, int tile_size>
-        void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<int>& input_view)
+        template <typename T, int key_bit_width, int tile_size>
+        void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<T>& input_view)
         {
+            static const int tile_key_bit_width = 2;
+            static const unsigned type_width = sizeof(T) * 8;
+            static const int bin_count = 1 << key_bit_width;
+
+            int key_count = type_width / key_bit_width;
+
+            for (int key_idx = 0; key_idx < key_count; ++key_idx)
+            {
+                _details::radix_sort_by_key<T, key_bit_width, tile_size>(accl_view, input_view, input_view, key_idx);
+            }
         }
     }
 
-    inline void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<int>& input_view)
+    template <typename T>
+    inline void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<T>& input_view)
     {
         static const int bin_width = 4;
         static const int tile_size = 256;
-        _details::radix_sort<int, bin_width, tile_size>(accl_view, input_view);
+        _details::radix_sort<T, bin_width, tile_size>(accl_view, input_view);
     }
 
-    inline void radix_sort(concurrency::array_view<int>& input_view)
+    template <typename T>
+    inline void radix_sort(concurrency::array_view<T>& input_view)
     {
         radix_sort(_details::auto_select_target(), input_view);
     }
-
-    /*
-    inline void radix_sort(concurrency::array_view<int>& input_view, const unsigned int digit_width)
-    {
-    ::amp_algorithms::_details::radix_sort<int, 4>(_details::auto_select_target(), input_view);
-    }
-
-    inline void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<unsigned int>& input_view, const unsigned int digit_width)
-    {
-    ::amp_algorithms::_details::radix_sort<unsigned int, 4>(accl_view, input_view);
-    }
-
-    inline void radix_sort(concurrency::array_view<unsigned int>& input_view)
-    {
-    ::amp_algorithms::_details::radix_sort<unsigned int, 4>(_details::auto_select_target(), input_view);
-    }
-    */
 
     //----------------------------------------------------------------------------
     // reduce
