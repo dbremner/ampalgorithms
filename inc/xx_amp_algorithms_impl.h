@@ -266,6 +266,7 @@ namespace amp_algorithms
         static const int scan_default_tile_size = 512;
 #endif
 
+        // tile_data must have at least scan_warp_size elements.
         template <amp_algorithms::scan_mode _Mode, typename _BinaryOp, typename T>
         T scan_warp(T* const tile_data, const int idx, const _BinaryOp& op) restrict(amp)
         {
@@ -290,6 +291,7 @@ namespace amp_algorithms
             return (widx > 0) ? tile_data[idx - 1] : T();
         }
 
+        // tile_data must have at least scan_warp_size elements.
         template <int TileSize, scan_mode _Mode, typename _BinaryOp, typename T>
         T scan_tile(T* const tile_data, concurrency::tiled_index<TileSize> tidx, const _BinaryOp& op) restrict(amp)
         {

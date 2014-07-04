@@ -534,7 +534,7 @@ namespace amp_algorithms
             static const unsigned type_width = sizeof(T) * 8;
             static const int bin_count = 1 << key_bit_width;
 
-            static_assert((tile_size >= bin_count), "The tile size must be greater than or equal to the tile bin count.");
+            static_assert((tile_size >= bin_count), "The tile size must be greater than or equal to the radix key bin count.");
             static_assert((type_width % key_bit_width == 0), "The sort key width must be divisible by the type width.");
             static_assert((key_bit_width % tile_key_bit_width == 0), "The key bit width must be divisible by the tile key bit width.");
             
@@ -543,7 +543,6 @@ namespace amp_algorithms
             static const int elements_per_thread = 1;          // TODO: Doesn't have to be a constant?
 
             concurrency::array<int, 2> per_tile_offsets(concurrency::extent<2>(tile_count, bin_count), accl_view);
-            // histogram all elements in a block
             concurrency::array<int> global_histogram(bin_count, accl_view);
             concurrency::array<int, 2> tile_histograms(concurrency::extent<2>(tile_count, bin_count), accl_view);
        
@@ -566,13 +565,11 @@ namespace amp_algorithms
                 // Increment bins for each element on each tile.
                 if (gidx < int(input_view.extent.size()))
                 {
-                    const unsigned rdx = _details::radix_key_value<T, key_bit_width>(tile_data[idx], key_idx);
-                    per_tile_histograms[idx][rdx]++;
+                    per_tile_histograms[idx][_details::radix_key_value<T, key_bit_width>(tile_data[idx], key_idx)]++;
                 }
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
                 // One thread per tile collapses tile values and copies the results into the global histogram.
-
                 if (idx == 0)                                                                   // TODO: This could be more efficient. Don't do it all on one thread.
                 {
                     for (int i = 1; i < tile_size; ++i)
@@ -580,9 +577,9 @@ namespace amp_algorithms
                         merge_bins(per_tile_histograms[tile_totals], per_tile_histograms[i], bin_count);
                     }
                 }
-                tidx.barrier.wait_with_all_memory_fence();
+                tidx.barrier.wait_with_tile_static_memory_fence();
 
-                // First bin_count threads per tile increment counts for global histogram.
+                // First bin_count threads per tile increment counts for global histogram and copies tile histograms to global memory.
                 if (idx < bin_count)
                 {
                     int i = (tlx + idx) % bin_count;                                           // TODO: Is this shuffling correct and does it help?
@@ -601,7 +598,6 @@ namespace amp_algorithms
                     tile_offsets[idx] = per_tile_histograms[tile_totals][idx];
                 tidx.barrier.wait();
                 _details::scan_tile<tile_size, scan_mode::exclusive>(tile_offsets, tidx, amp_algorithms::plus<T>());
-                tidx.barrier.wait();
 
                 if (idx < bin_count)
                 {
