@@ -589,11 +589,10 @@ namespace amp_algorithms
                 if (idx < bin_count)
                 {
                     concurrency::atomic_fetch_add(&global_histogram[idx], per_thread_histograms[tile_totals][idx]);
-                    tile_histograms[tlx][idx] = per_thread_histograms[tile_totals][idx];
                 }
                 tidx.barrier.wait();
 
-                //if (idx < bin_count) { output_view[gidx] = per_thread_histograms[tile_totals][idx]; }     // Dump per-tile histograms
+                //output_view[gidx] = (idx < bin_count) ? per_thread_histograms[tile_totals][idx] : 0;      // Dump per-tile histograms
 
                 // 3. Exclusive scan the histogram to calculate offsets.
 
@@ -606,6 +605,7 @@ namespace amp_algorithms
 
                 if (idx < bin_count)
                 {
+                    tile_histograms[tlx][idx] = per_thread_histograms[tile_totals][idx];
                     per_tile_offsets[tlx][idx] = tile_offsets[idx];
                 }
             });
@@ -617,7 +617,7 @@ namespace amp_algorithms
                 const int idx = tidx.local[0];
 
                 //output_view[gidx] = (gidx < bin_count) ? global_histogram[gidx] : 0;          // Dump global histogram
-                //if (idx < bin_count) { output_view[gidx] = tile_histograms[tlx][idx]; }       // Dump per-tile histograms 
+                output_view[gidx] = (idx < bin_count) ? tile_histograms[tlx][idx] : 0;        // Dump per-tile histograms 
 
                 tile_static int tile_offsets[bin_count];
                 if (idx < bin_count)
@@ -676,12 +676,12 @@ namespace amp_algorithms
 
                 const int dest_gidx = idx - per_tile_offsets[tlx][rdx] + tile_histograms[tlx][rdx] + global_histogram[rdx];
                 //output_view[gidx] = dest_gidx;                                                // Dump destination indeces
-                output_view[dest_gidx] = tile_data[idx];
+                //output_view[dest_gidx] = tile_data[idx];
             });
         }
 
         template <typename T, int key_bit_width, int tile_size>
-        void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<T>& input_view)
+        void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<T>& input_view, concurrency::array_view<T>& output_view)
         {
             static const int tile_key_bit_width = 2;
             static const unsigned type_width = sizeof(T) * 8;
@@ -690,8 +690,10 @@ namespace amp_algorithms
 
             for (int key_idx = 0; key_idx < key_count; ++key_idx)
             {
-                _details::radix_sort_by_key<T, key_bit_width, tile_size>(accl_view, input_view, input_view, key_idx);
+                _details::radix_sort_by_key<T, key_bit_width, tile_size>(accl_view, input_view, output_view, key_idx);
+                std::swap(output_view, input_view);
             }
+            std::swap(input_view, output_view);
         }
     }
 
