@@ -559,12 +559,13 @@ namespace amp_algorithms
                 tile_static T tile_data[tile_size];
                 tile_static int per_thread_rdx_histograms[tile_size][bin_count];
 
-                // 1. Initialize histogram bins and copy data into tiles.
+                // Initialize histogram bins and copy data into tiles.
 
                 initialize_bins(per_thread_rdx_histograms[idx], bin_count);
                 tile_data[idx] = input_view[gidx];
 
                 // Increment radix bins for each element on each tile.
+
                 if (gidx < int(input_view.extent.size()))
                 {
                     per_thread_rdx_histograms[idx][_details::radix_key_value<T, key_bit_width>(tile_data[idx], key_idx)]++;
@@ -572,6 +573,7 @@ namespace amp_algorithms
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
                 // One thread per tile collapses tile values and copies the results into the global histogram.
+
                 if (idx == 0)                                                                   // TODO: This could be more efficient. Don't do it all on one thread.
                 {
                     for (int i = 1; i < tile_size; ++i)
@@ -582,17 +584,18 @@ namespace amp_algorithms
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
                 // First bin_count threads per tile increment counts for global histogram and copies tile histograms to global memory.
+
                 if (idx < bin_count)
                 {
                     concurrency::atomic_fetch_add(&global_rdx_offsets[idx], per_thread_rdx_histograms[0][idx]);
                 }
                 tidx.barrier.wait();
 
-                //output_view[gidx] = (idx < bin_count) ? per_thread_rdx_histograms[0][idx] : 0;      // Dump per-tile histograms
+                output_view[gidx] = (idx < bin_count) ? per_thread_rdx_histograms[0][idx] : 0;        // Dump per-tile histograms, per_tile_rdx_histograms                                                  OK
 
-                // 3. Exclusive scan the histogram to calculate offsets.
+                // Exclusive scan the tile histogram to calculate the per-tile offsets.
 
-                tile_static unsigned scan_data[bin_count];
+                tile_static unsigned scan_data[bin_count];                                      // TODO: Is this copy really needed or can I do this in place?
                 if (idx < bin_count)
                 {
                     scan_data[idx] = per_thread_rdx_histograms[0][idx];
@@ -607,24 +610,24 @@ namespace amp_algorithms
                 }
             });
             
-            const concurrency::tiled_extent<tile_size> compute_domain2 = extent<1>(tile_count).tile<tile_size>().pad();
-
+            const concurrency::tiled_extent<tile_size> compute_domain2 = concurrency::extent<1>(tile_count).tile<tile_size>().pad();
             concurrency::parallel_for_each(accl_view, compute_domain2, [=, &tile_histograms, &global_rdx_offsets](concurrency::tiled_index<tile_size> tidx) restrict(amp)
             {
                 const int gidx = tidx.global[0];
                 const int tlx = tidx.tile[0];
                 const int idx = tidx.local[0];
 
-                //output_view[gidx] = (gidx < bin_count) ? global_rdx_offsets[gidx] : 0;        // Dump global histogram
-                //output_view[gidx] = (idx < bin_count) ? tile_histograms[tlx][idx] : 0;        // Dump per-tile histograms 
+                //output_view[gidx] = (gidx < bin_count) ? global_rdx_offsets[gidx] : 0;                // Dump global histogram, global_histogram                                                          OK
+                //output_view[gidx] = (idx < bin_count) ? tile_histograms[tlx][idx] : 0;                // Dump per-tile histograms, per_tile_rdx_histograms,                                               OK
 
-                tile_static int tile_offsets[bin_count];
+                tile_static int tile_offsets[bin_count]; // max elements = bin_count * number of tiles.
                 if (idx == 0)
                 {
                     for (int i = 0; i < tile_count; ++i)
                         tile_offsets[i] = tile_histograms[i][tlx];
                 }
-                //output_view[gidx] = (idx < bin_count) ? tile_offsets[idx] : 0;        // Dump per-tile histograms 
+
+                output_view[gidx] = (idx < bin_count) ? tile_offsets[idx] : 0;                        // Dump per-tile histograms, per_thread_rdx_histograms_tp  <!-- Got this far!
 
                 _details::scan_tile<tile_size, scan_mode::exclusive>(tile_offsets, tidx, amp_algorithms::plus<T>());
 
@@ -634,9 +637,13 @@ namespace amp_algorithms
                 }
             });
         
-            concurrency::parallel_for_each(accl_view, compute_domain, [=, &tile_histograms, &global_rdx_offsets](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+            concurrency::parallel_for_each(accl_view, compute_domain, [=, &global_rdx_offsets](concurrency::tiled_index<tile_size> tidx) restrict(amp)
             {
-                // Calculate global radix offsets from the radix histogram. All tiles do this but only the first one records the result.
+                const int gidx = tidx.global[0];
+                const int tlx = tidx.tile[0];
+                const int idx = tidx.local[0];
+
+                // Calculate global radix offsets from the global radix histogram. All tiles do this but only the first one records the result.
 
                 tile_static int scan_data[bin_count];
                 if (gidx < bin_count)
@@ -644,6 +651,7 @@ namespace amp_algorithms
                     scan_data[gidx] = global_rdx_offsets[gidx];
                 }
                 tidx.barrier.wait_with_tile_static_memory_fence();
+
                 _details::scan_tile<tile_size, scan_mode::exclusive>(scan_data, tidx, amp_algorithms::plus<T>());
 
                 if (gidx < bin_count)
@@ -662,11 +670,11 @@ namespace amp_algorithms
                 tile_data[idx] = input_view[gidx];
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
-                //if (idx < bin_count) { output_view[gidx] = per_tile_rdx_offsets[tlx][idx]; }  // Dump per tile offsets
-  if (idx < bin_count) { output_view[gidx] = tile_histograms[tlx][idx]; }       // Dump tile offsets
-                //output_view[gidx] = (gidx < bin_count) ? global_histogram[gidx] : 0;          // Dump global offsets
+                //if (idx < bin_count) { output_view[gidx] = per_tile_rdx_offsets[tlx][idx]; }          // Dump per tile offsets, per_tile_rdx_offsets                                                      OK
+                //if (idx < bin_count) { output_view[gidx] = tile_histograms[tlx][idx]; }               // Dump tile offsets
+                //output_view[gidx] = (gidx < bin_count) ? global_rdx_offsets[gidx] : 0;                // Dump global offsets, global_rdx_offsets                                                          OK
 
-                // 4. Sort elements within each tile.
+                // Sort elements within each tile.
 
                 const int keys_per_tile = (key_bit_width / tile_key_bit_width);
                 for (int k = (keys_per_tile * key_idx); k < (keys_per_tile * (key_idx + 1)); ++k)
@@ -677,12 +685,14 @@ namespace amp_algorithms
                 
                 //output_view[gidx] = tile_data[idx];                                           // Dump sorted per-tile data
 
-                // 5. Move tile sorted elements to global destination.
+                // Move tile sorted elements to global destination.
 
                 const int rdx = _details::radix_key_value<T, key_bit_width>(tile_data[idx], key_idx);
                 const int dest_gidx = idx - per_tile_rdx_offsets[tlx][rdx] + tile_histograms[tlx][rdx] + global_rdx_offsets[rdx];
-                //output_view[gidx] = dest_gidx;                                                // Dump destination indeces
-                output_view[dest_gidx] = tile_data[idx];
+                //output_view[dest_gidx] = tile_data[idx];
+
+                //output_view[gidx] = dest_gidx;                                                        // Dump destination indeces, dest_gidx
+
             });
         }
 

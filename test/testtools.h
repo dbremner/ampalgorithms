@@ -290,7 +290,7 @@ namespace testtools
         for (int i = 0; i < int(expected_count); ++i)
         {
             std::ostringstream stream;
-            stream << " [ " << i << " ] : " << expected[i] << " = " << actual[i] << std::endl;
+            stream << " [ " << i << " ] : " << expected[i] << " = " << actual[i];
             Logger::WriteMessage(stream.str().c_str());
             if (expected[i] != actual[i])
             {

@@ -133,13 +133,12 @@ namespace amp_algorithms_tests
             std::array<unsigned, 16> input =                         { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,    4, 12,  9,  8 };
             // rdx =                                                   3,  2,  1,  2,    2,  3,  1,  0,    3,  2,  1,  2,    0,  0,  1,  0
 
-            std::array<unsigned, 16> per_thread_rdx_histograms_0 =   { 0,  1,  2,  1,    1,  1,  1,  1,    0,  1,  2,  1,    3,  1,  0,  0 };
+            std::array<unsigned, 16> per_tile_rdx_histograms =       { 0,  1,  2,  1,    1,  1,  1,  1,    0,  1,  2,  1,    3,  1,  0,  0 };
             std::array<unsigned, 16> per_tile_rdx_offsets =          { 0,  0,  1,  3,    0,  1,  2,  3,    0,  0,  1,  3,    0,  3,  4,  4 };
 
 
-            // transposed per_thread_rdx_histograms_0 =              { 0,  1,  0,  3,    1,  1,  1,  1,    2,  1,  2,  0,    1,  1,  1,  0 };
+            std::array<unsigned, 16> per_thread_rdx_histograms_tp =  { 0,  1,  0,  3,    1,  1,  1,  1,    2,  1,  2,  0,    1,  1,  1,  0 };
             // scan =                                                { 0,  0,  1,  1,    0,  1,  2,  3,    0,  2,  3,  5,    0,  1,  2,  3 };
-
             std::array<unsigned, 16> tile_rdx_offsets =              { 0,  0,  0,  0,    0,  1,  2,  1,    1,  2,  3,  2,    1,  3,  5,  3 };
                                                                      
             std::array<unsigned, 16> global_histogram =              { 4,  4,  5,  3,                              0,0,0,0,0,0,0,0,0,0,0,0 };
@@ -160,7 +159,7 @@ namespace amp_algorithms_tests
 
             output_av.synchronize();
             //Assert::IsTrue(are_equal(tile_rdx_offsets, output_av));
-            Assert::IsTrue(are_equal(sorted_by_key_0, output_av));
+            Assert::IsTrue(are_equal(per_thread_rdx_histograms_tp, output_av));
         }
 
         TEST_METHOD(amp_details_radix_sort_by_key_0_)
@@ -171,8 +170,8 @@ namespace amp_algorithms_tests
             std::array<unsigned, 16> per_thread_rdx_histograms_0 =   { 1,  2,  3,  2,        0,0,0,0,    3,  2,  2,  1,        0,0,0,0 };
             std::array<unsigned, 16> per_tile_rdx_offsets =          { 0,  1,  3,  6,        0,0,0,0,    0,  3,  5,  7,        0,0,0,0 };
 
-            // transposed per tile histogram =                       { 1,  3,    0,0,  2,  2,    0,0,    3,  2,    0,0,  2,  1,    0,0 };
-            // scan =                                                { 0,  1,    0,0,  0,  2,    0,0,    0,  3,    0,0,  0,  2,    0,0 };
+            // transposed per tile histogram =                       { 1,  3,    2,  2,    3,  2,    2,  1,            0,0,0,0,0,0,0,0 };
+            // scan =                                                { 0,  1,    0,  2,    0,  3,    0,  2,            0,0,0,0,0,0,0,0 };
 
             std::array<unsigned, 16> tile_rdx_offsets =              { 0,  0,  0,  0,        0,0,0,0,    1,  2,  3,  2,        0,0,0,0 };
 
