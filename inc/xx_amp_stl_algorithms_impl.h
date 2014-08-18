@@ -28,8 +28,6 @@ namespace amp_stl_algorithms
 {
     namespace _details
     {
-        using namespace concurrency;
-
         inline void amp_assert(bool cond) restrict(cpu)
         {
             assert(cond);

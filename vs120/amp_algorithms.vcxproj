@@ -20,7 +20,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\inc\amp_algorithms.h" />
+    <ClInclude Include="..\inc\amp_algorithms_direct3d.h" />
     <ClInclude Include="..\inc\amp_indexable_view.h" />
+    <ClInclude Include="..\inc\xx_amp_algorithms_direct3d_impl.h" />
     <ClInclude Include="..\inc\xx_amp_algorithms_impl.h" />
     <ClInclude Include="..\inc\xx_amp_algorithms_impl_inl.h" />
     <ClInclude Include="..\test\testtools.h" />

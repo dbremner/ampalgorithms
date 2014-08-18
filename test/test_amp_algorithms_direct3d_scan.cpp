@@ -473,7 +473,7 @@ namespace amp_algorithms_direct3d_tests
 
         void generate_data()
         {
-            srand(2012);    // Set random number seed so tests are reproducable.
+            srand(2012);    // Set random number seed so tests are reproducible.
 
             unsigned int flag_counter = 0;
             for (unsigned int idx = 0; idx<data.size() && flag_counter < m_scan_size; ++idx)
