@@ -214,7 +214,7 @@ namespace amp_algorithms_direct3d_tests
             std::vector<T> in(row_count * column_count);
             generate_data(in);
             std::vector<T> out(row_count * column_count);
-            bitvector flags(column_count);
+            amp_algorithms::direct3d::bitvector flags(column_count);
 
             // Construct scan object
             amp_algorithms::direct3d::scan s(column_count, row_count);
@@ -241,7 +241,7 @@ namespace amp_algorithms_direct3d_tests
                 }
                 else
                 {
-                    flags.generate_data();
+                    flags.initialize(random_segments<int>());
                     concurrency::array<unsigned int> input_flags(static_cast<unsigned int>(flags.data.size()), flags.data.begin());
                     s.segmented_scan_exclusive(input, inplace ? input : output, input_flags, direction, op);
                 }
@@ -330,7 +330,7 @@ namespace amp_algorithms_direct3d_tests
         // A host side verification for scan, multiscan and segmented scan
         template <typename T, typename BinaryFunction>
         void verify_scan_results(amp_algorithms::direct3d::scan_direction direction, bool exclusive, BinaryFunction op, std::vector<T> &in, std::vector<T> &out, 
-            unsigned int scan_size, unsigned int scan_pitch, unsigned int scan_count, bitvector &flags) 
+            unsigned int scan_size, unsigned int scan_pitch, unsigned int scan_count, amp_algorithms::direct3d::bitvector &flags)
         {
             // For each sub-scan
             for (unsigned int current_scan_num = 0; current_scan_num < scan_count; ++current_scan_num)
@@ -344,7 +344,7 @@ namespace amp_algorithms_direct3d_tests
                         pos = current_scan_num * scan_pitch + scan_size - 1 - i;
                     }
 
-                    if (i == current_scan_num * scan_pitch || flags.is_new_segment(pos, direction))
+                    if (i == current_scan_num * scan_pitch || flags.is_bit_set(pos, direction))
                     {
                         // Establish first result, either it is identity (for exclusive) or first/last element depending on scan direction for inclusive scan
                         if (exclusive)
@@ -463,66 +463,18 @@ namespace amp_algorithms_direct3d_tests
         }
     }
 
-    // Represents compressed flag array for segmented scan
-    struct bitvector 
+    template <typename T>
+    class random_segments
     {
-        bitvector(unsigned int scan_size) : m_scan_size(scan_size)
-        {
-            data = std::vector<unsigned int>(bits_pad_to_uint(scan_size), 0);
-        }
-
-        void generate_data()
+    public:
+        random_segments()
         {
             srand(2012);    // Set random number seed so tests are reproducible.
-
-            unsigned int flag_counter = 0;
-            for (unsigned int idx = 0; idx<data.size() && flag_counter < m_scan_size; ++idx)
-            {
-                unsigned int bag_of_bits = data[idx];
-                for(unsigned int offset = 0; offset < bit_count<unsigned int>() && flag_counter < m_scan_size; ++offset)
-                {
-                    if (rand() % 13  == 0) // flip the bit to 1
-                    {
-                        bag_of_bits |= 1 << offset;	
-                    }
-
-                    flag_counter++;
-                }
-                data[idx] = bag_of_bits;
-            }
         }
 
-        bool is_new_segment(unsigned int pos, amp_algorithms::direct3d::scan_direction direction)
+        bool operator()(const T &i) const
         {
-            // When we encounter flag going direction it means, 
-            // that it is the first element of this segment (last element to be scanned going direction)
-            // for simplification we increment 'pos' and always look for flags behind our current position.
-            if (direction == amp_algorithms::direct3d::scan_direction::backward)
-            {
-                pos = pos + 1;
-            }
-
-            unsigned int idx = pos / bit_count<unsigned int>();
-            unsigned int offset = pos % bit_count<unsigned int>();
-
-            unsigned int bag_of_bits = data[idx];
-            return (1 << offset & bag_of_bits) > 0 ? true : false;
+            return (rand() % 13 == 0) ? 1 : 0;
         }
-
-        std::vector<unsigned int> data;
-
-    private:
-        template<typename T>
-        unsigned int bit_count()
-        {
-            return sizeof(T) * 8;
-        }
-
-        unsigned int bits_pad_to_uint(unsigned int bits)
-        {
-            return (bits + bit_count<unsigned int>() - 1) / bit_count<unsigned int>();
-        }
-
-        unsigned int m_scan_size;
     };
 };
