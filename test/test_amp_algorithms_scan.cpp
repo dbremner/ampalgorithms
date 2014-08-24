@@ -93,16 +93,16 @@ namespace amp_algorithms_tests
             std::array<unsigned, 7> output;
             array_view<unsigned> output_av(int(output.size()), output);
             amp_algorithms::fill(output_av, 0);
-            concurrency::tiled_extent<8> compute_domain = input_av.get_extent().tile<8>().pad();
+            concurrency::tiled_extent<16> compute_domain = input_av.get_extent().tile<16>().pad();
 
-            concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<8> tidx) restrict(amp)
+            concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<16> tidx) restrict(amp)
             {
                 const int gidx = tidx.global[0];
                 const int idx = tidx.local[0];
-                tile_static int tile_data[8];
+                tile_static int tile_data[16];
                 tile_data[idx] = input_av[gidx];
 
-                amp_algorithms::_details::scan_tile<8, scan_mode::exclusive>(tile_data, tidx, amp_algorithms::plus<int>());
+                amp_algorithms::_details::scan_tile<16, scan_mode::exclusive>(tile_data, tidx, amp_algorithms::plus<int>());
 
                 output_av[gidx] = tile_data[idx];
             });

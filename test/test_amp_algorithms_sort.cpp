@@ -71,7 +71,7 @@ namespace amp_algorithms_tests
             }
         }
 
-        TEST_METHOD(amp_details_radix_sort_tile_by_key_0)
+        TEST_METHOD(amp_details_radix_sort_tile_by_key_0_tile_4)
         {
             std::array<unsigned, 16> input =     { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,   4, 12,  9,  8 };
             // Key 0 values, 2 bit key:            3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
@@ -80,8 +80,7 @@ namespace amp_algorithms_tests
 
             concurrency::tiled_extent<4> compute_domain = input_av.get_extent().tile<4>().pad();
 
-            concurrency::parallel_for_each(compute_domain,
-                [=](concurrency::tiled_index<4> tidx) restrict(amp)
+            concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<4> tidx) restrict(amp)
             {
                 const int gidx = tidx.global[0];
                 const int idx = tidx.local[0];
@@ -90,7 +89,7 @@ namespace amp_algorithms_tests
                 tile_data[idx] = input_av[gidx];
                 tidx.barrier.wait();
 
-                amp_algorithms::_details::radix_sort_tile_by_key<int, 2, 4>(tile_data, tidx, 0);
+                amp_algorithms::_details::radix_sort_tile_by_key<int, 2, 4>(tile_data, input_av.extent.size(), tidx, 0);
 
                 tidx.barrier.wait();
                 input_av[gidx] = tile_data[idx];
@@ -100,7 +99,35 @@ namespace amp_algorithms_tests
             Assert::IsTrue(are_equal(expected, input_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_tile_by_key_1)
+        TEST_METHOD(amp_details_radix_sort_tile_by_key_0_tile_32)
+        {
+            std::array<unsigned, 16> input =     { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,   4, 12,  9,  8 };
+            // rdx                                 3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
+            std::array<unsigned, 16> expected  = { 0,  4, 12,  8,    1, 13,  5,  9,    2,  6, 10, 10,  14,  3, 11, 15 };
+            array_view<unsigned> input_av(int(input.size()), input);
+
+            concurrency::tiled_extent<32> compute_domain = input_av.get_extent().tile<32>().pad();
+
+            concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<32> tidx) restrict(amp)
+            {
+                const int gidx = tidx.global[0];
+                const int idx = tidx.local[0];
+                tile_static int tile_data[32];
+
+                tile_data[idx] = input_av[gidx];
+                tidx.barrier.wait();
+
+                amp_algorithms::_details::radix_sort_tile_by_key<int, 2, 32>(tile_data, input_av.extent.size(), tidx, 0);
+
+                tidx.barrier.wait();
+                input_av[gidx] = tile_data[idx];
+            });
+
+            input_av.synchronize();
+            Assert::IsTrue(are_equal(expected, input_av));
+        }
+
+        TEST_METHOD(amp_details_radix_sort_tile_by_key_1_tile_4)
         {
             std::array<unsigned, 16> input =     { 1,  2,  6,  3,   0, 13, 10, 11,   5, 10, 14, 15,   4, 12,  8,  9 };
             // Key 1 values, 2 bit key:            0   0   1   0    0   3   2   2    1   2   3   3    1   3   2   2
@@ -117,7 +144,7 @@ namespace amp_algorithms_tests
                 tile_data[idx] = input_av[gidx];
                 tidx.barrier.wait();
 
-                amp_algorithms::_details::radix_sort_tile_by_key<int, 2, 4>(tile_data, tidx, 1);
+                amp_algorithms::_details::radix_sort_tile_by_key<int, 2, 4>(tile_data, 16, tidx, 1);
 
                 tidx.barrier.wait();
                 input_av[gidx] = tile_data[idx];
@@ -127,7 +154,7 @@ namespace amp_algorithms_tests
             Assert::IsTrue(are_equal(expected, input_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_by_key_0_tile_4_32)
+        TEST_METHOD(amp_details_radix_sort_by_key_0_tile_4)
         {
             // gidx                                                    0   1   2   3     4   5   6   7     8   9  10  11    12  13  14  15
             std::array<unsigned, 16> input =                         { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,    4, 12,  9,  8 };
@@ -171,7 +198,7 @@ namespace amp_algorithms_tests
             array_view<unsigned> output_av(int(output.size()), output);
             amp_algorithms::fill(output_av, 0);
 
-            amp_algorithms::_details::radix_sort_by_key<unsigned, 2, 32>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
+            amp_algorithms::_details::radix_sort_by_key<unsigned, 2, 4>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
 
             output_av.synchronize();
             Assert::IsTrue(are_equal(sorted_by_key_0, output_av));
@@ -208,7 +235,20 @@ namespace amp_algorithms_tests
 
         TEST_METHOD(amp_details_radix_sort_by_key_0_tile_32)
         {
-            std::array<unsigned, 16> input =                         { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,    4, 12,  9,  8 };
+            // gidx                                                    0   1   2   3   4   5   6   7     8   9  10  11  12  13  14  15
+            std::array<unsigned, 16> input =                         { 3,  2,  1,  6, 10, 11, 13,  0,   15, 10,  5, 14,  4, 12,  9,  8 };
+            // rdx =                                                   3,  2,  1,  2,  2,  3,  1,  0,    3,  2,  1,  2,  0,  0,  1,  0
+
+            std::array<unsigned, 16> per_tile_rdx_histograms =       { 4,  4,  5,  3,                          0,0,0,0,0,0,0,0,0,0,0,0 };
+            std::array<unsigned, 16> per_tile_rdx_offsets =          { 0,  4,  8, 13,                          0,0,0,0,0,0,0,0,0,0,0,0 };
+
+            std::array<unsigned, 16> per_tile_rdx_histograms_tp =    { 4,  4,  5,  3,                          0,0,0,0,0,0,0,0,0,0,0,0 };
+            std::array<unsigned, 16> xxx =                           { 0,  0,  0,  0,                          0,0,0,0,0,0,0,0,0,0,0,0 };
+            std::array<unsigned, 16> tile_rdx_offsets =              { 0,  0,  0,  0,                          0,0,0,0,0,0,0,0,0,0,0,0 };
+
+            std::array<unsigned, 16> global_histogram =              { 4,  4,  5,  3,                          0,0,0,0,0,0,0,0,0,0,0,0 };
+            std::array<unsigned, 16> global_rdx_offsets =            { 0,  4,  8, 13,                          0,0,0,0,0,0,0,0,0,0,0,0 };
+
             std::array<unsigned, 16> sorted_by_key_0 =               { 0,  4, 12,  8,    1, 13,  5,  9,    2,  6, 10, 10,   14,  3, 11, 15 };
             array_view<unsigned> input_av(int(input.size()), input);
             std::array<unsigned, 16> output;
