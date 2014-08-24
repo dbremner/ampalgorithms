@@ -127,7 +127,7 @@ namespace amp_algorithms_tests
             Assert::IsTrue(are_equal(expected, input_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_by_key_0_tile_4)
+        TEST_METHOD(amp_details_radix_sort_by_key_0_tile_4_32)
         {
             // gidx                                                    0   1   2   3     4   5   6   7     8   9  10  11    12  13  14  15
             std::array<unsigned, 16> input =                         { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,    4, 12,  9,  8 };
@@ -148,7 +148,7 @@ namespace amp_algorithms_tests
             std::array<unsigned, 16> dest_gidx =                     { 4,  8,  9, 13,    0,  5, 10, 14,    6, 11, 12, 15,    1,  2,  3,  7 }; 
                                                                      
             std::array<unsigned, 16> sorted_by_key_0 =               { 0,  4, 12,  8,    1, 13,  5,  9,    2,  6, 10, 10,   14,  3, 11, 15 };
-                                                          
+
             // dest_gidx = idx - per_tile_rdx_offsets[tlx][rd x_0] + per_tile_rdx_offsets[tlx][rdx_0] + tile_rdx_offsets[(rdx * tile_count) + tlx] + global_rdx_offsets[rdx_0]
             //                                             
             //                                                         1 => 0 - 0  + 0 +  4 = 4
@@ -171,7 +171,7 @@ namespace amp_algorithms_tests
             array_view<unsigned> output_av(int(output.size()), output);
             amp_algorithms::fill(output_av, 0);
 
-            amp_algorithms::_details::radix_sort_by_key<unsigned, 2, 4>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
+            amp_algorithms::_details::radix_sort_by_key<unsigned, 2, 32>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
 
             output_av.synchronize();
             Assert::IsTrue(are_equal(sorted_by_key_0, output_av));
@@ -206,6 +206,21 @@ namespace amp_algorithms_tests
             Assert::IsTrue(are_equal(sorted_by_key_0, output_av));
         }
 
+        TEST_METHOD(amp_details_radix_sort_by_key_0_tile_32)
+        {
+            std::array<unsigned, 16> input =                         { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,    4, 12,  9,  8 };
+            std::array<unsigned, 16> sorted_by_key_0 =               { 0,  4, 12,  8,    1, 13,  5,  9,    2,  6, 10, 10,   14,  3, 11, 15 };
+            array_view<unsigned> input_av(int(input.size()), input);
+            std::array<unsigned, 16> output;
+            array_view<unsigned> output_av(int(output.size()), output); 
+            amp_algorithms::fill(output_av, 0);
+
+            amp_algorithms::_details::radix_sort_by_key<unsigned, 2, 32>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
+
+            output_av.synchronize();
+            Assert::IsTrue(are_equal(sorted_by_key_0, output_av));
+        }
+
         TEST_METHOD(amp_details_radix_sort_by_key_1_tile_4)
         {
             std::array<unsigned, 16> input =                         { 0,  4, 12,  8,   1, 13,  5,  9,    2,  6, 10, 10,   14,  3, 11, 15 };
@@ -225,7 +240,7 @@ namespace amp_algorithms_tests
         TEST_METHOD(amp_details_radix_sort_by_key_1_tile_8)
         {
             std::array<unsigned, 16> input =                         { 0,  4, 12,  8,   1, 13,  5,  9,    2,  6, 10, 10,   14,  3, 11, 15 };
-            std::array<unsigned, 16> sorted_by_key_2 =               { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,   12, 13, 14, 15 };
+            std::array<unsigned, 16> sorted_by_key_1 =               { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,   12, 13, 14, 15 };
             array_view<unsigned> input_av(int(input.size()), input);
             std::array<unsigned, 16> output;
             array_view<unsigned> output_av(int(output.size()), output);
@@ -234,7 +249,7 @@ namespace amp_algorithms_tests
             amp_algorithms::_details::radix_sort_by_key<unsigned, 2, 8>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 1);
 
             output_av.synchronize();
-            Assert::IsTrue(are_equal(sorted_by_key_2, output_av));
+            Assert::IsTrue(are_equal(sorted_by_key_1, output_av));
         }
 
         TEST_METHOD(amp_details_radix_sort_tile_4)
@@ -282,20 +297,20 @@ namespace amp_algorithms_tests
             Assert::IsTrue(are_equal(sorted, output_av));
         }
 
-        //TEST_METHOD(amp_details_radix_sort_tile_32)
-        //{
-        //    std::array<unsigned, 16> input =                         { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,    4, 12,  9,  8 };
-        //    std::array<unsigned, 16> sorted =                        { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,   12, 13, 14, 15 };
-        //    array_view<unsigned> input_av(int(input.size()), input);
-        //    std::array<unsigned, 16> output;
-        //    array_view<unsigned> output_av(int(output.size()), output);
-        //    amp_algorithms::fill(output_av, 0);
-        //    
-        //    amp_algorithms::_details::radix_sort<unsigned, 2, 32>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
+        TEST_METHOD(amp_details_radix_sort_tile_32)
+        {
+            std::array<unsigned, 16> input =                         { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,    4, 12,  9,  8 };
+            std::array<unsigned, 16> sorted =                        { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,   12, 13, 14, 15 };
+            array_view<unsigned> input_av(int(input.size()), input);
+            std::array<unsigned, 16> output;
+            array_view<unsigned> output_av(int(output.size()), output);
+            amp_algorithms::fill(output_av, 0);
+            
+            amp_algorithms::_details::radix_sort<unsigned, 2, 32>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
 
-        //    output_av.synchronize();
-        //    Assert::IsTrue(are_equal(sorted, output_av));
-        //}
+            output_av.synchronize();
+            Assert::IsTrue(are_equal(sorted, output_av));
+        }
 
         // TODO: More tests for radix sort.
     };

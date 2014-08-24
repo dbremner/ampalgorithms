@@ -550,7 +550,7 @@ namespace amp_algorithms
             static_assert((key_bit_width % tile_key_bit_width == 0), "The key bit width must be divisible by the tile key bit width.");
             
             const concurrency::tiled_extent<tile_size> compute_domain = output_view.get_extent().tile<tile_size>().pad();
-            const int tile_count = compute_domain.size() / tile_size;
+            const int tile_count = std::max(1u, compute_domain.size() / tile_size);
 
             concurrency::array<int, 2> per_tile_rdx_offsets(concurrency::extent<2>(tile_count, bin_count), accl_view);
             concurrency::array<int> global_rdx_offsets(bin_count, accl_view);
@@ -647,7 +647,7 @@ namespace amp_algorithms
             });
 
             // TODO: Need to remove this dependency on direct3d. Only using it because we don't have a segmented scan AMP-only implementation yet.
-            amp_algorithms::direct3d::bitvector flags(bin_count * tile_count); 
+            amp_algorithms::direct3d::bitvector flags(bin_count * tile_count);
             flags.initialize(tile_count);
             concurrency::array<unsigned int> input_flags(static_cast<unsigned>(flags.data.size()), flags.data.begin());
             amp_algorithms::direct3d::scan s(bin_count * tile_count, accl_view);
