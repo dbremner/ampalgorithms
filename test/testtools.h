@@ -309,8 +309,6 @@ namespace testtools
     //
     //      std::vector<int> data(12, 1);
     //      cout << container_width(4) << data;
-    //
-    // TODO: Should this stream support be part of the library. It seems pretty useful, for debugging and testing if nothing else.
 
     class container_width
     {
@@ -418,23 +416,16 @@ namespace testtools
     {
         //  Ensure that the C++ AMP runtime is initialized.
         accelerator::get_all();
-
         //  Ensure that the C++ AMP kernel has been JITed.
         f();
-
-        //  Wait for all accelerator work to end.
         view.wait();
 
         LARGE_INTEGER start, end;
         QueryPerformanceCounter(&start);
-
         f();
-
-        //  Wait for all accelerator work to end.
         view.wait();
         QueryPerformanceCounter(&end);
 
         return elapsed_time(start, end);
     }
-
 }; // namespace test_tools

@@ -41,9 +41,8 @@ namespace amp_stl_algorithms
     // ensure the linear continuous storage.
     //----------------------------------------------------------------------------
 
-    // TODO: array_view_iterator<value_type> should freely be usable as 
-    // array_view_iterator<const value_type>. This currently does not work 
-    // properly at several places and needs to be fixed.
+    // TODO: array_view_iterator<value_type> should freely be usable as array_view_iterator<const value_type>. 
+    // This currently does not work properly at several places and needs to be fixed.
 
     namespace _details
     {

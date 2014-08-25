@@ -33,12 +33,6 @@
 
 namespace amp_algorithms
 {
-    // TODO: Need to remove this dependency on direct3d.
-    namespace direct3d
-    {
-        class scan;
-    }
-
 #pragma region Arithmetic, comparison, logical and bitwise operators
 
     //----------------------------------------------------------------------------
@@ -542,6 +536,12 @@ namespace amp_algorithms
                 int dest_idx = histogram_bins_scan[radix_value] + unpack_byte(tile_radix_values[idx], radix_value);
                 tile_data[dest_idx] = tmp;
             }
+        }
+
+        // TODO: Need to remove this dependency on direct3d.
+        namespace direct3d
+        {
+            class scan;
         }
 
         template <typename T, int key_bit_width, int tile_size>
