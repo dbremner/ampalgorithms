@@ -17,7 +17,7 @@
 *
 * C++ AMP algorithms library.
 *
-* This file contains the C++ AMP DirectX algorithms 
+* This file contains the C++ AMP DirectX algorithms
 *---------------------------------------------------------------------------*/
 
 // TODO: Here the functions are defined here. In the STL implementation they are defined in the main header file 
@@ -37,6 +37,8 @@ namespace amp_algorithms
 
     namespace direct3d
     {
+        // TODO: Do we really need to have two definitions of scan_mode and scan_direction?
+
         // direct3d namespace has its own declarations of scan_mode and scan_direction.
 
         enum class scan_mode : int
@@ -51,6 +53,87 @@ namespace amp_algorithms
             backward = 1
         };
 
+        // TODO: Write some tests for bitvector. Move it into the main amp_algorithms namespace?
+
+        template <typename T>
+        class uniform_segments
+        {
+        private:
+            int m_step;
+        public:
+            uniform_segments(int step) : m_step(step) { }
+
+            bool operator()(const T &i) const
+            {
+                return (i % m_step == 0);
+            }
+        };
+
+        struct bitvector
+        {
+        private:
+            unsigned int m_data_size;
+
+        public:
+            std::vector<unsigned> data;
+
+            bitvector(const unsigned data_size) : m_data_size(data_size)
+            {
+                data = std::vector<unsigned>(bits_pad_to_uint(data_size), 0);
+            }
+
+            // Initialize bitvector with constant segment width.
+
+            void initialize(const int segment_width)
+            {
+                initialize(uniform_segments<int>(segment_width));
+            }
+
+            // Initialize bitvector with custom segment widths.
+
+            template <typename Func>
+            void initialize(Func pred)
+            {
+                unsigned flag_counter = 0;
+                for (unsigned idx = 0; idx < data.size() && flag_counter < m_data_size; ++idx)
+                {
+                    unsigned bag_of_bits = data[idx];
+                    for (unsigned offset = 0; offset < amp_algorithms::bit_count<unsigned>() && flag_counter < m_data_size; ++offset)
+                    {
+                        if (pred(flag_counter))
+                        {
+                            bag_of_bits |= 1 << offset;
+                        }
+                        flag_counter++;
+                    }
+                    data[idx] = bag_of_bits;
+                }
+            }
+
+            bool is_bit_set(unsigned pos, amp_algorithms::direct3d::scan_direction direction)
+            {
+                // When we encounter flag going direction it means, 
+                // that it is the first element of this segment (last element to be scanned going direction)
+                // for simplification we increment 'pos' and always look for flags behind our current position.
+
+                if (direction == amp_algorithms::direct3d::scan_direction::backward)
+                {
+                    pos++;
+                }
+                unsigned idx = pos / bit_count<unsigned>();
+                unsigned offset = pos % bit_count<unsigned>();
+                unsigned bag_of_bits = data[idx];
+                return (1 << offset & bag_of_bits) > 0;
+            }
+
+        private:
+            unsigned bits_pad_to_uint(const unsigned bits) const 
+            {
+                return (bits + amp_algorithms::bit_count<unsigned>() - 1) / amp_algorithms::bit_count<unsigned>();
+            }
+        };
+
+        // TODO: It would ne nice if both scan implementations used the same interface/API.
         class scan
         {
         public:
@@ -88,7 +171,7 @@ namespace amp_algorithms
                 scan_exclusive(input_array, output_array, scan_direction::forward, amp_algorithms::plus<T>());
             }
 
-            // Performs exclusive multi scan is specified direction
+            // Performs exclusive multi scan in specified direction
             template <typename T, typename BinaryFunction>
             void multi_scan_exclusive(const concurrency::array<T, 2> &input_array, concurrency::array<T, 2> &output_array, scan_direction direction, const BinaryFunction &binary_op)
             {

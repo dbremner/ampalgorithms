@@ -28,7 +28,6 @@
 
 namespace amp_stl_algorithms
 {
-    using namespace concurrency;
     //----------------------------------------------------------------------------
     // array_view_iterator
     //
@@ -42,9 +41,8 @@ namespace amp_stl_algorithms
     // ensure the linear continuous storage.
     //----------------------------------------------------------------------------
 
-    // TODO: array_view_iterator<value_type> should freely be usable as 
-    // array_view_iterator<const value_type>. This currently does not work 
-    // properly at several places and needs to be fixed.
+    // TODO: array_view_iterator<value_type> should freely be usable as array_view_iterator<const value_type>. 
+    // This currently does not work properly at several places and needs to be fixed.
 
     namespace _details
     {
@@ -203,7 +201,7 @@ namespace amp_stl_algorithms
 
     private:
         // TODO: Should be able to construct a const array_view_iterator from a non-const array_view
-        array_view_iterator(const array_view<value_type>& arr_view, difference_type position) restrict(cpu,amp)
+        array_view_iterator(const concurrency::array_view<value_type>& arr_view, difference_type position) restrict(cpu,amp)
             : m_base_view(arr_view), 
             m_position(position)
         {
@@ -214,7 +212,7 @@ namespace amp_stl_algorithms
             return &m_base_view[m_position];
         }
 
-        array_view<value_type> m_base_view;
+        concurrency::array_view<value_type> m_base_view;
         difference_type m_position;
     };
 
@@ -223,7 +221,7 @@ namespace amp_stl_algorithms
         template<typename value_type>
         struct array_view_iterator_helper
         {
-            static const array_view<value_type> & get_base_array_view(const array_view_iterator<value_type> & iter)
+            static const concurrency::array_view<value_type> & get_base_array_view(const array_view_iterator<value_type> & iter)
             {
                 return iter.m_base_view;
             }

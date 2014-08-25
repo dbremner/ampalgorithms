@@ -18,6 +18,7 @@
 *
 * This file contains the implementation for C++ AMP standard algorithms
 *---------------------------------------------------------------------------*/
+
 #pragma once
 
 #include <functional>
@@ -125,6 +126,7 @@ namespace amp_stl_algorithms
     {
         // TODO: Shouldn't any_of be tiled for slightly better performance?
         auto section_view = _details::create_section(dest_first, 1);
+        section_view[0] = 0;
         amp_stl_algorithms::for_each_no_return(
             first, last, 
             [section_view, p] (const decltype(*first)& val) restrict(amp) 

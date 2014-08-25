@@ -20,7 +20,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\inc\amp_algorithms.h" />
+    <ClInclude Include="..\inc\amp_algorithms_direct3d.h" />
     <ClInclude Include="..\inc\amp_indexable_view.h" />
+    <ClInclude Include="..\inc\xx_amp_algorithms_direct3d_impl.h" />
     <ClInclude Include="..\inc\xx_amp_algorithms_impl.h" />
     <ClInclude Include="..\inc\xx_amp_algorithms_impl_inl.h" />
     <ClInclude Include="..\test\testtools.h" />
@@ -47,10 +49,14 @@
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>amp_algorithms</RootNamespace>
     <ProjectGuid>{3D74703F-3A58-A860-884D-7B64204109BA}</ProjectGuid>
-    <SccProjectName>SAK</SccProjectName>
-    <SccAuxPath>SAK</SccAuxPath>
-    <SccLocalPath>SAK</SccLocalPath>
-    <SccProvider>SAK</SccProvider>
+    <SccProjectName>
+    </SccProjectName>
+    <SccAuxPath>
+    </SccAuxPath>
+    <SccLocalPath>
+    </SccLocalPath>
+    <SccProvider>
+    </SccProvider>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

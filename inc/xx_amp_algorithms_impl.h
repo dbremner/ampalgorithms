@@ -266,6 +266,7 @@ namespace amp_algorithms
         static const int scan_default_tile_size = 512;
 #endif
 
+        // tile_data must have at least scan_warp_size elements.
         template <amp_algorithms::scan_mode _Mode, typename _BinaryOp, typename T>
         T scan_warp(T* const tile_data, const int idx, const _BinaryOp& op) restrict(amp)
         {
@@ -287,9 +288,10 @@ namespace amp_algorithms
 
             if (_Mode == scan_mode::inclusive)
                 return tile_data[idx];
-            return (widx > 0) ? tile_data[idx - 1] : T();
+            return (widx > 0) ? tile_data[idx - 1] : T(0);
         }
 
+        // tile_data must have at least scan_warp_size elements.
         template <int TileSize, scan_mode _Mode, typename _BinaryOp, typename T>
         T scan_tile(T* const tile_data, concurrency::tiled_index<TileSize> tidx, const _BinaryOp& op) restrict(amp)
         {
@@ -300,7 +302,7 @@ namespace amp_algorithms
             const int warp_id = lidx >> log2<scan_warp_size>::value;
 
             // Step 1: Intra-warp scan in each warp
-            auto val = scan_warp<_Mode, _BinaryOp>(tile_data, lidx, op);
+            auto val = scan_warp<_Mode, _BinaryOp, T>(tile_data, lidx, op);
             tidx.barrier.wait_with_tile_static_memory_fence();
 
             // Step 2: Collect per-warp partial results
@@ -337,7 +339,9 @@ namespace amp_algorithms
             auto compute_domain = output_view.extent.tile<TileSize>().pad();
             concurrency::array<T, 1> tile_results(compute_domain / TileSize, accl_view);
             concurrency::array_view<T, 1> tile_results_vw(tile_results);
+
             // 1 & 2. Scan all tiles and store results in tile_results.
+            
             concurrency::parallel_for_each(accl_view, compute_domain, [=](concurrency::tiled_index<TileSize> tidx) restrict(amp)
             {
                 const int gidx = tidx.global[0];
@@ -357,6 +361,7 @@ namespace amp_algorithms
             });
 
             // 3. Scan tile results.
+            
             if (tile_results_vw.extent[0] > TileSize)
             {
                 scan<TileSize, amp_algorithms::scan_mode::exclusive>(accl_view, tile_results_vw, tile_results_vw, op);
@@ -377,7 +382,9 @@ namespace amp_algorithms
                     tidx.barrier.wait_with_tile_static_memory_fence();
                 });
             }
+            
             // 4. Add the tile results to the individual results for each tile.
+            
             concurrency::parallel_for_each(accl_view, compute_domain, [=](concurrency::tiled_index<TileSize> tidx) restrict(amp)
             {
                 const int gidx = tidx.global[0];

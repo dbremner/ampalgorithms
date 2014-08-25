@@ -57,6 +57,59 @@ namespace amp_algorithms_tests
             set_default_accelerator(L"amp_scan_tests");
         }
 
+        TEST_METHOD(amp_details_scan_tile)
+        {
+            static const int tile_size = 4;
+            std::array<unsigned, 16> input = { 3, 2, 1, 6, 10, 11, 13, 0, 15, 10, 5, 14, 4, 12, 9, 8 };
+            std::array<unsigned, 16> expected = { 0, 3, 5, 6, 0, 10, 21, 34, 0, 15, 25, 30, 0, 4, 16, 25 };
+
+            array_view<unsigned> input_av(int(input.size()), input);
+            std::array<unsigned, 16> output;
+            array_view<unsigned> output_av(int(output.size()), output);
+            amp_algorithms::fill(output_av, 0);
+            concurrency::tiled_extent<tile_size> compute_domain = input_av.get_extent().tile<4>().pad();
+
+            concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+            {
+                const int gidx = tidx.global[0];
+                const int idx = tidx.local[0];
+                tile_static int tile_data[tile_size];
+                tile_data[idx] = input_av[gidx];
+
+                amp_algorithms::_details::scan_tile<tile_size, scan_mode::exclusive>(tile_data, tidx, amp_algorithms::plus<int>());
+
+                output_av[gidx] = tile_data[idx];
+            });
+
+            Assert::IsTrue(are_equal(expected, output_av));
+        }
+
+        TEST_METHOD(amp_details_scan_tile_partial)
+        {
+            std::array<unsigned, 7> input = { 3, 2, 1, 6, 10, 11, 5 };
+            std::array<unsigned, 7> expected = { 0, 3, 5, 6, 12, 22, 33 };
+
+            array_view<unsigned> input_av(int(input.size()), input);
+            std::array<unsigned, 7> output;
+            array_view<unsigned> output_av(int(output.size()), output);
+            amp_algorithms::fill(output_av, 0);
+            concurrency::tiled_extent<16> compute_domain = input_av.get_extent().tile<16>().pad();
+
+            concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<16> tidx) restrict(amp)
+            {
+                const int gidx = tidx.global[0];
+                const int idx = tidx.local[0];
+                tile_static int tile_data[16];
+                tile_data[idx] = input_av[gidx];
+
+                amp_algorithms::_details::scan_tile<16, scan_mode::exclusive>(tile_data, tidx, amp_algorithms::plus<int>());
+
+                output_av[gidx] = tile_data[idx];
+            });
+
+            Assert::IsTrue(are_equal(expected, output_av));
+        }
+
         TEST_METHOD(amp_scan_exclusive_single_warp)
         {
             std::vector<int> input(warp_size, 1);
