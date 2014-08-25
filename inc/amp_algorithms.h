@@ -490,13 +490,15 @@ namespace amp_algorithms
         }
 
         template <typename T, int key_bit_width, int tile_size>
-        void radix_sort_tile_by_key(T* const tile_data, concurrency::tiled_index<tile_size> tidx, const int key_idx) restrict(amp)
+        void radix_sort_tile_by_key(T* const tile_data, const int data_size, concurrency::tiled_index<tile_size> tidx, const int key_idx) restrict(amp)
         {
             static_assert((tile_size <= 256), "The tile size must be less than or equal to 256.");
             static_assert((key_bit_width >=1), "The radix bit width must be greater than or equal to one.");
             static_assert((key_bit_width <= 2), "The radix bit width must be less than or equal to two.");
 
             const unsigned bin_count = 1 << key_bit_width;
+            const int gidx = tidx.global[0];
+            const int tlx = tidx.tile[0];
             const int idx = tidx.local[0];
 
             // Increment histogram bins for each element.
@@ -510,10 +512,11 @@ namespace amp_algorithms
             tile_static unsigned histogram_bins_scan[bin_count];
             if (idx == 0)
             {
-                // Calculate histogram of radix values .
+                // Calculate histogram of radix values. Don't add values that are off the end of the data.
 
                 unsigned global_histogram = 0;
-                for (int i = 0; i < tile_size; ++i)
+
+                for (int i = 0; i < min<int>()(tile_size, (data_size - (tlx * tile_size))); ++i)
                 {
                     global_histogram += tile_radix_values[i];
                 }
@@ -534,8 +537,11 @@ namespace amp_algorithms
 
             T tmp = tile_data[idx];
             tidx.barrier.wait_with_tile_static_memory_fence();
-            int i = histogram_bins_scan[radix_value] + unpack_byte(tile_radix_values[idx], radix_value);
-            tile_data[i] = tmp;
+            if (gidx < data_size)
+            {
+                int dest_idx = histogram_bins_scan[radix_value] + unpack_byte(tile_radix_values[idx], radix_value);
+                tile_data[dest_idx] = tmp;
+            }
         }
 
         template <typename T, int key_bit_width, int tile_size>
@@ -602,7 +608,7 @@ namespace amp_algorithms
                 }
                 tidx.barrier.wait();
 
-                //output_view[gidx] = (idx < bin_count) ? per_thread_rdx_histograms[0][idx] : 0;            // Dump per-tile histograms, per_tile_rdx_histograms   
+                output_view[gidx] = (idx < bin_count) ? per_thread_rdx_histograms[0][idx] : 0;            // Dump per-tile histograms, per_tile_rdx_histograms
 
                 // Exclusive scan the tile histogram to calculate the per-tile offsets.
 
@@ -630,7 +636,7 @@ namespace amp_algorithms
                 //output_view[gidx] = (gidx < bin_count * tile_count) ? tile_histograms[gidx] : 0;          // Dump per-tile histograms, per_tile_rdx_histograms_tp,
 
                 // Calculate global radix offsets from the global radix histogram. All tiles do this but only the first one records the result.
-
+                
                 tile_static int scan_data[bin_count];
                 if (gidx < bin_count)
                 {
@@ -673,7 +679,7 @@ namespace amp_algorithms
                 const int keys_per_tile = (key_bit_width / tile_key_bit_width);
                 for (int k = (keys_per_tile * key_idx); k < (keys_per_tile * (key_idx + 1)); ++k)
                 {
-                    _details::radix_sort_tile_by_key<T, tile_key_bit_width, tile_size>(tile_data, tidx, k); 
+                    _details::radix_sort_tile_by_key<T, tile_key_bit_width, tile_size>(tile_data, input_view.extent.size(), tidx, k); 
                 }
                 tidx.barrier.wait_with_tile_static_memory_fence();
                 
