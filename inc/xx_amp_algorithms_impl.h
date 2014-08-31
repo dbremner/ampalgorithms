@@ -145,16 +145,16 @@ namespace amp_algorithms
             if (partial_data_length < tile_size)
             {
                 // unrolled for performance
-                if (partial_data_length >  512) { if (local < (partial_data_length - 512)) { mem[0] = op(mem[0], mem[512]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (partial_data_length >  256) { if (local < (partial_data_length - 256)) { mem[0] = op(mem[0], mem[256]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (partial_data_length >  128) { if (local < (partial_data_length - 128)) { mem[0] = op(mem[0], mem[128]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (partial_data_length >   64) { if (local < (partial_data_length - 64)) { mem[0] = op(mem[0], mem[64]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (partial_data_length >   32) { if (local < (partial_data_length - 32)) { mem[0] = op(mem[0], mem[32]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (partial_data_length >   16) { if (local < (partial_data_length - 16)) { mem[0] = op(mem[0], mem[16]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (partial_data_length >    8) { if (local < (partial_data_length - 8)) { mem[0] = op(mem[0], mem[8]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (partial_data_length >    4) { if (local < (partial_data_length - 4)) { mem[0] = op(mem[0], mem[4]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (partial_data_length >    2) { if (local < (partial_data_length - 2)) { mem[0] = op(mem[0], mem[2]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (partial_data_length >    1) { if (local < (partial_data_length - 1)) { mem[0] = op(mem[0], mem[1]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (partial_data_length > 512) { if (local < (partial_data_length - 512)) { mem[0] = op(mem[0], mem[512]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (partial_data_length > 256) { if (local < (partial_data_length - 256)) { mem[0] = op(mem[0], mem[256]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (partial_data_length > 128) { if (local < (partial_data_length - 128)) { mem[0] = op(mem[0], mem[128]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (partial_data_length > 64) { if (local < (partial_data_length - 64)) { mem[0] = op(mem[0], mem[64]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (partial_data_length > 32) { if (local < (partial_data_length - 32)) { mem[0] = op(mem[0], mem[32]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (partial_data_length > 16) { if (local < (partial_data_length - 16)) { mem[0] = op(mem[0], mem[16]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (partial_data_length > 8) { if (local < (partial_data_length - 8)) { mem[0] = op(mem[0], mem[8]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (partial_data_length > 4) { if (local < (partial_data_length - 4)) { mem[0] = op(mem[0], mem[4]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (partial_data_length > 2) { if (local < (partial_data_length - 2)) { mem[0] = op(mem[0], mem[2]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (partial_data_length > 1) { if (local < (partial_data_length - 1)) { mem[0] = op(mem[0], mem[1]); } tid.barrier.wait_with_tile_static_memory_fence(); }
             }
             else
             {
@@ -180,77 +180,77 @@ namespace amp_algorithms
             typename std::result_of<BinaryFunction(const typename indexable_view_traits<InputIndexableView>::value_type&, const typename indexable_view_traits<InputIndexableView>::value_type&)>::type
             reduce(const concurrency::accelerator_view &accl_view, const InputIndexableView &input_view, const BinaryFunction &binary_op)
         {
-                // The input view must be of rank 1
-                static_assert(indexable_view_traits<InputIndexableView>::rank == 1, "The input indexable view must be of rank 1");
-                typedef typename std::result_of<BinaryFunction(const typename indexable_view_traits<InputIndexableView>::value_type&, const typename indexable_view_traits<InputIndexableView>::value_type&)>::type result_type;
+            // The input view must be of rank 1
+            static_assert(indexable_view_traits<InputIndexableView>::rank == 1, "The input indexable view must be of rank 1");
+            typedef typename std::result_of<BinaryFunction(const typename indexable_view_traits<InputIndexableView>::value_type&, const typename indexable_view_traits<InputIndexableView>::value_type&)>::type result_type;
 
-                // runtime sizes
-                int n = input_view.extent.size();
-                unsigned int tile_count = (n + tile_size - 1) / tile_size;
-                tile_count = std::min(tile_count, max_tiles);
+            // runtime sizes
+            int n = input_view.extent.size();
+            unsigned int tile_count = (n + tile_size - 1) / tile_size;
+            tile_count = std::min(tile_count, max_tiles);
 
-                // simultaneous live threads
-                const unsigned int thread_count = tile_count * tile_size;
+            // simultaneous live threads
+            const unsigned int thread_count = tile_count * tile_size;
 
-                // global buffer (return type)
-                concurrency::array_view<result_type> global_buffer_view(concurrency::array<result_type>(tile_count, concurrency::accelerator(concurrency::accelerator::cpu_accelerator).default_view, accl_view));
+            // global buffer (return type)
+            concurrency::array_view<result_type> global_buffer_view(concurrency::array<result_type>(tile_count, concurrency::accelerator(concurrency::accelerator::cpu_accelerator).default_view, accl_view));
 
-                // configuration
-                concurrency::extent<1> extent(thread_count);
+            // configuration
+            concurrency::extent<1> extent(thread_count);
 
-                _details::parallel_for_each(
-                    accl_view,
-                    extent.tile<tile_size>(),
-                    [=](concurrency::tiled_index<tile_size> tid) restrict(amp)
+            _details::parallel_for_each(
+                accl_view,
+                extent.tile<tile_size>(),
+                [=](concurrency::tiled_index<tile_size> tid) restrict(amp)
+            {
+                // shared tile buffer
+                tile_static result_type local_buffer[tile_size];
+
+                int idx = tid.global[0];
+
+                // this thread's shared memory pointer
+                result_type& smem = local_buffer[tid.local[0]];
+
+                // this variable is used to test if we are on the edge of data within tile
+                int partial_data_length = n - tid.tile[0] * tile_size;
+
+                // initialize local buffer
+                smem = input_view[concurrency::index<1>(idx)];
+                // next chunk
+                idx += thread_count;
+
+                // fold data into local buffer
+                while (idx < n)
                 {
-                    // shared tile buffer
-                    tile_static result_type local_buffer[tile_size];
+                    // reduction of smem and X[idx] with results stored in smem
+                    smem = binary_op(smem, input_view[concurrency::index<1>(idx)]);
 
-                    int idx = tid.global[0];
-
-                    // this thread's shared memory pointer
-                    result_type& smem = local_buffer[tid.local[0]];
-
-                    // this variable is used to test if we are on the edge of data within tile
-                    int partial_data_length = n - tid.tile[0] * tile_size;
-
-                    // initialize local buffer
-                    smem = input_view[concurrency::index<1>(idx)];
                     // next chunk
                     idx += thread_count;
-
-                    // fold data into local buffer
-                    while (idx < n)
-                    {
-                        // reduction of smem and X[idx] with results stored in smem
-                        smem = binary_op(smem, input_view[concurrency::index<1>(idx)]);
-
-                        // next chunk
-                        idx += thread_count;
-                    }
-
-                    // synchronize
-                    tid.barrier.wait_with_tile_static_memory_fence();
-
-                    // reduce all values in this tile
-                    _details::tile_local_reduction(&smem, tid, binary_op, partial_data_length);
-
-                    // only 1 thread per tile does the inter tile communication
-                    if (tid.local[0] == 0)
-                    {
-                        // write to global buffer in this tiles
-                        global_buffer_view[tid.tile[0]] = smem;
-                    }
-                });
-
-                // 2nd pass reduction
-                result_type *pGlobalBufferViewData = global_buffer_view.data();
-                result_type retVal = pGlobalBufferViewData[0];
-                for (unsigned int i = 1; i < tile_count; ++i) {
-                    retVal = binary_op(retVal, pGlobalBufferViewData[i]);
                 }
 
-                return retVal;
+                // synchronize
+                tid.barrier.wait_with_tile_static_memory_fence();
+
+                // reduce all values in this tile
+                _details::tile_local_reduction(&smem, tid, binary_op, partial_data_length);
+
+                // only 1 thread per tile does the inter tile communication
+                if (tid.local[0] == 0)
+                {
+                    // write to global buffer in this tiles
+                    global_buffer_view[tid.tile[0]] = smem;
+                }
+            });
+
+            // 2nd pass reduction
+            result_type *pGlobalBufferViewData = global_buffer_view.data();
+            result_type retVal = pGlobalBufferViewData[0];
+            for (unsigned int i = 1; i < tile_count; ++i) {
+                retVal = binary_op(retVal, pGlobalBufferViewData[i]);
+            }
+
+            return retVal;
         }
 
         //----------------------------------------------------------------------------
@@ -341,7 +341,7 @@ namespace amp_algorithms
             concurrency::array_view<T, 1> tile_results_vw(tile_results);
 
             // 1 & 2. Scan all tiles and store results in tile_results.
-            
+
             concurrency::parallel_for_each(accl_view, compute_domain, [=](concurrency::tiled_index<TileSize> tidx) restrict(amp)
             {
                 const int gidx = tidx.global[0];
@@ -361,7 +361,7 @@ namespace amp_algorithms
             });
 
             // 3. Scan tile results.
-            
+
             if (tile_results_vw.extent[0] > TileSize)
             {
                 scan<TileSize, amp_algorithms::scan_mode::exclusive>(accl_view, tile_results_vw, tile_results_vw, op);
@@ -382,9 +382,9 @@ namespace amp_algorithms
                     tidx.barrier.wait_with_tile_static_memory_fence();
                 });
             }
-            
+
             // 4. Add the tile results to the individual results for each tile.
-            
+
             concurrency::parallel_for_each(accl_view, compute_domain, [=](concurrency::tiled_index<TileSize> tidx) restrict(amp)
             {
                 const int gidx = tidx.global[0];
@@ -396,6 +396,238 @@ namespace amp_algorithms
         //----------------------------------------------------------------------------
         // radix sort implementation
         //----------------------------------------------------------------------------
+        //
+        // References:
+        //
+        // "Introduction to GPU Radix Sort" http://www.heterogeneouscompute.org/wordpress/wp-content/uploads/2011/06/RadixSort.pdf
+        //
+        // "Designing Efficient Sorting Algorithms for Manycore GPUs" http://www.nvidia.com/docs/io/67073/nvr-2008-001.pdf
+        // "Histogram Calculation in CUDA" http://docs.nvidia.com/cuda/samples/3_Imaging/histogram/doc/histogram.pdf
+        
+        template<typename T, int key_bit_width>
+        inline int radix_key_value(const T value, const unsigned key_idx) restrict(amp, cpu)
+        {
+            const T mask = (1 << key_bit_width) - 1;
+            return (value >> (key_idx * key_bit_width)) & mask;
+        }
+
+        template <typename T>
+        inline void initialize_bins(T* const bin_data, const int bin_count) restrict(amp)
+        {
+            for (int b = 0; b < bin_count; ++b)
+            {
+                bin_data[b] = T(0);
+            }
+        }
+
+        template <typename T, int key_bit_width, int tile_size>
+        void radix_sort_tile_by_key(T* const tile_data, const int data_size, concurrency::tiled_index<tile_size> tidx, const int key_idx) restrict(amp)
+        {
+            const unsigned bin_count = 1 << key_bit_width;
+            const int gidx = tidx.global[0];
+            const int tlx = tidx.tile[0];
+            const int idx = tidx.local[0];
+
+            // Increment histogram bins for each element.
+
+            tile_static unsigned long tile_radix_values[tile_size];
+            tile_radix_values[idx] = pack_byte(1, _details::radix_key_value<T, key_bit_width>(tile_data[idx], key_idx));
+            tidx.barrier.wait_with_tile_static_memory_fence();
+
+            tile_static unsigned long histogram_bins_scan[bin_count];
+            if (idx == 0)
+            {
+                // Calculate histogram of radix values. Don't add values that are off the end of the data.
+
+                unsigned long global_histogram = 0;
+
+                const int tile_data_size = min<int>()(tile_size, (data_size - (tlx * tile_size)));
+                for (int i = 0; i < tile_data_size; ++i)
+                {
+                    global_histogram += tile_radix_values[i];
+                }
+
+                // Scan to get offsets for each histogram bin.
+
+                histogram_bins_scan[0] = 0;
+                histogram_bins_scan[1] = unpack_byte<0>(global_histogram);
+                if (key_bit_width > 1)
+                {
+                    histogram_bins_scan[2] = unpack_byte<1>(global_histogram) +histogram_bins_scan[1];
+                    histogram_bins_scan[3] = unpack_byte<2>(global_histogram) +histogram_bins_scan[2];
+                }
+            }
+            tidx.barrier.wait_with_tile_static_memory_fence();
+
+            _details::scan_tile<tile_size, amp_algorithms::scan_mode::exclusive>(tile_radix_values, tidx, amp_algorithms::plus<unsigned long>());
+
+            // Shuffle data into sorted order.
+
+            T tmp = tile_data[idx];
+            tidx.barrier.wait_with_tile_static_memory_fence();
+            if (gidx < data_size)
+            {
+                int rdx = _details::radix_key_value<T, key_bit_width>(tmp, key_idx);
+                unsigned long dest_idx = histogram_bins_scan[rdx] + unpack_byte(tile_radix_values[idx], rdx);
+                tile_data[dest_idx] = tmp;
+            }
+        }
+
+        // TODO: Need to remove this dependency on direct3d.
+        namespace direct3d
+        {
+            class scan;
+        }
+
+        template <typename T, int key_bit_width, int tile_size>
+        void radix_sort_by_key(const concurrency::accelerator_view& accl_view, const concurrency::array_view<T>& input_view, concurrency::array_view<T>& output_view, const int key_idx)
+        {
+            static const int tile_key_bit_width = 2;
+            static const unsigned type_width = sizeof(T) * CHAR_BIT;
+            static const int bin_count = 1 << key_bit_width;
+
+            static_assert((tile_size <= 256), "The tile size must be less than or equal to 256.");
+            static_assert((key_bit_width >= 1), "The radix bit width must be greater than or equal to one.");
+            static_assert((tile_size >= bin_count), "The tile size must be greater than or equal to the radix key bin count.");
+            static_assert((type_width % key_bit_width == 0), "The sort key width must be divisible by the type width.");
+            static_assert((key_bit_width % tile_key_bit_width == 0), "The key bit width must be divisible by the tile key bit width.");
+
+            const concurrency::tiled_extent<tile_size> compute_domain = output_view.get_extent().tile<tile_size>().pad();
+            const int tile_count = std::max(1u, compute_domain.size() / tile_size);
+
+            concurrency::array<int, 2> per_tile_rdx_offsets(concurrency::extent<2>(tile_count, bin_count), accl_view);
+            concurrency::array<int> global_rdx_offsets(bin_count, accl_view);
+            concurrency::array<int, 1> tile_histograms(concurrency::extent<1>(bin_count * tile_count), accl_view);
+
+            amp_algorithms::fill(accl_view, global_rdx_offsets.section(0, bin_count), 0);
+
+            concurrency::parallel_for_each(accl_view, compute_domain, [=, &per_tile_rdx_offsets, &global_rdx_offsets, &tile_histograms](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+            {
+                const int gidx = tidx.global[0];
+                const int tlx = tidx.tile[0];
+                const int idx = tidx.local[0];
+                tile_static T tile_data[tile_size];
+                tile_static int per_thread_rdx_histograms[tile_size][bin_count];
+
+                // Initialize histogram bins and copy data into tiles.
+                initialize_bins(per_thread_rdx_histograms[idx], bin_count);
+                tile_data[idx] = padded_read(input_view, gidx);
+
+                // Increment radix bins for each element on each tile.
+                if (gidx < input_view.extent[0])
+                {
+                    per_thread_rdx_histograms[idx][_details::radix_key_value<T, key_bit_width>(tile_data[idx], key_idx)]++;
+                }
+                tidx.barrier.wait_with_tile_static_memory_fence();
+
+                // First bin_count threads per tile collapse thread values to create the tile histogram.
+                if (idx < bin_count)
+                {
+                    for (int i = 1; i < tile_size; ++i)
+                    {
+                        per_thread_rdx_histograms[0][idx] += per_thread_rdx_histograms[i][idx];
+                    }
+                }
+                tidx.barrier.wait_with_tile_static_memory_fence();
+
+                // First bin_count threads per tile increment counts for global histogram and copies tile histograms to global memory.
+                if (idx < bin_count)
+                {
+                    concurrency::atomic_fetch_add(&global_rdx_offsets[idx], per_thread_rdx_histograms[0][idx]);
+                }
+
+                //output_view[gidx] = (idx < bin_count) ? per_thread_rdx_histograms[0][idx] : 0;            // Dump per-tile histograms, per_tile_rdx_histograms
+
+                // Exclusive scan the tile histogram to calculate the per-tile offsets.
+                if (idx < bin_count)
+                {
+                    tile_histograms[(idx * tile_count) + tlx] = per_thread_rdx_histograms[0][idx];
+                }
+                tidx.barrier.wait_with_tile_static_memory_fence();
+                _details::scan_tile<tile_size, scan_mode::exclusive>(per_thread_rdx_histograms[0], tidx, amp_algorithms::plus<T>());
+
+                if (idx < bin_count)
+                {
+                    per_tile_rdx_offsets[tlx][idx] = per_thread_rdx_histograms[0][idx];
+                }
+            });
+
+            concurrency::parallel_for_each(accl_view, compute_domain, [=, &global_rdx_offsets, &tile_histograms](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+            {
+                const int gidx = tidx.global[0];
+
+                //output_view[gidx] = (gidx < bin_count * tile_count) ? tile_histograms[gidx] : 0;          // Dump per-tile histograms, per_tile_rdx_histograms_tp,
+
+                // Calculate global radix offsets from the global radix histogram. All tiles do this but only the first one records the result.
+                tile_static int scan_data[bin_count];
+                if (gidx < bin_count)
+                {
+                    scan_data[gidx] = global_rdx_offsets[gidx];
+                }
+                tidx.barrier.wait_with_tile_static_memory_fence();
+
+                _details::scan_tile<tile_size, scan_mode::exclusive>(scan_data, tidx, amp_algorithms::plus<T>());
+
+                if (gidx < bin_count)
+                {
+                    global_rdx_offsets[gidx] = scan_data[gidx];
+                }
+            });
+
+            // TODO: Need to remove this dependency on direct3d. Only using it because we don't have a segmented scan AMP-only implementation yet.
+            amp_algorithms::direct3d::bitvector flags(bin_count * tile_count);
+            flags.initialize(tile_count);
+            concurrency::array<unsigned int> input_flags(static_cast<unsigned>(flags.data.size()), flags.data.begin());
+            amp_algorithms::direct3d::scan s(bin_count * tile_count, accl_view);
+            s.segmented_scan_exclusive<int>(tile_histograms, tile_histograms, input_flags, amp_algorithms::direct3d::scan_direction::forward, amp_algorithms::plus<T>());
+
+            concurrency::parallel_for_each(accl_view, compute_domain, [=, &per_tile_rdx_offsets, &tile_histograms, &global_rdx_offsets](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+            {
+                const int gidx = tidx.global[0];
+                const int tlx = tidx.tile[0];
+                const int idx = tidx.local[0];
+
+                //if (idx < bin_count) { output_view[gidx] = per_tile_rdx_offsets[tlx][idx]; }              // Dump per tile offsets, per_tile_rdx_offsets
+                //if (idx < bin_count * tile_count) { output_view[gidx] = tile_histograms[gidx]; }          // Dump tile offsets, xxx
+                //if (idx < bin_count) { output_view[gidx] = tile_histograms[(idx * tile_count) + tlx]; }   // Dump tile offsets, tile_rdx_offsets
+                //output_view[gidx] = (gidx < bin_count) ? global_rdx_offsets[gidx] : 0;                    // Dump global offsets, global_rdx_offsets
+
+                // Sort elements within each tile.
+                tile_static T tile_data[tile_size];
+                tile_data[idx] = input_view[gidx];
+                tidx.barrier.wait_with_tile_static_memory_fence();
+
+                const int keys_per_tile = (key_bit_width / tile_key_bit_width);
+                for (int k = (keys_per_tile * key_idx); k < (keys_per_tile * (key_idx + 1)); ++k)
+                {
+                    _details::radix_sort_tile_by_key<T, tile_key_bit_width, tile_size>(tile_data, input_view.extent.size(), tidx, k);
+                }
+                tidx.barrier.wait_with_tile_static_memory_fence();
+
+                //output_view[gidx] = tile_data[idx];                                                       // Dump sorted per-tile data, sorted_per_tile
+
+                // Move tile sorted elements to global destination.
+                const int rdx = _details::radix_key_value<T, key_bit_width>(tile_data[idx], key_idx);
+                const int dest_gidx = idx - per_tile_rdx_offsets[tlx][rdx] + tile_histograms[(rdx * tile_count) + tlx] + global_rdx_offsets[rdx];
+
+                //output_view[gidx] = dest_gidx;                                                            // Dump destination indices, dest_gidx
+
+                output_view[dest_gidx] = tile_data[idx];
+            });
+        }
+
+        template <typename T, int key_bit_width, int tile_size>
+        void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<T>& input_view, concurrency::array_view<T>& output_view)
+        {
+            static const int key_count = bit_count<T>() / key_bit_width;
+
+            for (int key_idx = 0; key_idx < key_count; ++key_idx)
+            {
+                _details::radix_sort_by_key<T, key_bit_width, tile_size>(accl_view, input_view, output_view, key_idx);
+                std::swap(output_view, input_view);
+            }
+            std::swap(input_view, output_view);
+        }
 
     } // namespace amp_algorithms::_details
 
