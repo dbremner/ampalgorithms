@@ -47,7 +47,7 @@ namespace amp_algorithms_tests
         static const int warp_size = 4;
         static const int max_tile_size = warp_size * warp_size;
 #else
-        static const int warp_size = 32;
+        static const int warp_size = 4;
         static const int max_tile_size = warp_size * warp_size;
 #endif
 
@@ -76,7 +76,7 @@ namespace amp_algorithms_tests
                 tile_static int tile_data[tile_size];
                 tile_data[idx] = input_av[gidx];
 
-                amp_algorithms::_details::scan_tile<tile_size, scan_mode::exclusive>(tile_data, tidx, amp_algorithms::plus<int>());
+                amp_algorithms::_details::scan_tile<tile_size, scan_mode::exclusive>(tile_data, tidx, amp_algorithms::plus<int>(), tile_size);
 
                 output_av[gidx] = tile_data[idx];
             });
@@ -102,7 +102,7 @@ namespace amp_algorithms_tests
                 tile_static int tile_data[16];
                 tile_data[idx] = input_av[gidx];
 
-                amp_algorithms::_details::scan_tile<16, scan_mode::exclusive>(tile_data, tidx, amp_algorithms::plus<int>());
+                amp_algorithms::_details::scan_tile<16, scan_mode::exclusive>(tile_data, tidx, amp_algorithms::plus<int>(), 7);
 
                 output_av[gidx] = tile_data[idx];
             });

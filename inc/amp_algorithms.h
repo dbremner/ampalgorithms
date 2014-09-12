@@ -394,6 +394,13 @@ namespace amp_algorithms
         padded_write<InputIndexableView, 1>(arr, concurrency::index<1>(idx), value);
     }
 
+    // TODO: Should this return an extent? Better name.
+    template <int N, typename InputIndexableView>
+    inline int tile_partial_data_size(const InputIndexableView& arr, tiled_index<N> tidx) restrict(amp)
+    {
+        return arr.extent.size() - tidx.tile[0] * tidx.tile_extent[0];
+    }
+    
 #pragma endregion
 
     //----------------------------------------------------------------------------
