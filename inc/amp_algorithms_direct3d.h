@@ -60,6 +60,7 @@ namespace amp_algorithms
         {
         private:
             int m_step;
+
         public:
             uniform_segments(int step) : m_step(step) { }
 
@@ -74,8 +75,17 @@ namespace amp_algorithms
         private:
             unsigned int m_data_size;
 
+            /// Use default; destructor, copy and move. 
+
         public:
             std::vector<unsigned> data;
+
+            bitvector() = delete;
+            ~bitvector() = default;
+            bitvector(const bitvector&) = default;
+            //bitvector(bitvector&&) = default;
+            bitvector& operator=(const bitvector&) = default;
+            //bitvector& operator=(bitvector&&) = default;
 
             bitvector(const unsigned data_size) : m_data_size(data_size)
             {
@@ -133,10 +143,18 @@ namespace amp_algorithms
             }
         };
 
-        // TODO: It would ne nice if both scan implementations used the same interface/API.
+        // TODO: It would be nice if both scan implementations used the same interface/API.
         class scan
         {
         public:
+
+            scan() = delete;
+            ~scan() = default;
+            scan(const scan&) = delete;
+            //scan(scan&&) = default;
+            scan& operator=(const scan&) = delete;
+            //scan& operator=(scan&&) = default;
+
             // Constructs scan object, this constructor provides ability to define max_scan_count for multiscan
             scan(unsigned int max_scan_size, unsigned int max_scan_count, const concurrency::accelerator_view &target_accel_view = concurrency::accelerator().default_view) : m_scan_accelerator_view(target_accel_view)
             {
