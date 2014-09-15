@@ -136,7 +136,8 @@ namespace amp_algorithms
         // The output (reduced result) is contained in "mem[0]" at the end of this function
         // The parameter "partial_data_length" is used to indicate if the size of data in "mem" to be
         // reduced is same as the tile size and if not what is the length of valid data in "mem".
-        template <typename T, unsigned int tile_size, typename functor>
+
+        template <unsigned int tile_size, typename functor, typename T>
         void reduce_tile(T* const mem, concurrency::tiled_index<tile_size> tid, const functor& op, int partial_data_length) restrict(amp)
         {
             int local = tid.local[0];
@@ -255,27 +256,44 @@ namespace amp_algorithms
         //----------------------------------------------------------------------------
         // scan implementation
         //----------------------------------------------------------------------------
+        //
+        // References:
+        //
+        // "GPU Gems 3, chapter 39. Parallel Prefix Sum (Scan) with CUDA" http://http.developer.nvidia.com/GPUGems3/gpugems3_ch39.html
 
-        template <int TileSize, scan_mode _Mode, typename _BinaryOp, typename T>
-        inline T scan_tile(T* const tile_data, concurrency::tiled_index<TileSize> tidx, const _BinaryOp& op, const int partial_data_length) restrict(amp)
+        static const int scan_default_tile_size = 512;
+
+        template <int TileSize, typename _BinaryOp, typename T>
+        inline T scan_tile_exclusive(T* const tile_data, concurrency::tiled_index<TileSize> tidx, const _BinaryOp& op, const int partial_data_length) restrict(amp)
         {
             const int lidx = tidx.local[0];
-
-            reduce_tile<T, TileSize, _BinaryOp>(tile_data, tidx, op, partial_data_length);
-
-            if (lidx == 0)
-                tile_data[TileSize - 1] = (_Mode == scan_mode::exclusive) ? 0 : tile_data[0];
-
-            for (int stride = TileSize / 2; stride > 1; stride /= 2)
+ 
+            for (int stride = 1; stride <= (TileSize / 2); stride *= 2)
             {
                 if ((lidx + 1) % (stride * 2) == 0)
                 {
                     tile_data[lidx] = op(tile_data[lidx], tile_data[lidx - stride]);
-                    tile_data[lidx - stride] = tile_data[lidx];
                 }
                 tidx.barrier.wait_with_tile_static_memory_fence();
             }
-            return tile_data[TileSize -1];
+
+            if (lidx == 0)
+            {
+                tile_data[TileSize - 1] = 0;
+            }
+            tidx.barrier.wait_with_tile_static_memory_fence();
+
+            for (int stride = TileSize / 2; stride >= 1; stride /= 2)
+            {
+                if ((lidx + 1) % (stride * 2) == 0)
+                {
+                    auto tmp = tile_data[lidx];
+                    tile_data[lidx] = op(tile_data[lidx], tile_data[lidx - stride]);
+                    tile_data[lidx - stride] = tmp;
+                }
+                tidx.barrier.wait_with_tile_static_memory_fence();
+            }
+            return tile_data[TileSize - 1];
         }
 
         template <int TileSize, scan_mode _Mode, typename _BinaryFunc, typename InputIndexableView>
@@ -293,19 +311,23 @@ namespace amp_algorithms
             {
                 const int gidx = tidx.global[0];
                 const int lidx = tidx.local[0];
-                tile_static T tile_data[TileSize];
-                int partial_data_length = tile_partial_data_size(output_view, tidx);
+                const int partial_data_length = tile_partial_data_size(output_view, tidx);
 
-                if (lidx < partial_data_length)
-                    tile_data[lidx] = input_view[gidx];
+                tile_static T tile_data[TileSize];
+                tile_data[lidx] = (lidx >= partial_data_length) ? 0 : input_view[gidx];
+                const T current_value = tile_data[lidx];
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
-                auto val = _details::scan_tile<TileSize, _Mode>(tile_data, tidx, amp_algorithms::plus<T>(), partial_data_length);
+                auto val = _details::scan_tile_exclusive<TileSize>(tile_data, tidx, amp_algorithms::plus<T>(), partial_data_length);
+                if (_Mode == scan_mode::inclusive)
+                {
+                    tile_data[lidx] += current_value;
+                }
+
                 if (lidx == (TileSize - 1))
                 {
+                    val += current_value;
                     tile_results_vw[tidx.tile[0]] = val;
-                    if (_Mode == scan_mode::exclusive)
-                        tile_results_vw[tidx.tile[0]] += input_view[gidx];
                 }
                 padded_write(output_view, gidx, tile_data[lidx]);
             });
@@ -322,13 +344,13 @@ namespace amp_algorithms
                 {
                     const int gidx = tidx.global[0];
                     const int lidx = tidx.local[0];
-                    int partial_data_length = tile_partial_data_size(tile_results_vw, tidx);
+                    const int partial_data_length = tile_partial_data_size(tile_results_vw, tidx);
 
                     tile_static T tile_data[TileSize];
                     tile_data[lidx] = tile_results_vw[gidx];
                     tidx.barrier.wait_with_tile_static_memory_fence();
 
-                    _details::scan_tile<TileSize, amp_algorithms::scan_mode::exclusive>(tile_data, tidx, amp_algorithms::plus<T>(), partial_data_length);
+                    _details::scan_tile_exclusive<TileSize>(tile_data, tidx, amp_algorithms::plus<T>(), partial_data_length);
 
                     tile_results_vw[gidx] = tile_data[lidx];
                     tidx.barrier.wait_with_tile_static_memory_fence();
@@ -411,7 +433,7 @@ namespace amp_algorithms
             }
             tidx.barrier.wait_with_tile_static_memory_fence();
 
-            _details::scan_tile<tile_size, amp_algorithms::scan_mode::exclusive>(tile_radix_values, tidx, amp_algorithms::plus<unsigned long>(), tile_size);
+            _details::scan_tile_exclusive<tile_size>(tile_radix_values, tidx, amp_algorithms::plus<unsigned long>(), tile_size);
 
             // Shuffle data into sorted order.
 
@@ -496,7 +518,7 @@ namespace amp_algorithms
                     tile_histograms[(idx * tile_count) + tlx] = per_thread_rdx_histograms[0][idx];
                 }
                 tidx.barrier.wait_with_tile_static_memory_fence();
-                _details::scan_tile<tile_size, scan_mode::exclusive>(per_thread_rdx_histograms[0], tidx, amp_algorithms::plus<T>(), tile_size);
+                _details::scan_tile_exclusive<tile_size>(per_thread_rdx_histograms[0], tidx, amp_algorithms::plus<T>(), tile_size);
 
                 if (idx < bin_count)
                 {
@@ -518,7 +540,7 @@ namespace amp_algorithms
                 }
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
-                _details::scan_tile<tile_size, scan_mode::exclusive>(scan_data, tidx, amp_algorithms::plus<T>(), tile_size);
+                _details::scan_tile_exclusive<tile_size>(scan_data, tidx, amp_algorithms::plus<T>(), tile_size);
 
                 if (gidx < bin_count)
                 {
