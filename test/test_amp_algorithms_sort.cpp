@@ -41,11 +41,9 @@ namespace amp_algorithms_tests
     // {
 private:
 #if (defined(USE_REF) || defined(_DEBUG))
-        static const int warp_size = 4;
-        static const int max_tile_size = warp_size * warp_size;
+        static const int test_tile_size = 4;
 #else
-        static const int warp_size = 32;
-        static const int max_tile_size = warp_size * warp_size;
+        static const int test_tile_size = 256;
 #endif
     public:
         TEST_CLASS_INITIALIZE(initialize_tests)
@@ -357,7 +355,7 @@ private:
 
         TEST_METHOD(amp_details_radix_sort_by_key_index_1_tile_8)
         {
-            std::array<unsigned, 16> input =                         { 0,  4, 12,  8,   1, 13,  5,  9,    2,  6, 10, 10,   14,  3, 11, 15 };
+            std::array<unsigned, 16> input =                         { 0,  4, 12,  8,    1, 13,  5,  9,    2,  6, 10, 10,   14,  3, 11, 15 };
             std::array<unsigned, 16> sorted_by_key_1 =               { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,   12, 13, 14, 15 };
             array_view<unsigned> input_av(int(input.size()), input);
             std::array<unsigned, 16> output;

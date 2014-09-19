@@ -42,9 +42,9 @@ namespace amp_algorithms_tests
     private:
 
 #if (defined(USE_REF) || defined(_DEBUG))
-        static const int max_tile_size = 4;
+        static const int test_tile_size = 4;
 #else
-        static const int max_tile_size = 256;
+        static const int test_tile_size = 256;
 #endif
 
     public:
@@ -112,27 +112,27 @@ namespace amp_algorithms_tests
 
         TEST_METHOD(amp_scan_exclusive_multi_tile)
         {
-            std::vector<int> input(max_tile_size * 4);
+            std::vector<int> input(test_tile_size * 4);
             //generate_data(input);
             std::iota(begin(input), end(input), 1);
             concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             scan_sequential_exclusive(begin(input), end(input), begin(expected));
 
-            scan<max_tile_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
+            scan<test_tile_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
             Assert::IsTrue(are_equal(expected, input_vw));
         }
 
         TEST_METHOD(amp_scan_exclusive_multi_tile_partial)
         {
-            std::vector<int> input(max_tile_size * 4 + 4);
+            std::vector<int> input(test_tile_size * 4 + 4);
             generate_data(input);
             concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             scan_sequential_exclusive(begin(input), end(input), begin(expected));
 
-            scan<max_tile_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
+            scan<test_tile_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
             input_vw.synchronize();
             Assert::IsTrue(expected == input, Msg(expected, input).c_str());
@@ -140,13 +140,13 @@ namespace amp_algorithms_tests
 
         TEST_METHOD(amp_scan_exclusive_recursive_scan)
         {
-            std::vector<int> input(max_tile_size * (max_tile_size + 2));
+            std::vector<int> input(test_tile_size * (test_tile_size + 2));
             generate_data(input);
             concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             scan_sequential_exclusive(begin(input), end(input), begin(expected));
 
-            scan<max_tile_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
+            scan<test_tile_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
             input_vw.synchronize();
             Assert::IsTrue(expected == input, Msg(expected, input).c_str());
@@ -154,13 +154,13 @@ namespace amp_algorithms_tests
 
         TEST_METHOD(amp_scan_exclusive)
         {
-            std::vector<int> input(max_tile_size * (max_tile_size + 10));
+            std::vector<int> input(test_tile_size * (test_tile_size + 10));
             generate_data(input);
             concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             scan_sequential_exclusive(begin(input), end(input), begin(expected));
 
-            scan<max_tile_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
+            scan<test_tile_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
             input_vw.synchronize();
             Assert::IsTrue(expected == input, Msg(expected, input).c_str());
@@ -168,27 +168,27 @@ namespace amp_algorithms_tests
 
         TEST_METHOD(amp_scan_inclusive_multi_tile)
         {
-            std::vector<int> input(max_tile_size * 4);
+            std::vector<int> input(test_tile_size * 4);
             //generate_data(input);
             std::iota(begin(input), end(input), 1);
             concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             scan_sequential_inclusive(begin(input), end(input), begin(expected));
 
-            scan<max_tile_size, scan_mode::inclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
+            scan<test_tile_size, scan_mode::inclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
             Assert::IsTrue(are_equal(expected, input_vw));
         }
 
         TEST_METHOD(amp_scan_inclusive_multi_tile_partial)
         {
-            std::vector<int> input(max_tile_size * 4 + 4, 1);
+            std::vector<int> input(test_tile_size * 4 + 4, 1);
             generate_data(input);
             concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             scan_sequential_inclusive(begin(input), end(input), begin(expected));
 
-            scan<max_tile_size, scan_mode::inclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
+            scan<test_tile_size, scan_mode::inclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
             input_vw.synchronize();
             Assert::IsTrue(expected == input, Msg(expected, input).c_str());
@@ -196,13 +196,13 @@ namespace amp_algorithms_tests
         
         TEST_METHOD(amp_scan_inclusive_recursive_scan)
         {
-            std::vector<int> input(max_tile_size * (max_tile_size + 2));
+            std::vector<int> input(test_tile_size * (test_tile_size + 2));
             generate_data(input);
             concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             scan_sequential_inclusive(begin(input), end(input), begin(expected));
 
-            scan<max_tile_size, scan_mode::inclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
+            scan<test_tile_size, scan_mode::inclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
             input_vw.synchronize();
             Assert::IsTrue(expected == input, Msg(expected, input).c_str());
@@ -210,14 +210,14 @@ namespace amp_algorithms_tests
 
         TEST_METHOD(amp_scan_inclusive)
         {
-            std::vector<int> input(max_tile_size * (max_tile_size + 10), 1);
+            std::vector<int> input(test_tile_size * (test_tile_size + 10), 1);
             generate_data(input);
             concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> result(input.size(), -1);
             std::vector<int> expected(input.size());
             scan_sequential_inclusive(begin(input), end(input), begin(expected));
 
-            scan<max_tile_size, scan_mode::inclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
+            scan<test_tile_size, scan_mode::inclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
             input_vw.synchronize();
             Assert::IsTrue(are_equal(expected, input_vw));

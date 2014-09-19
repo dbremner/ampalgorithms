@@ -173,6 +173,7 @@ namespace amp_algorithms
         }
 
         // Generic reduction of a 1D indexable view with a reduction binary functor
+
         template<unsigned int tile_size,
             unsigned int max_tiles,
             typename InputIndexableView,
@@ -254,12 +255,19 @@ namespace amp_algorithms
         }
 
         //----------------------------------------------------------------------------
-        // scan implementation
+        // scan - C++ AMP implementation
         //----------------------------------------------------------------------------
         //
         // References:
         //
         // "GPU Gems 3, chapter 39. Parallel Prefix Sum (Scan) with CUDA" http://http.developer.nvidia.com/GPUGems3/gpugems3_ch39.html
+        //
+        // https://research.nvidia.com/sites/default/files/publications/nvr-2008-003.pdf
+        // https://sites.google.com/site/duanemerrill/ScanTR2.pdf
+        //
+        // TODO: There may be some better scan implementations that are described in the second reference. Investigate.
+        // TODO: Scan only supports Rank of 1.
+        // TODO: Scan does not support forwards/backwards.
 
         static const int scan_default_tile_size = 512;
 
@@ -301,7 +309,7 @@ namespace amp_algorithms
         {
             typedef InputIndexableView::value_type T;
 
-            auto compute_domain = output_view.extent.tile<TileSize>().pad();
+            const auto compute_domain = output_view.extent.tile<TileSize>().pad();
             concurrency::array<T, 1> tile_results(compute_domain / TileSize, accl_view);
             concurrency::array_view<T, 1> tile_results_vw(tile_results);
 
@@ -326,8 +334,7 @@ namespace amp_algorithms
 
                 if (lidx == (TileSize - 1))
                 {
-                    val += current_value;
-                    tile_results_vw[tidx.tile[0]] = val;
+                    tile_results_vw[tidx.tile[0]] = val + current_value;
                 }
                 padded_write(output_view, gidx, tile_data[lidx]);
             });
@@ -362,9 +369,26 @@ namespace amp_algorithms
             concurrency::parallel_for_each(accl_view, compute_domain, [=](concurrency::tiled_index<TileSize> tidx) restrict(amp)
             {
                 const int gidx = tidx.global[0];
+
                 if (gidx < output_view.extent[0])
+                {
                     output_view[gidx] += tile_results_vw[tidx.tile[0]];
+                }
             });
+        }
+
+        //----------------------------------------------------------------------------
+        // segmented scan - C++ AMP implementation
+        //----------------------------------------------------------------------------
+        //
+        // References:
+        //
+        // "Efficient Parallel Scan Algorithms for GPUs" http://www.gpucomputing.net/sites/default/files/papers/2590/nvr-2008-003.pdf
+
+        template <int TileSize, scan_mode _Mode, typename _BinaryFunc, typename InputIndexableView>
+        inline void segmented_scan(const concurrency::accelerator_view& accl_view, const InputIndexableView& input_view, InputIndexableView& output_view, const _BinaryFunc& op)
+        {
+            // TODO_NOT_IMPLEMENTED: segmented_scan (Need this to remove the last DX dependency).
         }
 
         //----------------------------------------------------------------------------
