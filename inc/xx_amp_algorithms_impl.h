@@ -295,7 +295,7 @@ namespace amp_algorithms
         template <int TileSize, scan_mode _Mode, typename _BinaryOp, typename T>
         T scan_tile(T* const tile_data, concurrency::tiled_index<TileSize> tidx, const _BinaryOp& op) restrict(amp)
         {
-            static_assert(is_power_of_two<scan_warp_size>::value, "Warp size must be an exact power of 2.");
+            static_assert(static_is_power_of_two<scan_warp_size>::value, "Warp size must be an exact power of 2.");
 
             const int warp_max = _details::scan_warp_size - 1;
             const int lidx = tidx.local[0];

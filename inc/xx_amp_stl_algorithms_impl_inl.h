@@ -1029,8 +1029,10 @@ namespace amp_stl_algorithms
         {
             return dest_first;
         }
+        // TODO: input view should be const.
         auto input_view = _details::create_section(first, element_count);
         auto output_view = _details::create_section(dest_first, element_count);
+        output_view.discard_data();
 
         concurrency::parallel_for_each(output_view.extent, [func,input_view,output_view] (concurrency::index<1> idx) restrict(amp) {
             output_view[idx] = func(input_view[idx]);
@@ -1056,9 +1058,11 @@ namespace amp_stl_algorithms
         {
             return dest_first;
         }
+        // TODO: input view should be const.
         auto input1_view = _details::create_section(first1, element_count);
         auto input2_view = _details::create_section(first2, element_count);
         auto output_view = _details::create_section(dest_first, element_count);
+        output_view.discard_data();
 
         concurrency::parallel_for_each(output_view.extent, [func,input1_view,input2_view,output_view] (concurrency::index<1> idx) restrict(amp) {
             output_view[idx] = func(input1_view[idx], input2_view[idx]);

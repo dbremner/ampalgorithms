@@ -36,6 +36,73 @@ namespace amp_algorithms
 #pragma region Arithmetic, comparison, logical and bitwise operators
 
     //----------------------------------------------------------------------------
+    // Bitwise operations
+    //----------------------------------------------------------------------------
+
+    template <typename T>
+    class bit_and
+    {
+    public:
+        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return (a & b);
+        }
+    };
+
+    template <typename T>
+    class bit_or
+    {
+    public:
+        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return (a | b);
+        }
+    };
+
+    template <typename T>
+    class bit_xor
+    {
+    public:
+        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return (a ^ b);
+        }
+    };
+
+    namespace _details
+    {
+        static const unsigned int bit08 = 0x80;
+        static const unsigned int bit16 = 0x8000;
+        static const unsigned int bit32 = 0x80000000;
+
+        template<unsigned int N, int MaxBit>
+        struct is_bit_set
+        {
+            enum { value = (N & MaxBit) ? 1 : 0 };
+        };
+    };
+
+    template<unsigned int N, unsigned int MaxBit>
+    struct static_count_bits
+    {
+        enum { value = (_details::is_bit_set<N, MaxBit>::value + static_count_bits<N, (MaxBit >> 1)>::value) };
+    };
+
+    template<unsigned int N>
+    struct static_count_bits < N, 0 >
+    {
+        enum { value = FALSE };
+    };
+
+    template <typename T>
+    int count_bits(T value)
+    {
+        value = value - ((value >> 1) & 0x55555555);
+        value = (value & 0x33333333) + ((value >> 2) & 0x33333333);
+        return (((value + (value >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
+    }
+
+    //----------------------------------------------------------------------------
     // Arithmetic operations
     //----------------------------------------------------------------------------
 
@@ -118,78 +185,28 @@ namespace amp_algorithms
     };
 
     template<unsigned int N>
-    struct is_power_of_two
+    struct static_is_power_of_two
     {
-        enum { value = ((count_bits<N, _details::bit32>::value == 1) ? TRUE : FALSE) };
+        enum { value = ((static_count_bits<N, _details::bit32>::value == 1) ? TRUE : FALSE) };
     };
 
     // While 1 is technically 2^0, for the purposes of calculating 
     // tile size it isn't useful.
 
     template <>
-    struct is_power_of_two<1>
+    struct static_is_power_of_two<1>
     {
         enum { value = FALSE };
     };
 
-    //----------------------------------------------------------------------------
-    // Bitwise operations
-    //----------------------------------------------------------------------------
 
+    // TODO: Generalize this for other integer types.
     template <typename T>
-    class bit_and
+    bool is_power_of_two(T value)
     {
-    public:
-        T operator()(const T &a, const T &b) const restrict(cpu, amp)
-        {
-            return (a & b);
-        }
-    };
+        return count_bits(value) == 1;
+    }
 
-    template <typename T>
-    class bit_or
-    {
-    public:
-        T operator()(const T &a, const T &b) const restrict(cpu, amp)
-        {
-            return (a | b);
-        }
-    };
-
-    template <typename T>
-    class bit_xor
-    {
-    public:
-        T operator()(const T &a, const T &b) const restrict(cpu, amp)
-        {
-            return (a ^ b);
-        }
-    };
-
-    namespace _details
-    {
-        static const unsigned int bit08 = 0x80;
-        static const unsigned int bit16 = 0x8000;
-        static const unsigned int bit32 = 0x80000000;
-
-        template<unsigned int N, int MaxBit>
-        struct is_bit_set
-        {
-            enum { value = (N & MaxBit) ? 1 : 0 };
-        };
-    };
-
-    template<unsigned int N, unsigned int MaxBit>
-    struct count_bits
-    {
-        enum { value = (_details::is_bit_set<N, MaxBit>::value + count_bits<N, (MaxBit >> 1)>::value) };
-    };
-
-    template<unsigned int N>
-    struct count_bits<N, 0>
-    {
-        enum { value = FALSE };
-    };
 
     //----------------------------------------------------------------------------
     // Comparison operations
