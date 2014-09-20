@@ -80,13 +80,15 @@ namespace amp_algorithms
         public:
             std::vector<unsigned> data;
 
+
+#if _MSC_VER >= 1800
             bitvector() = delete;
             ~bitvector() = default;
             bitvector(const bitvector&) = default;
             //bitvector(bitvector&&) = default;
             bitvector& operator=(const bitvector&) = default;
             //bitvector& operator=(bitvector&&) = default;
-
+#endif
             bitvector(const unsigned data_size) : m_data_size(data_size)
             {
                 data = std::vector<unsigned>(bits_pad_to_uint(data_size), 0);
@@ -148,13 +150,14 @@ namespace amp_algorithms
         {
         public:
 
+#if _MSC_VER >= 1800
             scan() = delete;
             ~scan() = default;
             scan(const scan&) = delete;
             //scan(scan&&) = default;
             scan& operator=(const scan&) = delete;
             //scan& operator=(scan&&) = default;
-
+#endif
             // Constructs scan object, this constructor provides ability to define max_scan_count for multiscan
             scan(unsigned int max_scan_size, unsigned int max_scan_count, const concurrency::accelerator_view &target_accel_view = concurrency::accelerator().default_view) : m_scan_accelerator_view(target_accel_view)
             {

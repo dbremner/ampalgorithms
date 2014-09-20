@@ -418,7 +418,11 @@ private:
         TEST_METHOD(amp_details_radix_sort_tile_4_data_1024)
         {
             std::vector<int> input(1024, 1);
+#if _MSC_VER < 1800
+            std::iota(input.rbegin(), input.rend(), 0);
+#else
             std::iota(rbegin(input), rend(input), 0);
+#endif
             concurrency::array_view<int, 1> input_av(int(input.size()), input);
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 0);
@@ -434,7 +438,11 @@ private:
         TEST_METHOD(amp_details_radix_sort_tile_8_data_1024)
         {
             std::vector<int> input(1024, 1);
+#if _MSC_VER < 1800
+            std::iota(input.rbegin(), input.rend(), 0);
+#else
             std::iota(rbegin(input), rend(input), 0);
+#endif
             concurrency::array_view<int, 1> input_av(int(input.size()), input);
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 0);
@@ -450,7 +458,11 @@ private:
         TEST_METHOD(amp_details_radix_sort_tile_16_data_1024)
         {
             std::vector<int> input(1024, 1);
+#if _MSC_VER < 1800
+            std::iota(input.rbegin(), input.rend(), 0);
+#else
             std::iota(rbegin(input), rend(input), 0);
+#endif
             concurrency::array_view<int, 1> input_av(int(input.size()), input);
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 0);
@@ -466,7 +478,11 @@ private:
         TEST_METHOD(amp_details_radix_sort_tile_32_data_1024)
         {
             std::vector<int> input(1024, 1);
+#if _MSC_VER < 1800
+            std::iota(input.rbegin(), input.rend(), 0);
+#else
             std::iota(rbegin(input), rend(input), 0);
+#endif
             concurrency::array_view<int, 1> input_av(int(input.size()), input);
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 0);
@@ -483,7 +499,11 @@ private:
         TEST_METHOD(amp_radix_sort_16)
         {
             std::vector<int> input(16, 1);
+#if _MSC_VER < 1800
+            std::iota(input.rbegin(), input.rend(), 0);
+#else
             std::iota(rbegin(input), rend(input), 0);
+#endif
             concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 0);
@@ -499,7 +519,11 @@ private:
         TEST_METHOD(amp_radix_sort_64)
         {
             std::vector<int> input(64, 1);
+#if _MSC_VER < 1800
+            std::iota(input.rbegin(), input.rend(), 0);
+#else
             std::iota(rbegin(input), rend(input), 0);
+#endif
             concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 0);
@@ -515,7 +539,11 @@ private:
         TEST_METHOD(amp_radix_sort_128)
         {
             std::vector<int> input(128, 1);
+#if _MSC_VER < 1800
+            std::iota(input.rbegin(), input.rend(), 0);
+#else
             std::iota(rbegin(input), rend(input), 0);
+#endif
             concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 0);
