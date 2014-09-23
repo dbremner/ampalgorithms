@@ -84,6 +84,42 @@ namespace amp_algorithms_tests
             Assert::IsTrue(are_equal(expected, output_av));
         }
 
+        TEST_METHOD(amp_details_segment_scan_width_2)
+        {
+            std::array<unsigned, 16> input =    { 3, 2,   1, 6,   10, 11,   13,  1,   15, 10,    5, 14,     4,  12,     9,   8 };
+            // exclusive scan                     0, 3,   5, 6,   12, 22,   33, 47,   62, 77,   87, 92,   106, 118,   127, 135
+            std::array<unsigned, 16> expected = { 0, 3,   0, 1,    0, 10,    0, 13,    0, 15,    0,  5,     0,   4,    0,    9 };
+
+            scan_sequential_exclusive(begin(input), end(input), begin(input));
+            array_view<unsigned> input_av(int(input.size()), input);
+            std::array<unsigned, 16> output;
+
+            for (int i = 0; i < int(output.size()); ++i)
+            {
+                output[i] = amp_algorithms::_details::segment_exclusive_scan(input_av, 2, i);
+            }
+
+            Assert::IsTrue(are_equal(expected, output));
+        }
+
+        TEST_METHOD(amp_details_segment_scan_width_8)
+        {
+            std::array<unsigned, 16> input =    { 3, 2, 1, 6, 10, 11, 13,  1,   15, 10,  5, 14,   4,  12,   9,   8 };
+            // exclusive scan                     0, 3, 5, 6, 12, 22, 33, 46,   62, 77, 87, 92, 106, 118, 127, 135
+            std::array<unsigned, 16> expected = { 0, 3, 5, 6, 12, 22, 33, 46,    0, 15, 25, 30,  44,  48,  60,  69 };
+
+            scan_sequential_exclusive(begin(input), end(input), begin(input));
+            array_view<unsigned> input_av(int(input.size()), input);
+            std::array<unsigned, 16> output;
+
+            for (int i = 0; i < int(output.size()); ++i)
+            {
+                output[i] = amp_algorithms::_details::segment_exclusive_scan(input_av, 8, i);
+            }
+
+            Assert::IsTrue(are_equal(expected, output));
+        }
+
         TEST_METHOD(amp_details_scan_tile_exclusive_partial)
         {
             std::array<unsigned, 7> input =    { 3, 2, 1, 6, 10, 11,  5 };

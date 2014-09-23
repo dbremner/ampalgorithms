@@ -377,6 +377,15 @@ namespace amp_algorithms
             });
         }
 
+        // This takes an exclusive scan result and calculates the equivalent of a segmented scan at element i for a regular segment_width.
+        // It is used internally to do segmented scans without the need to use a heavier segmented scan with arbitrary segment widths.
+
+        template <typename T>
+        inline T segment_exclusive_scan(const array_view<T, 1>& exclusive_scan, const int segment_width, const int i) restrict(amp, cpu)
+        {
+            return exclusive_scan[i] - exclusive_scan[i - (i % segment_width)];
+        }
+
         //----------------------------------------------------------------------------
         // segmented scan - C++ AMP implementation
         //----------------------------------------------------------------------------
@@ -388,7 +397,7 @@ namespace amp_algorithms
         template <int TileSize, scan_mode _Mode, typename _BinaryFunc, typename InputIndexableView>
         inline void segmented_scan(const concurrency::accelerator_view& accl_view, const InputIndexableView& input_view, InputIndexableView& output_view, const _BinaryFunc& op)
         {
-            // TODO_NOT_IMPLEMENTED: segmented_scan (Need this to remove the last DX dependency).
+            // TODO_NOT_IMPLEMENTED: segmented_scan.
         }
 
         //----------------------------------------------------------------------------
