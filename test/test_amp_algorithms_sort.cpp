@@ -84,7 +84,7 @@ private:
             }
         }
 
-        TEST_METHOD(amp_details_radix_sort_tile_by_key_index_0_tile_4)
+        TEST_METHOD(amp_details_radix_sort_tile_by_key_with_index_0_tile_4_data_16)
         {
             std::array<unsigned, 16> input =     { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,   4, 12,  9,  8 };
             // Key 0 values, 2 bit key:            3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
@@ -112,7 +112,7 @@ private:
             Assert::IsTrue(are_equal(expected, input_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_tile_by_key_index_0_tile_32)
+        TEST_METHOD(amp_details_radix_sort_tile_by_key_with_index_0_tile_32_data_16)
         {
             std::array<unsigned, 16> input =     { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,   4, 12,  9,  8 };
             // rdx                                 3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
@@ -140,7 +140,7 @@ private:
             Assert::IsTrue(are_equal(expected, input_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_tile_by_key_index_0_tile_32_data_32)
+        TEST_METHOD(amp_details_radix_sort_tile_by_key_with_index_0_tile_32_data_32)
         {
             std::array<unsigned long, 32> input = { 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0 };
             // rdx                                 3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
@@ -174,7 +174,7 @@ private:
             Assert::IsTrue(are_equal(expected, input_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_tile_by_key_index_0_tile_256)
+        TEST_METHOD(amp_details_radix_sort_tile_by_key_with_index_0_tile_256_data_16)
         {
             std::array<unsigned, 16> input = { 3, 2, 1, 6, 10, 11, 13, 0, 15, 10, 5, 14, 4, 12, 9, 8 };
             // rdx                                 3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
@@ -202,7 +202,7 @@ private:
             Assert::IsTrue(are_equal(expected, input_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_tile_by_key_index_1_tile_4)
+        TEST_METHOD(amp_details_radix_sort_tile_by_key_with_index_1_tile_4_data_16)
         {
             std::array<unsigned, 16> input = { 1, 2, 6, 3, 0, 13, 10, 11, 5, 10, 14, 15, 4, 12, 8, 9 };
             // Key 1 values, 2 bit key:            0   0   1   0    0   3   2   2    1   2   3   3    1   3   2   2
@@ -229,7 +229,7 @@ private:
             Assert::IsTrue(are_equal(expected, input_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_by_key_index_0_tile_4)
+        TEST_METHOD(amp_details_radix_sort_by_key_with_index_0_tile_4_data_16)
         {
             // gidx                                                    0   1   2   3     4   5   6   7     8   9  10  11    12  13  14  15
             std::array<unsigned, 16> input =                         { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,    4, 12,  9,  8 };
@@ -239,7 +239,7 @@ private:
             std::array<unsigned, 16> per_tile_rdx_offsets =          { 0,  0,  1,  3,    0,  1,  2,  3,    0,  0,  1,  3,    0,  3,  4,  4 };
 
             std::array<unsigned, 16> per_tile_rdx_histograms_tp =    { 0,  1,  0,  3,    1,  1,  1,  1,    2,  1,  2,  0,    1,  1,  1,  0 };
-            std::array<unsigned, 16> tile_histogram_segscan =        { 0,  0,  1,  1,    0,  1,  2,  3,    0,  2,  3,  5,    0,  1,  2,  3 };  // seg scan result
+            std::array<unsigned, 16> tile_histogram_segscan =        { 0,  0,  1,  1,    0,  1,  2,  3,    0,  2,  3,  5,    0,  1,  2,  3 };
             std::array<unsigned, 16> tile_rdx_offsets =              { 0,  0,  0,  0,    0,  1,  2,  1,    1,  2,  3,  2,    1,  3,  5,  3 };
                                                                      
             std::array<unsigned, 16> global_histogram =              { 4,  4,  5,  3,                              0,0,0,0,0,0,0,0,0,0,0,0 };
@@ -271,7 +271,7 @@ private:
             array_view<unsigned> input_av(int(input.size()), input);
             std::array<unsigned, 16> output;
             array_view<unsigned> output_av(int(output.size()), output);
-            amp_algorithms::fill(output_av, 0);
+            amp_algorithms::fill(output_av, 404);
 
             amp_algorithms::_details::radix_sort_by_key<unsigned, 2, 4>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
 
@@ -279,7 +279,7 @@ private:
             Assert::IsTrue(are_equal(sorted_by_key_0, output_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_by_key_index_0_tile_8)
+        TEST_METHOD(amp_details_radix_sort_by_key_with_index_0_tile_8_data_16)
         {
             // gidx                                                    0   1   2   3   4   5   6   7     8   9  10  11  12  13  14  15
             std::array<unsigned, 16> input =                         { 3,  2,  1,  6, 10, 11, 13,  0,   15, 10,  5, 14,  4, 12,  9,  8 };
@@ -308,7 +308,7 @@ private:
             Assert::IsTrue(are_equal(sorted_by_key_0, output_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_by_key_index_0_tile_32)
+        TEST_METHOD(amp_details_radix_sort_by_key_with_index_0_tile_32_data_16)
         {
             // gidx                                                    0   1   2   3   4   5   6   7     8   9  10  11  12  13  14  15
             std::array<unsigned, 16> input =                         { 3,  2,  1,  6, 10, 11, 13,  0,   15, 10,  5, 14,  4, 12,  9,  8 };
@@ -336,23 +336,26 @@ private:
             Assert::IsTrue(are_equal(sorted_by_key_0, output_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_by_key_index_1_tile_4)
+        TEST_METHOD(amp_details_radix_sort_by_key_with_index_1_tile_4_data_16)
         {
+            // gidx                                                    0   1   2   3     4   5   6   7     8   9  10  11    12  13  14  15
             std::array<unsigned, 16> input =                         { 0,  4, 12,  8,   1, 13,  5,  9,    2,  6, 10, 10,   14,  3, 11, 15 };
+            // rdx                                                     0   0   1   0    0   3   2   2     1   2   3   3    1   3   2   2
+
             std::array<unsigned, 16> sorted_by_key_1 =               { 0,  1,  2,  3,   4,  5,  6,  8,    9, 10, 10, 11,   12, 13, 14, 15 };
 
             array_view<unsigned> input_av(int(input.size()), input);
             std::array<unsigned, 16> output;
             array_view<unsigned> output_av(int(output.size()), output);
-            amp_algorithms::fill(output_av, 0);
+            amp_algorithms::fill(output_av, 404);
 
-            amp_algorithms::_details::radix_sort_by_key<unsigned, 2, 8>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 1);
+            amp_algorithms::_details::radix_sort_by_key<unsigned, 2, 4>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 1);
 
             output_av.synchronize();
             Assert::IsTrue(are_equal(sorted_by_key_1, output_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_by_key_index_1_tile_8)
+        TEST_METHOD(amp_details_radix_sort_by_key_with_index_1_tile_8_data_16)
         {
             std::array<unsigned, 16> input =                         { 0,  4, 12,  8,    1, 13,  5,  9,    2,  6, 10, 10,   14,  3, 11, 15 };
             std::array<unsigned, 16> sorted_by_key_1 =               { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,   12, 13, 14, 15 };
@@ -367,7 +370,7 @@ private:
             Assert::IsTrue(are_equal(sorted_by_key_1, output_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_tile_4)
+        TEST_METHOD(amp_details_radix_sort_with_tile_4_data_16)
         {
             std::array<unsigned, 16> input =                         { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,    4, 12,  9,  8 };
             std::array<unsigned, 16> sorted =                        { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,   12, 13, 14, 15 };
@@ -382,7 +385,7 @@ private:
             Assert::IsTrue(are_equal(sorted, output_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_tile_8)
+        TEST_METHOD(amp_details_radix_sort_with_tile_8_data_16)
         {
             std::array<unsigned, 16> input =                         { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,    4, 12,  9,  8 };
             std::array<unsigned, 16> sorted =                        { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,   12, 13, 14, 15 };
@@ -397,7 +400,7 @@ private:
             Assert::IsTrue(are_equal(sorted, output_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_tile_32)
+        TEST_METHOD(amp_details_radix_sort_with_tile_32_data_16)
         {
             std::array<unsigned, 16> input =                         { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,    4, 12,  9,  8 };
             std::array<unsigned, 16> sorted =                        { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,   12, 13, 14, 15 };
@@ -412,7 +415,7 @@ private:
             Assert::IsTrue(are_equal(sorted, output_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_tile_4_data_1024)
+        TEST_METHOD(amp_details_radix_sort_with_tile_4_data_1024)
         {
             std::vector<int> input(1024, 1);
 #if _MSC_VER < 1800
@@ -432,7 +435,7 @@ private:
             Assert::IsTrue(are_equal(expected, output_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_tile_8_data_1024)
+        TEST_METHOD(amp_details_radix_sort_with_tile_8_data_1024)
         {
             std::vector<int> input(1024, 1);
 #if _MSC_VER < 1800
@@ -452,7 +455,7 @@ private:
             Assert::IsTrue(are_equal(expected, output_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_tile_16_data_1024)
+        TEST_METHOD(amp_details_radix_sort_with_tile_16_data_1024)
         {
             std::vector<int> input(1024, 1);
 #if _MSC_VER < 1800
@@ -472,7 +475,7 @@ private:
             Assert::IsTrue(are_equal(expected, output_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_tile_32_data_1024)
+        TEST_METHOD(amp_details_radix_sort_with_tile_32_data_1024)
         {
             std::vector<int> input(1024, 1);
 #if _MSC_VER < 1800
@@ -492,7 +495,7 @@ private:
             Assert::IsTrue(are_equal(expected, output_av));
         }
 
-        TEST_METHOD(amp_radix_sort_16)
+        TEST_METHOD(amp_radix_sort_with_data_16)
         {
             std::vector<int> input(16, 1);
 #if _MSC_VER < 1800
@@ -512,7 +515,7 @@ private:
             Assert::IsTrue(are_equal(expected, output_av));
         }
 
-        TEST_METHOD(amp_radix_sort_64)
+        TEST_METHOD(amp_radix_sort_with_data_64)
         {
             std::vector<int> input(64, 1);
 #if _MSC_VER < 1800
@@ -532,7 +535,7 @@ private:
             Assert::IsTrue(are_equal(expected, output_av));
         }
 
-        TEST_METHOD(amp_radix_sort_128)
+        TEST_METHOD(amp_radix_sort_with_data_128)
         {
             std::vector<int> input(128, 1);
 #if _MSC_VER < 1800

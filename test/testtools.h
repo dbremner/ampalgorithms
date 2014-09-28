@@ -278,25 +278,35 @@ namespace testtools
     template <typename T1, typename T2>
     bool are_equal(const T1& expected, const T2& actual)
     {    
+        const int output_range = 8;
         const size_t expected_count = std::distance(begin(expected), end(expected));
         const size_t actual_count = std::distance(begin(actual), end(actual));
 
         if (expected_count != actual_count)
         {
+            Logger::WriteMessage("Containers expected and actual are different sizes.");
             return false;
         }
 
+        std::ostringstream stream;
         bool is_same = true;
         for (int i = 0; i < int(expected_count); ++i)
         {
-            std::ostringstream stream;
-            stream << " [ " << i << " ] : " << expected[i] << " = " << actual[i];
-            Logger::WriteMessage(stream.str().c_str());
             if (expected[i] != actual[i])
             {
                 is_same = false;
             }
+
+            if ((i < output_range) || (i > int(expected_count - output_range)))
+            {
+                stream << " [ " << i << " ] : " << expected[i] << " = " << actual[i] << ((expected[i] != actual[i]) ? " Failed" : "") << std::endl;
+            }
+            else if ((expected_count > output_range * 2) && (i == output_range))
+            {
+                stream << " ..." << std::endl;
+            }
         }
+        Logger::WriteMessage(stream.str().c_str());
         return is_same;
     }
 
