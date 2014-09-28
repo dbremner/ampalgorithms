@@ -130,7 +130,7 @@ namespace amp_algorithms
         //----------------------------------------------------------------------------
         // reduce implementation
         //---------------------------------------------------------------------------- 
-
+        //
         // This function performs an in-place reduction through co-operating threads within a tile.
         // The input data is in the parameter "mem" and is reduced in-place modifying its existing contents
         // The output (reduced result) is contained in "mem[0]" at the end of this function
@@ -480,12 +480,6 @@ namespace amp_algorithms
             }
         }
 
-        // TODO: Need to remove this dependency on direct3d.
-        namespace direct3d
-        {
-            class scan;
-        }
-
         template <typename T, int key_bit_width, int tile_size>
         void radix_sort_by_key(const concurrency::accelerator_view& accl_view, const concurrency::array_view<T>& input_view, concurrency::array_view<T>& output_view, const int key_idx)
         {
@@ -581,12 +575,8 @@ namespace amp_algorithms
                 }
             });
 
-            // TODO: Need to remove this dependency on direct3d. Only using it because we don't have a segmented scan AMP-only implementation yet.
-            amp_algorithms::direct3d::bitvector flags(bin_count * tile_count);
-            flags.initialize(tile_count);
-            concurrency::array<unsigned int> input_flags(static_cast<unsigned>(flags.data.size()), flags.data.begin());
-            amp_algorithms::direct3d::scan s(bin_count * tile_count, accl_view);
-            s.segmented_scan_exclusive<int>(tile_histograms, tile_histograms, input_flags, amp_algorithms::direct3d::scan_direction::forward, amp_algorithms::plus<T>());
+            concurrency::array_view<int, 1> tile_histograms_vw(tile_histograms);
+            scan_exclusive(tile_histograms_vw, tile_histograms_vw);
 
             concurrency::parallel_for_each(accl_view, compute_domain, [=, &per_tile_rdx_offsets, &tile_histograms, &global_rdx_offsets](concurrency::tiled_index<tile_size> tidx) restrict(amp)
             {
@@ -594,10 +584,12 @@ namespace amp_algorithms
                 const int tlx = tidx.tile[0];
                 const int idx = tidx.local[0];
 
-                //if (idx < bin_count) { output_view[gidx] = per_tile_rdx_offsets[tlx][idx]; }              // Dump per tile offsets, per_tile_rdx_offsets
-                //if (idx < bin_count * tile_count) { output_view[gidx] = tile_histograms[gidx]; }          // Dump tile offsets, xxx
-                //if (idx < bin_count) { output_view[gidx] = tile_histograms[(idx * tile_count) + tlx]; }   // Dump tile offsets, tile_rdx_offsets
-                //output_view[gidx] = (gidx < bin_count) ? global_rdx_offsets[gidx] : 0;                    // Dump global offsets, global_rdx_offsets
+                // Check inputs from previous steps are correct:
+
+                //if (idx < bin_count) { output_view[gidx] = per_tile_rdx_offsets[tlx][idx]; }                                                          // Dump per tile offsets, per_tile_rdx_offsets
+                //if (idx < bin_count * tile_count) { output_view[gidx] = segment_exclusive_scan(tile_histograms_vw, tile_count, gidx); }               // Dump tile offsets, tile_histogram_segscan
+                //if (idx < bin_count) { output_view[gidx] = tile_histograms[(idx * tile_count) + tlx]; }                                               // Dump tile offsets, tile_rdx_offsets
+                //output_view[gidx] = (gidx < bin_count) ? global_rdx_offsets[gidx] : 0;                                                                // Dump global offsets, global_rdx_offsets
 
                 // Sort elements within each tile.
                 tile_static T tile_data[tile_size];
@@ -615,7 +607,12 @@ namespace amp_algorithms
 
                 // Move tile sorted elements to global destination.
                 const int rdx = _details::radix_key_value<T, key_bit_width>(tile_data[idx], key_idx);
-                const int dest_gidx = idx - per_tile_rdx_offsets[tlx][rdx] + tile_histograms[(rdx * tile_count) + tlx] + global_rdx_offsets[rdx];
+
+                const int dest_gidx = 
+                    idx - 
+                    per_tile_rdx_offsets[tlx][rdx] + 
+                    segment_exclusive_scan(tile_histograms_vw, tile_count, (rdx * tile_count) + tlx) +
+                    global_rdx_offsets[rdx];
 
                 //output_view[gidx] = dest_gidx;                                                            // Dump destination indices, dest_gidx
 
