@@ -411,6 +411,13 @@ namespace amp_algorithms
         padded_write<InputIndexableView, 1>(arr, concurrency::index<1>(idx), value);
     }
 
+    // TODO: Should this return an extent? Better name.
+    template <int N, typename InputIndexableView>
+    inline int tile_partial_data_size(const InputIndexableView& arr, tiled_index<N> tidx) restrict(amp)
+    {
+        return arr.extent.size() - tidx.tile[0] * tidx.tile_extent[0];
+    }
+    
 #pragma endregion
 
     //----------------------------------------------------------------------------
@@ -513,23 +520,6 @@ namespace amp_algorithms
     {
         return reduce(_details::auto_select_target(), input_view, binary_op);
     }
-
-    //----------------------------------------------------------------------------
-    // scan - C++ AMP implementation
-    //----------------------------------------------------------------------------
-    //
-    // Scan implementation using the same algorithm described here and used by the CUDPP library.
-    //
-    // https://research.nvidia.com/sites/default/files/publications/nvr-2008-003.pdf
-    //
-    // For a full overview of various scan implementations see:
-    //
-    // https://sites.google.com/site/duanemerrill/ScanTR2.pdf
-    //
-    // TODO: There may be some better scan implementations that are described in the second reference. Investigate.
-    // TODO: Scan only supports Rank of 1.
-    // TODO: Scan does not support segmented scan or forwards/backwards.
-    // TODO: IMPORTANT! Scan uses information about the warp size. Consider using an algorithm that does not need to use this.
 
     // This header needs these enums but they also have to be defined in the _impl header for use by the 
     // main STL header, which includes the _impl.

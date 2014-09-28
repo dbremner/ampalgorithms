@@ -130,16 +130,16 @@ namespace amp_algorithms
         //----------------------------------------------------------------------------
         // reduce implementation
         //---------------------------------------------------------------------------- 
-
+        //
         // This function performs an in-place reduction through co-operating threads within a tile.
         // The input data is in the parameter "mem" and is reduced in-place modifying its existing contents
         // The output (reduced result) is contained in "mem[0]" at the end of this function
         // The parameter "partial_data_length" is used to indicate if the size of data in "mem" to be
         // reduced is same as the tile size and if not what is the length of valid data in "mem".
-        template <typename T, unsigned int tile_size, typename functor>
-        void tile_local_reduction(T* const mem, concurrency::tiled_index<tile_size> tid, const functor& op, int partial_data_length) restrict(amp)
+
+        template <unsigned int tile_size, typename functor, typename T>
+        void reduce_tile(T* const mem, concurrency::tiled_index<tile_size> tid, const functor& op, int partial_data_length) restrict(amp)
         {
-            // local index
             int local = tid.local[0];
 
             if (partial_data_length < tile_size)
@@ -173,6 +173,7 @@ namespace amp_algorithms
         }
 
         // Generic reduction of a 1D indexable view with a reduction binary functor
+
         template<unsigned int tile_size,
             unsigned int max_tiles,
             typename InputIndexableView,
@@ -212,7 +213,7 @@ namespace amp_algorithms
                 result_type& smem = local_buffer[tid.local[0]];
 
                 // this variable is used to test if we are on the edge of data within tile
-                int partial_data_length = n - tid.tile[0] * tile_size;
+                int partial_data_length = tile_partial_data_size(input_view, tid);
 
                 // initialize local buffer
                 smem = input_view[concurrency::index<1>(idx)];
@@ -233,7 +234,7 @@ namespace amp_algorithms
                 tid.barrier.wait_with_tile_static_memory_fence();
 
                 // reduce all values in this tile
-                _details::tile_local_reduction(&smem, tid, binary_op, partial_data_length);
+                _details::reduce_tile(&smem, tid, binary_op, partial_data_length);
 
                 // only 1 thread per tile does the inter tile communication
                 if (tid.local[0] == 0)
@@ -254,89 +255,61 @@ namespace amp_algorithms
         }
 
         //----------------------------------------------------------------------------
-        // scan implementation
+        // scan - C++ AMP implementation
         //----------------------------------------------------------------------------
+        //
+        // References:
+        //
+        // "GPU Gems 3, chapter 39. Parallel Prefix Sum (Scan) with CUDA" http://http.developer.nvidia.com/GPUGems3/gpugems3_ch39.html
+        //
+        // https://research.nvidia.com/sites/default/files/publications/nvr-2008-003.pdf
+        // https://sites.google.com/site/duanemerrill/ScanTR2.pdf
+        //
+        // TODO: There may be some better scan implementations that are described in the second reference. Investigate.
+        // TODO: Scan only supports Rank of 1.
+        // TODO: Scan does not support forwards/backwards.
 
-        // The current scan implementation uses the warp size.
-#if (defined(USE_REF) || defined(_DEBUG))
-        static const int scan_warp_size = 4;
-        static const int scan_default_tile_size = 8;
-#else
-        static const int scan_warp_size = 32;
         static const int scan_default_tile_size = 512;
-#endif
 
-        // tile_data must have at least scan_warp_size elements.
-        template <amp_algorithms::scan_mode _Mode, typename _BinaryOp, typename T>
-        T scan_warp(T* const tile_data, const int idx, const _BinaryOp& op) restrict(amp)
+        template <int TileSize, typename _BinaryOp, typename T>
+        inline T scan_tile_exclusive(T* const tile_data, concurrency::tiled_index<TileSize> tidx, const _BinaryOp& op, const int partial_data_length) restrict(amp)
         {
-            const int warp_max = _details::scan_warp_size - 1;
-            const int widx = idx & warp_max;
-
-            if (widx >= 1)
-                tile_data[idx] = op(tile_data[idx - 1], tile_data[idx]);
-            if ((scan_warp_size > 2) && (widx >= 2))
-                tile_data[idx] = op(tile_data[idx - 2], tile_data[idx]);
-            if ((scan_warp_size > 4) && (widx >= 4))
-                tile_data[idx] = op(tile_data[idx - 4], tile_data[idx]);
-            if ((scan_warp_size > 8) && (widx >= 8))
-                tile_data[idx] = op(tile_data[idx - 8], tile_data[idx]);
-            if ((scan_warp_size > 16) && (widx >= 16))
-                tile_data[idx] = op(tile_data[idx - 16], tile_data[idx]);
-            if ((scan_warp_size > 32) && (widx >= 32))
-                tile_data[idx] = op(tile_data[idx - 32], tile_data[idx]);
-
-            if (_Mode == scan_mode::inclusive)
-                return tile_data[idx];
-            return (widx > 0) ? tile_data[idx - 1] : T(0);
-        }
-
-        // tile_data must have at least scan_warp_size elements.
-        template <int TileSize, scan_mode _Mode, typename _BinaryOp, typename T>
-        T scan_tile(T* const tile_data, concurrency::tiled_index<TileSize> tidx, const _BinaryOp& op) restrict(amp)
-        {
-            static_assert(static_is_power_of_two<scan_warp_size>::value, "Warp size must be an exact power of 2.");
-
-            const int warp_max = _details::scan_warp_size - 1;
             const int lidx = tidx.local[0];
-            const int warp_id = lidx >> log2<scan_warp_size>::value;
+ 
+            for (int stride = 1; stride <= (TileSize / 2); stride *= 2)
+            {
+                if ((lidx + 1) % (stride * 2) == 0)
+                {
+                    tile_data[lidx] = op(tile_data[lidx], tile_data[lidx - stride]);
+                }
+                tidx.barrier.wait_with_tile_static_memory_fence();
+            }
 
-            // Step 1: Intra-warp scan in each warp
-            auto val = scan_warp<_Mode, _BinaryOp, T>(tile_data, lidx, op);
+            if (lidx == 0)
+            {
+                tile_data[TileSize - 1] = 0;
+            }
             tidx.barrier.wait_with_tile_static_memory_fence();
 
-            // Step 2: Collect per-warp partial results
-            if ((lidx & warp_max) == warp_max)
-                tile_data[warp_id] = tile_data[lidx];
-            tidx.barrier.wait_with_tile_static_memory_fence();
-
-            // Step 3: Use 1st warp to scan per-warp results
-            if (warp_id == 0)
-                scan_warp<scan_mode::inclusive>(tile_data, lidx, op);
-            tidx.barrier.wait_with_tile_static_memory_fence();
-
-            // Step 4: Accumulate results from Steps 1 and 3
-            if (warp_id > 0)
-                val = op(tile_data[warp_id - 1], val);
-            tidx.barrier.wait_with_tile_static_memory_fence();
-
-            // Step 5: Write and return the final result
-            tile_data[lidx] = val;
-            tidx.barrier.wait_with_tile_static_memory_fence();
-            return val;
+            for (int stride = TileSize / 2; stride >= 1; stride /= 2)
+            {
+                if ((lidx + 1) % (stride * 2) == 0)
+                {
+                    auto tmp = tile_data[lidx];
+                    tile_data[lidx] = op(tile_data[lidx], tile_data[lidx - stride]);
+                    tile_data[lidx - stride] = tmp;
+                }
+                tidx.barrier.wait_with_tile_static_memory_fence();
+            }
+            return tile_data[TileSize - 1];
         }
 
         template <int TileSize, scan_mode _Mode, typename _BinaryFunc, typename InputIndexableView>
         inline void scan(const concurrency::accelerator_view& accl_view, const InputIndexableView& input_view, InputIndexableView& output_view, const _BinaryFunc& op)
         {
-            static_assert(TileSize >= _details::scan_warp_size, "Tile size must be at least the size of a single warp.");
-            static_assert(TileSize % _details::scan_warp_size == 0, "Tile size must be an exact multiple of warp size.");
-            static_assert(TileSize <= (_details::scan_warp_size * _details::scan_warp_size), "Tile size must less than or equal to the square of the warp size.");
-            assert(output_view.extent[0] >= _details::scan_warp_size);
-
             typedef InputIndexableView::value_type T;
 
-            auto compute_domain = output_view.extent.tile<TileSize>().pad();
+            const auto compute_domain = output_view.extent.tile<TileSize>().pad();
             concurrency::array<T, 1> tile_results(compute_domain / TileSize, accl_view);
             concurrency::array_view<T, 1> tile_results_vw(tile_results);
 
@@ -346,16 +319,22 @@ namespace amp_algorithms
             {
                 const int gidx = tidx.global[0];
                 const int lidx = tidx.local[0];
+                const int partial_data_length = tile_partial_data_size(output_view, tidx);
+
                 tile_static T tile_data[TileSize];
-                tile_data[lidx] = padded_read(input_view, gidx);
+                tile_data[lidx] = (lidx >= partial_data_length) ? 0 : input_view[gidx];
+                const T current_value = tile_data[lidx];
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
-                auto val = _details::scan_tile<TileSize, _Mode>(tile_data, tidx, amp_algorithms::plus<T>());
+                auto val = _details::scan_tile_exclusive<TileSize>(tile_data, tidx, amp_algorithms::plus<T>(), partial_data_length);
+                if (_Mode == scan_mode::inclusive)
+                {
+                    tile_data[lidx] += current_value;
+                }
+
                 if (lidx == (TileSize - 1))
                 {
-                    tile_results_vw[tidx.tile[0]] = val;
-                    if (_Mode == scan_mode::exclusive)
-                        tile_results_vw[tidx.tile[0]] += input_view[gidx];
+                    tile_results_vw[tidx.tile[0]] = val + current_value;
                 }
                 padded_write(output_view, gidx, tile_data[lidx]);
             });
@@ -372,11 +351,13 @@ namespace amp_algorithms
                 {
                     const int gidx = tidx.global[0];
                     const int lidx = tidx.local[0];
+                    const int partial_data_length = tile_partial_data_size(tile_results_vw, tidx);
+
                     tile_static T tile_data[TileSize];
                     tile_data[lidx] = tile_results_vw[gidx];
                     tidx.barrier.wait_with_tile_static_memory_fence();
 
-                    _details::scan_tile<TileSize, amp_algorithms::scan_mode::exclusive>(tile_data, tidx, amp_algorithms::plus<T>());
+                    _details::scan_tile_exclusive<TileSize>(tile_data, tidx, amp_algorithms::plus<T>(), partial_data_length);
 
                     tile_results_vw[gidx] = tile_data[lidx];
                     tidx.barrier.wait_with_tile_static_memory_fence();
@@ -388,9 +369,35 @@ namespace amp_algorithms
             concurrency::parallel_for_each(accl_view, compute_domain, [=](concurrency::tiled_index<TileSize> tidx) restrict(amp)
             {
                 const int gidx = tidx.global[0];
+
                 if (gidx < output_view.extent[0])
+                {
                     output_view[gidx] += tile_results_vw[tidx.tile[0]];
+                }
             });
+        }
+
+        // This takes an exclusive scan result and calculates the equivalent of a segmented scan at element i for a regular segment_width.
+        // It is used internally to do segmented scans without the need to use a heavier segmented scan with arbitrary segment widths.
+
+        template <typename T>
+        inline T segment_exclusive_scan(const array_view<T, 1>& exclusive_scan, const int segment_width, const int i) restrict(amp, cpu)
+        {
+            return exclusive_scan[i] - exclusive_scan[i - (i % segment_width)];
+        }
+
+        //----------------------------------------------------------------------------
+        // segmented scan - C++ AMP implementation
+        //----------------------------------------------------------------------------
+        //
+        // References:
+        //
+        // "Efficient Parallel Scan Algorithms for GPUs" http://www.gpucomputing.net/sites/default/files/papers/2590/nvr-2008-003.pdf
+
+        template <int TileSize, scan_mode _Mode, typename _BinaryFunc, typename InputIndexableView>
+        inline void segmented_scan(const concurrency::accelerator_view& accl_view, const InputIndexableView& input_view, InputIndexableView& output_view, const _BinaryFunc& op)
+        {
+            // TODO_NOT_IMPLEMENTED: segmented_scan.
         }
 
         //----------------------------------------------------------------------------
@@ -459,7 +466,7 @@ namespace amp_algorithms
             }
             tidx.barrier.wait_with_tile_static_memory_fence();
 
-            _details::scan_tile<tile_size, amp_algorithms::scan_mode::exclusive>(tile_radix_values, tidx, amp_algorithms::plus<unsigned long>());
+            _details::scan_tile_exclusive<tile_size>(tile_radix_values, tidx, amp_algorithms::plus<unsigned long>(), tile_size);
 
             // Shuffle data into sorted order.
 
@@ -471,12 +478,6 @@ namespace amp_algorithms
                 unsigned long dest_idx = histogram_bins_scan[rdx] + unpack_byte(tile_radix_values[idx], rdx);
                 tile_data[dest_idx] = tmp;
             }
-        }
-
-        // TODO: Need to remove this dependency on direct3d.
-        namespace direct3d
-        {
-            class scan;
         }
 
         template <typename T, int key_bit_width, int tile_size>
@@ -544,7 +545,7 @@ namespace amp_algorithms
                     tile_histograms[(idx * tile_count) + tlx] = per_thread_rdx_histograms[0][idx];
                 }
                 tidx.barrier.wait_with_tile_static_memory_fence();
-                _details::scan_tile<tile_size, scan_mode::exclusive>(per_thread_rdx_histograms[0], tidx, amp_algorithms::plus<T>());
+                _details::scan_tile_exclusive<tile_size>(per_thread_rdx_histograms[0], tidx, amp_algorithms::plus<T>(), tile_size);
 
                 if (idx < bin_count)
                 {
@@ -566,7 +567,7 @@ namespace amp_algorithms
                 }
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
-                _details::scan_tile<tile_size, scan_mode::exclusive>(scan_data, tidx, amp_algorithms::plus<T>());
+                _details::scan_tile_exclusive<tile_size>(scan_data, tidx, amp_algorithms::plus<T>(), tile_size);
 
                 if (gidx < bin_count)
                 {
@@ -574,12 +575,8 @@ namespace amp_algorithms
                 }
             });
 
-            // TODO: Need to remove this dependency on direct3d. Only using it because we don't have a segmented scan AMP-only implementation yet.
-            amp_algorithms::direct3d::bitvector flags(bin_count * tile_count);
-            flags.initialize(tile_count);
-            concurrency::array<unsigned int> input_flags(static_cast<unsigned>(flags.data.size()), flags.data.begin());
-            amp_algorithms::direct3d::scan s(bin_count * tile_count, accl_view);
-            s.segmented_scan_exclusive<int>(tile_histograms, tile_histograms, input_flags, amp_algorithms::direct3d::scan_direction::forward, amp_algorithms::plus<T>());
+            concurrency::array_view<int, 1> tile_histograms_vw(tile_histograms);
+            scan_exclusive(tile_histograms_vw, tile_histograms_vw);
 
             concurrency::parallel_for_each(accl_view, compute_domain, [=, &per_tile_rdx_offsets, &tile_histograms, &global_rdx_offsets](concurrency::tiled_index<tile_size> tidx) restrict(amp)
             {
@@ -587,10 +584,12 @@ namespace amp_algorithms
                 const int tlx = tidx.tile[0];
                 const int idx = tidx.local[0];
 
-                //if (idx < bin_count) { output_view[gidx] = per_tile_rdx_offsets[tlx][idx]; }              // Dump per tile offsets, per_tile_rdx_offsets
-                //if (idx < bin_count * tile_count) { output_view[gidx] = tile_histograms[gidx]; }          // Dump tile offsets, xxx
-                //if (idx < bin_count) { output_view[gidx] = tile_histograms[(idx * tile_count) + tlx]; }   // Dump tile offsets, tile_rdx_offsets
-                //output_view[gidx] = (gidx < bin_count) ? global_rdx_offsets[gidx] : 0;                    // Dump global offsets, global_rdx_offsets
+                // Check inputs from previous steps are correct:
+
+                //if (idx < bin_count) { output_view[gidx] = per_tile_rdx_offsets[tlx][idx]; }                                                          // Dump per tile offsets, per_tile_rdx_offsets
+                //if (idx < bin_count * tile_count) { output_view[gidx] = segment_exclusive_scan(tile_histograms_vw, tile_count, gidx); }               // Dump tile offsets, tile_histogram_segscan
+                //if (idx < bin_count) { output_view[gidx] = tile_histograms[(idx * tile_count) + tlx]; }                                               // Dump tile offsets, tile_rdx_offsets
+                //output_view[gidx] = (gidx < bin_count) ? global_rdx_offsets[gidx] : 0;                                                                // Dump global offsets, global_rdx_offsets
 
                 // Sort elements within each tile.
                 tile_static T tile_data[tile_size];
@@ -608,7 +607,12 @@ namespace amp_algorithms
 
                 // Move tile sorted elements to global destination.
                 const int rdx = _details::radix_key_value<T, key_bit_width>(tile_data[idx], key_idx);
-                const int dest_gidx = idx - per_tile_rdx_offsets[tlx][rdx] + tile_histograms[(rdx * tile_count) + tlx] + global_rdx_offsets[rdx];
+
+                const int dest_gidx = 
+                    idx - 
+                    per_tile_rdx_offsets[tlx][rdx] + 
+                    segment_exclusive_scan(tile_histograms_vw, tile_count, (rdx * tile_count) + tlx) +
+                    global_rdx_offsets[rdx];
 
                 //output_view[gidx] = dest_gidx;                                                            // Dump destination indices, dest_gidx
 

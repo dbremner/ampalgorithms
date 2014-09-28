@@ -140,8 +140,8 @@ namespace testtools
     inline void scan_sequential_exclusive(InIt first, InIt last, OutIt dest_first)
     {
         typedef InIt::value_type T;
-        int previous = T();
-        auto result = T();
+        int previous = T(0);
+        auto result = T(0);
 
         std::transform((first), last, (dest_first), [=, &result, &previous](const T& v)
         {
@@ -155,7 +155,7 @@ namespace testtools
     inline void scan_sequential_inclusive(InIt first, InIt last, OutIt dest_first)
     {
         typedef InIt::value_type T;
-        auto result = T();
+        auto result = T(0);
 
         std::transform(first, last, dest_first, [=, &result](const T& v)
         {
