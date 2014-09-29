@@ -497,22 +497,18 @@ private:
 
         TEST_METHOD(amp_radix_sort_with_data_16)
         {
-            std::vector<int> input(16, 1);
-#if _MSC_VER < 1800
-            std::iota(input.rbegin(), input.rend(), 0);
-#else
-            std::iota(rbegin(input), rend(input), 0);
-#endif
+            std::array<int, 16> input =                              { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,    4, 12,  9,  8 };
+            std::array<unsigned, 16> sorted_by_key_0 =               { 0,  4, 12,  8,    1, 13,  5,  9,    2,  6, 10, 10,   14,  3, 11, 15 };
+            std::array<int, 16> sorted_by_key_1 =                    { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,   12, 13, 14, 15 };
+
             concurrency::array_view<int, 1> input_vw(int(input.size()), input);
-            std::vector<int> expected(input.size());
-            std::iota(begin(expected), end(expected), 0);
-            std::vector<int> output(input.size(), 0);
+            std::vector<int> output(input.size(), 404);
             array_view<int> output_av(int(output.size()), output);
 
             radix_sort(input_vw, output_av);
 
             output_av.synchronize();
-            Assert::IsTrue(are_equal(expected, output_av));
+            Assert::IsTrue(are_equal(sorted_by_key_1, output_av));
         }
 
         TEST_METHOD(amp_radix_sort_with_data_64)
@@ -526,7 +522,7 @@ private:
             concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 0);
-            std::vector<int> output(input.size(), 0);
+            std::vector<int> output(input.size(), 404);
             array_view<int> output_av(int(output.size()), output);
 
             radix_sort(input_vw, output_av);
@@ -546,7 +542,7 @@ private:
             concurrency::array_view<int, 1> input_vw(int(input.size()), input);
             std::vector<int> expected(input.size());
             std::iota(begin(expected), end(expected), 0);
-            std::vector<int> output(input.size(), 0);
+            std::vector<int> output(input.size(), 404);
             array_view<int> output_av(int(output.size()), output);
 
             radix_sort(input_vw, output_av);

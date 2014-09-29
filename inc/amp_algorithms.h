@@ -477,7 +477,7 @@ namespace amp_algorithms
     template <typename T>
     inline void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<T>& input_view, concurrency::array_view<T>& output_view)
     {
-        static const int bin_width = 4;
+        static const int bin_width = 2;
         static const int tile_size = 128;
         _details::radix_sort<T, bin_width, tile_size>(accl_view, input_view, output_view);
     }
