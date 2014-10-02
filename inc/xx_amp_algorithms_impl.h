@@ -445,7 +445,7 @@ namespace amp_algorithms
             if (idx == 0)
             {
                 // Calculate histogram of radix values. Don't add values that are off the end of the data.
-
+                // TODO: Currently this only supports a bin width of two (four bins).
                 unsigned long global_histogram = 0;
 
                 const int tile_data_size = min<int>()(tile_size, (data_size - (tlx * tile_size)));
@@ -457,11 +457,9 @@ namespace amp_algorithms
                 // Scan to get offsets for each histogram bin.
 
                 histogram_bins_scan[0] = 0;
-                histogram_bins_scan[1] = unpack_byte<0>(global_histogram);
-                if (key_bit_width > 1)
+                for (int i = 1; i < bin_count; ++i)
                 {
-                    histogram_bins_scan[2] = unpack_byte<1>(global_histogram) +histogram_bins_scan[1];
-                    histogram_bins_scan[3] = unpack_byte<2>(global_histogram) +histogram_bins_scan[2];
+                    histogram_bins_scan[i] = unpack_byte(global_histogram, i - 1) + histogram_bins_scan[i - 1];
                 }
             }
             tidx.barrier.wait_with_tile_static_memory_fence();
@@ -492,6 +490,7 @@ namespace amp_algorithms
             static_assert((tile_size >= bin_count), "The tile size must be greater than or equal to the radix key bin count.");
             static_assert((type_width % key_bit_width == 0), "The sort key width must be divisible by the type width.");
             static_assert((key_bit_width % tile_key_bit_width == 0), "The key bit width must be divisible by the tile key bit width.");
+            static_assert(tile_key_bit_width > 2, "Only tile key bin widths of two or less are supported.");
 
             const concurrency::tiled_extent<tile_size> compute_domain = output_view.get_extent().tile<tile_size>().pad();
             const int tile_count = std::max(1u, compute_domain.size() / tile_size);

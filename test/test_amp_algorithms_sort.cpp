@@ -50,7 +50,7 @@ private:
             set_default_accelerator(L"amp_sort_tests");
         }
 
-        TEST_METHOD(amp_details_radix_key_value_tests)
+        TEST_METHOD(amp_details_radix_key_value_width_2_tests)
         {
             //  0 0000  0  0        8 1000  2  0
             //  1 0001  0  1        9 1001  2  1
@@ -80,6 +80,30 @@ private:
             for (auto t : theories)
             {
                 int result = amp_algorithms::_details::radix_key_value<int, 2>(std::get<parameter::value>(t), std::get<parameter::index>(t));
+                Assert::AreEqual(std::get<parameter::expected>(t), result);
+            }
+        }
+
+        TEST_METHOD(amp_details_radix_key_value_width_4_tests)
+        {
+            enum parameter
+            {
+                index = 0,
+                value = 1,
+                expected = 2
+            };
+
+            std::array<std::tuple<unsigned, int, int>, 5> theories =
+            {
+                std::make_tuple(0, 0x09,  9),   // 00001010
+                std::make_tuple(1, 0x03,  0),   // 00001011
+                std::make_tuple(1, 0x10,  1),   // 00010000
+                std::make_tuple(1, 0xAD, 10),   // 10101101
+            };
+
+            for (auto t : theories)
+            {
+                int result = amp_algorithms::_details::radix_key_value<int, 4>(std::get<parameter::value>(t), std::get<parameter::index>(t));
                 Assert::AreEqual(std::get<parameter::expected>(t), result);
             }
         }
