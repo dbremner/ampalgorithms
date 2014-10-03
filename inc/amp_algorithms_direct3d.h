@@ -37,22 +37,6 @@ namespace amp_algorithms
 
     namespace direct3d
     {
-        // TODO: Do we really need to have two definitions of scan_mode and scan_direction?
-
-        // direct3d namespace has its own declarations of scan_mode and scan_direction.
-
-        enum class scan_mode : int
-        {
-            exclusive = 0,
-            inclusive = 1
-        };
-
-        enum class scan_direction : int
-        {
-            forward = 0,
-            backward = 1
-        };
-
         // TODO: Write some tests for bitvector. Move it into the main amp_algorithms namespace?
 
         template <typename T>
@@ -122,13 +106,13 @@ namespace amp_algorithms
                 }
             }
 
-            bool is_bit_set(unsigned pos, amp_algorithms::direct3d::scan_direction direction)
+            bool is_bit_set(unsigned pos, amp_algorithms::scan_direction direction)
             {
                 // When we encounter flag going direction it means, 
                 // that it is the first element of this segment (last element to be scanned going direction)
                 // for simplification we increment 'pos' and always look for flags behind our current position.
 
-                if (direction == amp_algorithms::direct3d::scan_direction::backward)
+                if (direction == amp_algorithms::scan_direction::backward)
                 {
                     pos++;
                 }

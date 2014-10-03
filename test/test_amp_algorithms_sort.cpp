@@ -574,8 +574,6 @@ private:
             output_av.synchronize();
             Assert::IsTrue(are_equal(expected, output_av));
         }
-
-        // TODO: More tests for radix sort.
     };
 }; // namespace amp_algorithms_tests
 

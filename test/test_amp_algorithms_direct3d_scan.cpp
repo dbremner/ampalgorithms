@@ -73,50 +73,50 @@ namespace amp_algorithms_direct3d_tests
 
         TEST_METHOD(amp_dx_scan_backwards)
         {
-            test_scan<float>(amp_algorithms::direct3d::scan_direction::backward);
-            test_scan<unsigned int>(amp_algorithms::direct3d::scan_direction::backward);
-            test_scan<int>(amp_algorithms::direct3d::scan_direction::backward);
-            test_scan_bitwise_op<int>(amp_algorithms::direct3d::scan_direction::backward);
+            test_scan<float>(amp_algorithms::scan_direction::backward);
+            test_scan<unsigned int>(amp_algorithms::scan_direction::backward);
+            test_scan<int>(amp_algorithms::scan_direction::backward);
+            test_scan_bitwise_op<int>(amp_algorithms::scan_direction::backward);
         }
 
         TEST_METHOD(amp_dx_scan_forwards)
         {
-            test_scan<float>(amp_algorithms::direct3d::scan_direction::forward);
-            test_scan<unsigned int>(amp_algorithms::direct3d::scan_direction::forward);
-            test_scan<int>(amp_algorithms::direct3d::scan_direction::forward);
-            test_scan_bitwise_op<int>(amp_algorithms::direct3d::scan_direction::forward);
+            test_scan<float>(amp_algorithms::scan_direction::forward);
+            test_scan<unsigned int>(amp_algorithms::scan_direction::forward);
+            test_scan<int>(amp_algorithms::scan_direction::forward);
+            test_scan_bitwise_op<int>(amp_algorithms::scan_direction::forward);
         }
 
         TEST_METHOD(amp_dx_multiscan_backwards)
         {
-            test_multiscan<int>(amp_algorithms::direct3d::scan_direction::backward);
-            test_multiscan<unsigned int>(amp_algorithms::direct3d::scan_direction::backward);
-            test_multiscan<float>(amp_algorithms::direct3d::scan_direction::backward);
-            test_multiscan_bitwise_op<int>(amp_algorithms::direct3d::scan_direction::backward);
+            test_multiscan<int>(amp_algorithms::scan_direction::backward);
+            test_multiscan<unsigned int>(amp_algorithms::scan_direction::backward);
+            test_multiscan<float>(amp_algorithms::scan_direction::backward);
+            test_multiscan_bitwise_op<int>(amp_algorithms::scan_direction::backward);
         }
 
         TEST_METHOD(amp_dx_multiscan_forwards)
         {
-            test_multiscan<int>(amp_algorithms::direct3d::scan_direction::forward);
-            test_multiscan<unsigned int>(amp_algorithms::direct3d::scan_direction::forward);
-            test_multiscan<float>(amp_algorithms::direct3d::scan_direction::forward);
-            test_multiscan_bitwise_op<int>(amp_algorithms::direct3d::scan_direction::forward);
+            test_multiscan<int>(amp_algorithms::scan_direction::forward);
+            test_multiscan<unsigned int>(amp_algorithms::scan_direction::forward);
+            test_multiscan<float>(amp_algorithms::scan_direction::forward);
+            test_multiscan_bitwise_op<int>(amp_algorithms::scan_direction::forward);
         }
 
         TEST_METHOD(amp_dx_segmented_scan_backwards)
         {
-            test_segmented<int>(amp_algorithms::direct3d::scan_direction::backward);
-            test_segmented<unsigned int>(amp_algorithms::direct3d::scan_direction::backward);
-            test_segmented<float>(amp_algorithms::direct3d::scan_direction::backward);
-            test_segmented_bitwise_op<int>(amp_algorithms::direct3d::scan_direction::backward);
+            test_segmented<int>(amp_algorithms::scan_direction::backward);
+            test_segmented<unsigned int>(amp_algorithms::scan_direction::backward);
+            test_segmented<float>(amp_algorithms::scan_direction::backward);
+            test_segmented_bitwise_op<int>(amp_algorithms::scan_direction::backward);
         }
 
         TEST_METHOD(amp_dx_segmented_scan_forwards)
         {
-            test_segmented<int>(amp_algorithms::direct3d::scan_direction::forward);
-            test_segmented<unsigned int>(amp_algorithms::direct3d::scan_direction::forward);
-            test_segmented<float>(amp_algorithms::direct3d::scan_direction::forward);
-            test_segmented_bitwise_op<int>(amp_algorithms::direct3d::scan_direction::forward);
+            test_segmented<int>(amp_algorithms::scan_direction::forward);
+            test_segmented<unsigned int>(amp_algorithms::scan_direction::forward);
+            test_segmented<float>(amp_algorithms::scan_direction::forward);
+            test_segmented_bitwise_op<int>(amp_algorithms::scan_direction::forward);
         }
 
         TEST_METHOD(amp_dx_scan_other)
@@ -131,12 +131,12 @@ namespace amp_algorithms_direct3d_tests
             // 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ->
             s.scan_exclusive(input, input);
             // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ->
-            s.scan_exclusive(input, input, amp_algorithms::direct3d::scan_direction::forward, amp_algorithms::plus<unsigned int>());
+            s.scan_exclusive(input, input, amp_algorithms::scan_direction::forward, amp_algorithms::plus<unsigned int>());
             // 0, 0, 1, 3, 6, 10, 15, 21, 28, 36 ->
 
             unsigned int flg = 8; // 001000 in binary, so our segment is in here: 0, 0, 1, | 3, 6, 10, 15, 21, 28, 36
             concurrency::array<unsigned int> flags(1, &flg);
-            s.segmented_scan_exclusive(input, input, flags, amp_algorithms::direct3d::scan_direction::backward, amp_algorithms::plus<unsigned int>());
+            s.segmented_scan_exclusive(input, input, flags, amp_algorithms::scan_direction::backward, amp_algorithms::plus<unsigned int>());
             // 1, 1, 0, 116, 110, 100, 85, 64, 36, 0
 
             // Copy out
@@ -186,7 +186,7 @@ namespace amp_algorithms_direct3d_tests
             Assert::ExpectException<runtime_exception>([&]() {
                 amp_algorithms::direct3d::scan s2(elem_count, 1, ref_view);
                 concurrency::array<unsigned int, 2> in2(10, 10);
-                s2.multi_scan_exclusive(in2, in2, amp_algorithms::direct3d::scan_direction::forward, amp_algorithms::plus<unsigned int>());
+                s2.multi_scan_exclusive(in2, in2, amp_algorithms::scan_direction::forward, amp_algorithms::plus<unsigned int>());
             },
                 L"Expected exception for scan object with max_scan_count < scan_count");
 
@@ -203,7 +203,7 @@ namespace amp_algorithms_direct3d_tests
     private:
         template<typename T, typename BinaryFunction>
         void test_scan_internal(int column_count, BinaryFunction op, std::string test_name, 
-            amp_algorithms::direct3d::scan_direction direction, bool inplace, scan_type test_type = scan_type::scan, unsigned int row_count = 1)
+            amp_algorithms::scan_direction direction, bool inplace, scan_type test_type = scan_type::scan, unsigned int row_count = 1)
         {
 #ifdef _DEBUG
             column_count = std::min(200, column_count);
@@ -254,7 +254,7 @@ namespace amp_algorithms_direct3d_tests
         }
 
         template<typename T>
-        void test_scan(amp_algorithms::direct3d::scan_direction direction)
+        void test_scan(amp_algorithms::scan_direction direction)
         {
             test_scan_internal<T>(10, amp_algorithms::plus<T>(), "Test scan", direction, /*in_place=*/ false);
             test_scan_internal<T>(11, amp_algorithms::max<T>(), "Test scan", direction, /*in_place=*/ true);
@@ -263,14 +263,14 @@ namespace amp_algorithms_direct3d_tests
         }
 
         template<>
-        void test_scan<unsigned int>(amp_algorithms::direct3d::scan_direction direction)
+        void test_scan<unsigned int>(amp_algorithms::scan_direction direction)
         {
             test_scan_internal<unsigned int>(10, amp_algorithms::plus<unsigned int>(), "Test scan", direction, /*in_place=*/ true);
             test_scan_internal<unsigned int>(777, amp_algorithms::multiplies<unsigned int>(), "Test scan", direction, /*in_place=*/ false);
         }
 
         template<typename T>
-        void test_scan_bitwise_op(amp_algorithms::direct3d::scan_direction direction)
+        void test_scan_bitwise_op(amp_algorithms::scan_direction direction)
         {
             test_scan_internal<T>(77, amp_algorithms::bit_xor<T>(), "Test scan", direction, /*in_place=*/ true);
             test_scan_internal<T>(66, amp_algorithms::bit_and<T>(), "Test scan", direction, /*in_place=*/ false);
@@ -278,7 +278,7 @@ namespace amp_algorithms_direct3d_tests
         }
 
         template<typename T>
-        void test_multiscan(amp_algorithms::direct3d::scan_direction direction)
+        void test_multiscan(amp_algorithms::scan_direction direction)
         {
             test_scan_internal<T>(144, amp_algorithms::plus<T>(), "Test multiscan", direction, /*in_place=*/ false, scan_type::multiscan, 12);
             test_scan_internal<T>(2048, amp_algorithms::plus<T>(), "Test multiscan", direction, /*in_place=*/ true, scan_type::multiscan, 1024);
@@ -288,7 +288,7 @@ namespace amp_algorithms_direct3d_tests
         }
 
         template<>
-        void test_multiscan<unsigned int>(amp_algorithms::direct3d::scan_direction direction)
+        void test_multiscan<unsigned int>(amp_algorithms::scan_direction direction)
         {
             test_scan_internal<unsigned int>(144, amp_algorithms::plus<unsigned int>(), "Test multiscan", direction, /*in_place=*/ false, scan_type::multiscan, 12);
             test_scan_internal<unsigned int>(2048, amp_algorithms::plus<unsigned int>(), "Test multiscan", direction, /*in_place=*/ true, scan_type::multiscan, 64);
@@ -296,7 +296,7 @@ namespace amp_algorithms_direct3d_tests
         }
 
         template<typename T>
-        void test_multiscan_bitwise_op(amp_algorithms::direct3d::scan_direction direction)
+        void test_multiscan_bitwise_op(amp_algorithms::scan_direction direction)
         {
             test_scan_internal<T>(8, amp_algorithms::bit_and<T>(), "Test multiscan", direction, /*in_place=*/ true, scan_type::multiscan, 2);
             test_scan_internal<T>(2048, amp_algorithms::bit_or<T>(), "Test multiscan", direction, /*in_place=*/ false, scan_type::multiscan, 2);
@@ -304,7 +304,7 @@ namespace amp_algorithms_direct3d_tests
         }
 
         template<typename T>
-        void test_segmented(amp_algorithms::direct3d::scan_direction direction)
+        void test_segmented(amp_algorithms::scan_direction direction)
         {
             //test_scan_internal<T>(7123127, amp_algorithms::plus<T>(), "Test segmented scan", direction, /*inplace=*/false, scan_type::segmented);
             test_scan_internal<T>(31, amp_algorithms::multiplies<T>(), "Test segmented scan", direction, /*inplace=*/true, scan_type::segmented);
@@ -313,14 +313,14 @@ namespace amp_algorithms_direct3d_tests
         }
 
         template<>
-        void test_segmented<unsigned int>(amp_algorithms::direct3d::scan_direction direction)
+        void test_segmented<unsigned int>(amp_algorithms::scan_direction direction)
         {
             test_scan_internal<unsigned int>(7123127, amp_algorithms::plus<unsigned int>(), "Test segmented scan", direction, /*inplace=*/false, scan_type::segmented);
             test_scan_internal<unsigned int>(111, amp_algorithms::multiplies<unsigned int>(), "Test segmented scan", direction, /*inplace=*/true, scan_type::segmented);
         }
 
         template<typename T>
-        void test_segmented_bitwise_op(amp_algorithms::direct3d::scan_direction direction)
+        void test_segmented_bitwise_op(amp_algorithms::scan_direction direction)
         {
             test_scan_internal<T>(234, amp_algorithms::bit_and<T>(), "Test segmented scan", direction, /*inplace=*/false, scan_type::segmented);
             test_scan_internal<T>(432, amp_algorithms::bit_or<T>(), "Test segmented scan", direction, /*inplace=*/true, scan_type::segmented);
@@ -329,7 +329,7 @@ namespace amp_algorithms_direct3d_tests
 
         // A host side verification for scan, multiscan and segmented scan
         template <typename T, typename BinaryFunction>
-        void verify_scan_results(amp_algorithms::direct3d::scan_direction direction, bool exclusive, BinaryFunction op, std::vector<T> &in, std::vector<T> &out, 
+        void verify_scan_results(amp_algorithms::scan_direction direction, bool exclusive, BinaryFunction op, std::vector<T> &in, std::vector<T> &out, 
             unsigned int scan_size, unsigned int scan_pitch, unsigned int scan_count, amp_algorithms::direct3d::bitvector &flags)
         {
             // For each sub-scan
@@ -339,7 +339,7 @@ namespace amp_algorithms_direct3d_tests
                 for (unsigned int i=current_scan_num * scan_pitch; i < scan_size; ++i)
                 {
                     int pos = i; // pos is used to reference into output and input arrays depending on the direction we go from the front or the back
-                    if (direction == amp_algorithms::direct3d::scan_direction::backward)
+                    if (direction == amp_algorithms::scan_direction::backward)
                     {
                         pos = current_scan_num * scan_pitch + scan_size - 1 - i;
                     }
@@ -376,14 +376,14 @@ namespace amp_algorithms_direct3d_tests
         }
 
         template<typename T, typename BinaryFunction>
-        std::string get_extended_test_name(const std::string& test_name, const amp_algorithms::direct3d::scan_direction direction, const bool inplace)
+        std::string get_extended_test_name(const std::string& test_name, const amp_algorithms::scan_direction direction, const bool inplace)
         {
             std::stringstream postfix;
             postfix << test_name << " ";
             postfix << typeid(T).name() << " ";
             postfix << get_binary_function_info<BinaryFunction>().name();
 
-            postfix << (direction == amp_algorithms::direct3d::scan_direction::backward ? " backward" : " forward");
+            postfix << (direction == amp_algorithms::scan_direction::backward ? " backward" : " forward");
             postfix << (inplace ? " in-place" : " not-in-place");
 
             return postfix.str();

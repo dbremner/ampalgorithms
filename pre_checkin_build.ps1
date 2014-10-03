@@ -49,11 +49,6 @@ if (-not (test-path "${env:ProgramFiles(x86)}\Microsoft Visual Studio 12.0\VC"))
     write-host "`nVisual Studio 2013 not found at ${env:ProgramFiles(x86)}\Microsoft Visual Studio 12.0\VC" -fore red
     exit
 }
-if (-not (test-path "${env:ProgramFiles(x86)}\Microsoft Visual Studio 11.0\VC"))
-{
-    write-host "`nVisual Studio 2012 not found at ${env:ProgramFiles(x86)}\Microsoft Visual Studio 11.0\VC" -fore red
-    exit
-}
 if (-not (test-path "$env:VSINSTALLDIR"))
 {
     set-vsenv
@@ -77,13 +72,13 @@ $test_dir = "$build_dir/TestResults"
 $build_int = "$build_dir/Intermediate"
 $build_bin = "$build_dir/Bin"
 
-$vsvers = @( "11", "12")
+$vsvers = @( "12" )
 $configs = @( "Debug", "Release" )
 $platforms = @( "x64", "Win32" )
 
 if ($args -contains "/test")
 {
-    $builds = @( (New-Object 'Tuple[string, string, string]'("11", "Release", "Win32")), (New-Object 'Tuple[string, string, string]'("12", "Release", "Win32")))
+    $builds = @( ( New-Object 'Tuple[string, string, string]'("12", "Release", "Win32") ) )
     write-host "Test build: Building only Win32/Release." -fore yellow
 }
 else

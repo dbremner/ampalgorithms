@@ -27,7 +27,7 @@
 #include <amp_iterators.h>
 
 // TODO: Get the tests, header and internal implementations into the same logical order.
-// TODO: consider supporting the heap functions (is_heap etc)
+// TODO_NOT_IMPLEMENTED: consider supporting the heap functions (is_heap etc)
 
 namespace amp_stl_algorithms
 {
