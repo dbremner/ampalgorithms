@@ -479,7 +479,7 @@ namespace amp_algorithms
     {
         static const int bin_width = 2;
         static const int tile_size = 128;
-        _details::radix_sort<T, bin_width, tile_size>(accl_view, input_view, output_view);
+        _details::radix_sort<T, tile_size, bin_width>(accl_view, input_view, output_view);
     }
 
     // TODO: input_view should be a const.

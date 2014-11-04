@@ -39,11 +39,8 @@ namespace amp_algorithms_tests
     TEST_CLASS_CATEGORY(amp_sort_tests, "amp")
     // {
 private:
-#if (defined(USE_REF) || defined(_DEBUG))
-        static const int test_tile_size = 4;
-#else
         static const int test_tile_size = 256;
-#endif
+
     public:
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
@@ -108,7 +105,7 @@ private:
             }
         }
 
-        TEST_METHOD(amp_details_radix_sort_tile_by_key_with_index_0_tile_4_data_16)
+        TEST_METHOD(amp_details_radix_sort_tile_by_key_with_index_0_tile_4_bin_width_2_data_16)
         {
             std::array<unsigned, 16> input =     { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,   4, 12,  9,  8 };
             // Key 0 values, 2 bit key:            3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
@@ -126,7 +123,7 @@ private:
                 tile_data[idx] = input_av[gidx];
                 tidx.barrier.wait();
 
-                amp_algorithms::_details::radix_sort_tile_by_key<int, 2, 4>(tile_data, input_av.extent.size(), tidx, 0);
+                amp_algorithms::_details::radix_sort_tile_by_key<int, 4, 2>(tile_data, input_av.extent.size(), tidx, 0);
 
                 tidx.barrier.wait();
                 input_av[gidx] = tile_data[idx];
@@ -136,7 +133,7 @@ private:
             Assert::IsTrue(are_equal(expected, input_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_tile_by_key_with_index_0_tile_32_data_16)
+        TEST_METHOD(amp_details_radix_sort_tile_by_key_with_index_0_tile_32_bin_width_2_data_16)
         {
             std::array<unsigned, 16> input =     { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,   4, 12,  9,  8 };
             // rdx                                 3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
@@ -154,7 +151,7 @@ private:
                 tile_data[idx] = input_av[gidx];
                 tidx.barrier.wait();
 
-                amp_algorithms::_details::radix_sort_tile_by_key<int, 2, 32>(tile_data, input_av.extent.size(), tidx, 0);
+                amp_algorithms::_details::radix_sort_tile_by_key<int, 32, 2>(tile_data, input_av.extent.size(), tidx, 0);
 
                 tidx.barrier.wait();
                 input_av[gidx] = tile_data[idx];
@@ -164,7 +161,7 @@ private:
             Assert::IsTrue(are_equal(expected, input_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_tile_by_key_with_index_0_tile_32_data_32)
+        TEST_METHOD(amp_details_radix_sort_tile_by_key_with_index_0_tile_32_bin_width_2_data_32)
         {
             std::array<unsigned long, 32> input = { 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0 };
             // rdx                                 3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
@@ -185,7 +182,7 @@ private:
                 }
                 tidx.barrier.wait();
 
-                amp_algorithms::_details::radix_sort_tile_by_key<unsigned long, 2, 32>(tile_data, input_av.extent.size(), tidx, 0);
+                amp_algorithms::_details::radix_sort_tile_by_key<unsigned long, 32, 2>(tile_data, input_av.extent.size(), tidx, 0);
 
                 tidx.barrier.wait();
                 if (gidx < input_av.extent[0])
@@ -198,7 +195,41 @@ private:
             Assert::IsTrue(are_equal(expected, input_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_tile_by_key_with_index_0_tile_256_data_16)
+        TEST_METHOD(amp_details_radix_sort_tile_by_key_with_index_0_tile_32_bin_width_4_data_32)
+        {
+            std::array<unsigned long, 32> input = { 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0 };
+            // rdx                                 3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
+            std::array<unsigned long, 32> expected = { 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3 };
+            array_view<unsigned long> input_av(int(input.size()), input);
+
+            concurrency::tiled_extent<32> compute_domain = input_av.extent.tile<32>().pad();
+
+            concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<32> tidx) restrict(amp)
+            {
+                const int gidx = tidx.global[0];
+                const int idx = tidx.local[0];
+                tile_static unsigned long tile_data[32];
+
+                if (gidx < input_av.extent[0])
+                {
+                    tile_data[idx] = input_av[gidx];
+                }
+                tidx.barrier.wait();
+
+                amp_algorithms::_details::radix_sort_tile_by_key<unsigned long, 32, 2>(tile_data, input_av.extent.size(), tidx, 0);
+
+                tidx.barrier.wait();
+                if (gidx < input_av.extent[0])
+                {
+                    input_av[gidx] = tile_data[idx];
+                }
+            });
+
+            input_av.synchronize();
+            Assert::IsTrue(are_equal(expected, input_av));
+        }
+
+        TEST_METHOD(amp_details_radix_sort_tile_by_key_with_index_0_tile_256_bin_width_2_data_16)
         {
             std::array<unsigned, 16> input = { 3, 2, 1, 6, 10, 11, 13, 0, 15, 10, 5, 14, 4, 12, 9, 8 };
             // rdx                                 3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
@@ -216,7 +247,7 @@ private:
                 tile_data[idx] = input_av[gidx];
                 tidx.barrier.wait();
 
-                amp_algorithms::_details::radix_sort_tile_by_key<int, 2, 256>(tile_data, input_av.extent.size(), tidx, 0);
+                amp_algorithms::_details::radix_sort_tile_by_key<int, 256, 2>(tile_data, input_av.extent.size(), tidx, 0);
 
                 tidx.barrier.wait();
                 input_av[gidx] = tile_data[idx];
@@ -226,7 +257,7 @@ private:
             Assert::IsTrue(are_equal(expected, input_av));
         }
 
-        TEST_METHOD(amp_details_radix_sort_tile_by_key_with_index_1_tile_4_data_16)
+        TEST_METHOD(amp_details_radix_sort_tile_by_key_with_index_1_tile_4_bin_width_2_data_16)
         {
             std::array<unsigned, 16> input = { 1, 2, 6, 3, 0, 13, 10, 11, 5, 10, 14, 15, 4, 12, 8, 9 };
             // Key 1 values, 2 bit key:            0   0   1   0    0   3   2   2    1   2   3   3    1   3   2   2
@@ -243,7 +274,7 @@ private:
                 tile_data[idx] = input_av[gidx];
                 tidx.barrier.wait();
 
-                amp_algorithms::_details::radix_sort_tile_by_key<int, 2, 4>(tile_data, 16, tidx, 1);
+                amp_algorithms::_details::radix_sort_tile_by_key<int, 4, 2>(tile_data, 16, tidx, 1);
 
                 tidx.barrier.wait();
                 input_av[gidx] = tile_data[idx];
@@ -297,7 +328,7 @@ private:
             array_view<unsigned> output_av(int(output.size()), output);
             amp_algorithms::fill(output_av, 404);
 
-            amp_algorithms::_details::radix_sort_by_key<unsigned, 2, 4>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
+            amp_algorithms::_details::radix_sort_by_key<unsigned, 4, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
 
             output_av.synchronize();
             Assert::IsTrue(are_equal(sorted_by_key_0, output_av));
@@ -326,7 +357,7 @@ private:
             array_view<unsigned> output_av(int(output.size()), output);
             amp_algorithms::fill(output_av, 0);
 
-            amp_algorithms::_details::radix_sort_by_key<unsigned, 2, 8>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
+            amp_algorithms::_details::radix_sort_by_key<unsigned, 8, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
 
             output_av.synchronize();
             Assert::IsTrue(are_equal(sorted_by_key_0, output_av));
@@ -354,7 +385,7 @@ private:
             array_view<unsigned> output_av(int(output.size()), output); 
             amp_algorithms::fill(output_av, 0);
 
-            amp_algorithms::_details::radix_sort_by_key<unsigned, 2, 32>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
+            amp_algorithms::_details::radix_sort_by_key<unsigned, 32, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
 
             output_av.synchronize();
             Assert::IsTrue(are_equal(sorted_by_key_0, output_av));
@@ -373,7 +404,7 @@ private:
             array_view<unsigned> output_av(int(output.size()), output);
             amp_algorithms::fill(output_av, 404);
 
-            amp_algorithms::_details::radix_sort_by_key<unsigned, 2, 4>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 1);
+            amp_algorithms::_details::radix_sort_by_key<unsigned, 4, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 1);
 
             output_av.synchronize();
             Assert::IsTrue(are_equal(sorted_by_key_1, output_av));
@@ -388,7 +419,7 @@ private:
             array_view<unsigned> output_av(int(output.size()), output);
             amp_algorithms::fill(output_av, 0);
 
-            amp_algorithms::_details::radix_sort_by_key<unsigned, 2, 8>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 1);
+            amp_algorithms::_details::radix_sort_by_key<unsigned, 8, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 1);
 
             output_av.synchronize();
             Assert::IsTrue(are_equal(sorted_by_key_1, output_av));
@@ -403,7 +434,7 @@ private:
             array_view<unsigned> output_av(int(output.size()), output);
             amp_algorithms::fill(output_av, 0);
             
-            amp_algorithms::_details::radix_sort<unsigned, 2, 4>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
+            amp_algorithms::_details::radix_sort<unsigned, 4, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
 
             output_av.synchronize();
             Assert::IsTrue(are_equal(sorted, output_av));
@@ -418,7 +449,7 @@ private:
             array_view<unsigned> output_av(int(output.size()), output);
             amp_algorithms::fill(output_av, 0);
             
-            amp_algorithms::_details::radix_sort<unsigned, 2, 8>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
+            amp_algorithms::_details::radix_sort<unsigned, 8, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
 
             output_av.synchronize();
             Assert::IsTrue(are_equal(sorted, output_av));
@@ -433,7 +464,7 @@ private:
             array_view<unsigned> output_av(int(output.size()), output);
             amp_algorithms::fill(output_av, 0);
             
-            amp_algorithms::_details::radix_sort<unsigned, 2, 32>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
+            amp_algorithms::_details::radix_sort<unsigned, 32, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
 
             output_av.synchronize();
             Assert::IsTrue(are_equal(sorted, output_av));
@@ -453,7 +484,7 @@ private:
             std::vector<int> output(input.size(), 0);
             array_view<int> output_av(int(output.size()), output);
 
-            amp_algorithms::_details::radix_sort<int, 2, 4>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
+            amp_algorithms::_details::radix_sort<int, 4, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
 
             output_av.synchronize();
             Assert::IsTrue(are_equal(expected, output_av));
@@ -473,7 +504,7 @@ private:
             std::vector<int> output(input.size(), 0);
             array_view<int> output_av(int(output.size()), output);
 
-            amp_algorithms::_details::radix_sort<int, 2, 8>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
+            amp_algorithms::_details::radix_sort<int, 8, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
 
             output_av.synchronize();
             Assert::IsTrue(are_equal(expected, output_av));
@@ -493,7 +524,7 @@ private:
             std::vector<int> output(input.size(), 0);
             array_view<int> output_av(int(output.size()), output);
 
-            amp_algorithms::_details::radix_sort<int, 2, 16>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
+            amp_algorithms::_details::radix_sort<int, 16, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
 
             output_av.synchronize();
             Assert::IsTrue(are_equal(expected, output_av));
@@ -513,7 +544,7 @@ private:
             std::vector<int> output(input.size(), 0);
             array_view<int> output_av(int(output.size()), output);
 
-            amp_algorithms::_details::radix_sort<int, 2, 32>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
+            amp_algorithms::_details::radix_sort<int, 32, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
 
             output_av.synchronize();
             Assert::IsTrue(are_equal(expected, output_av));

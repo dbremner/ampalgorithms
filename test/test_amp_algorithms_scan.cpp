@@ -41,11 +41,7 @@ namespace amp_algorithms_tests
 
     private:
 
-#if (defined(USE_REF) || defined(_DEBUG))
-        static const int test_tile_size = 4;
-#else
-        static const int test_tile_size = 256;
-#endif
+    static const int test_tile_size = 256;
 
     public:
         TEST_CLASS_INITIALIZE(initialize_tests)
