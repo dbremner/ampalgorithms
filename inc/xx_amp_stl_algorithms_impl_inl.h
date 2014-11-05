@@ -262,27 +262,26 @@ namespace amp_stl_algorithms
         count_if( ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate p )
     {
         typedef typename std::iterator_traits<ConstRandomAccessIterator>::difference_type diff_type;
-
-        static const int num_threads = 10 * 1024;
-        diff_type count = 0;
-        concurrency::array_view<diff_type> count_av(1, &count);
-
-        diff_type element_count = std::distance(first, last);
+        const diff_type element_count = std::distance(first, last);
         if (element_count <= 0)
         {
             return 0;
         }
+
+        diff_type count = 0;
+        concurrency::array_view<diff_type> count_av(1, &count);
+
         auto section_view = _details::create_section(first, element_count);
 
         // TODO: Seems the global memory access isn't coherent. Can it be improved.
         // TODO: Would a reduction be more efficient than using an atomic operation here?
-        concurrency::parallel_for_each(
-            concurrency::extent<1>(num_threads),
-            [section_view,element_count,p,count_av] (concurrency::index<1> idx) restrict (amp) 
+        const int num_threads = std::min(element_count, 10 * 1024);
+        concurrency::parallel_for_each(concurrency::extent<1>(num_threads), 
+            [num_threads, section_view, element_count, p, count_av] (concurrency::index<1> idx) restrict (amp) 
         {
             int tid = idx[0];
             diff_type local_count = 0;
-            for (diff_type i=tid; i<element_count; i += num_threads) 
+            for (diff_type i = tid; i < element_count; i += num_threads)
             {
                 if (p(section_view(i)))
                 {
@@ -316,8 +315,8 @@ namespace amp_stl_algorithms
         {
             return true;
         }
+
         const int tile_size = 512;
-        static const int num_threads = 10 * 1024;
         auto section1_view = _details::create_section(first1, element_count);
         auto section2_view = _details::create_section(first2, element_count);
 
@@ -326,9 +325,9 @@ namespace amp_stl_algorithms
 
         // TODO: Seems the global memory access isn't coherent. Can it be improved.
         // TODO: Would a reduction be more efficient than using an atomic operation here?
-        concurrency::parallel_for_each(
-            tiled_extent<tile_size>(concurrency::extent<1>(num_threads)).pad(),
-            [section1_view, section2_view, element_count, p, unequal_count_av] (concurrency::tiled_index<tile_size> tidx) restrict (amp) 
+        const int num_threads = std::min(element_count, 10 * 1024);
+        concurrency::parallel_for_each(tiled_extent<tile_size>(concurrency::extent<1>(num_threads)).pad(),
+            [num_threads, section1_view, section2_view, element_count, p, unequal_count_av] (concurrency::tiled_index<tile_size> tidx) restrict (amp) 
         {
             int idx = tidx.global[0];
             diff_type i = idx;
