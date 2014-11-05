@@ -133,6 +133,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_CONSOLE;%(PreprocessorDefinitions); $(USE_REF);_DEBUG;</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\inc</AdditionalIncludeDirectories>
+      <AdditionalOptions>/Zc:inline /MP %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -177,6 +178,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;_CONSOLE;%(PreprocessorDefinitions); $(USE_REF);_NDEBUG</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\inc</AdditionalIncludeDirectories>
+      <AdditionalOptions>/Zc:inline /MP %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

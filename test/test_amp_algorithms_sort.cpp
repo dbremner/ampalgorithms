@@ -39,9 +39,9 @@ namespace amp_algorithms_tests
     TEST_CLASS_CATEGORY(amp_sort_tests, "amp")
     // {
 private:
-        static const int test_tile_size = 256;
+    static const int test_tile_size = 256;
 
-    public:
+public:
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
             set_default_accelerator(L"amp_sort_tests");
@@ -349,7 +349,8 @@ private:
 
             std::array<unsigned, 16> global_histogram =              { 4,  4,  5,  3,                          0,0,0,0,0,0,0,0,0,0,0,0 };
             std::array<unsigned, 16> global_rdx_offsets =            { 0,  4,  8, 13,                          0,0,0,0,0,0,0,0,0,0,0,0 };
-                                                                    
+            std::array<unsigned, 16> dest_gidx =                     { 4,  8,  9, 13,    0,  5, 10, 14,    6, 11, 12, 15,    1,  2,  3,  7 }; 
+                                                                  
             std::array<unsigned, 16> sorted_by_key_0 =               { 0,  4, 12,  8,  1, 13,  5,  9,    2,  6, 10, 10, 14,  3, 11, 15 };
                                                            
             array_view<unsigned> input_av(int(input.size()), input);
