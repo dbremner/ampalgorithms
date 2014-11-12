@@ -11,6 +11,9 @@
     </ClInclude>
     <ClInclude Include="..\inc\amp_algorithms_direct3d.h" />
     <ClInclude Include="..\inc\xx_amp_algorithms_direct3d_impl.h" />
+    <ClInclude Include="..\test\testtools_gtest.h">
+      <Filter>Tests</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Tests">

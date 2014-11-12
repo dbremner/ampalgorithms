@@ -21,10 +21,10 @@
     <ClCompile Include="..\test\examples_stl_amp_algorithms.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
-    <ClCompile Include="..\test\test_amp_stl_algorithms.cpp">
+    <ClCompile Include="..\test\test_amp_stl_iterators.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
-    <ClCompile Include="..\test\test_amp_stl_iterators.cpp">
+    <ClCompile Include="..\test\test_amp_stl_algorithms.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
   </ItemGroup>

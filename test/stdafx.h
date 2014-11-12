@@ -39,7 +39,7 @@
 #include <type_traits>
 #include <utility>
 
-#include <CppUnitTest.h>
+//#include <CppUnitTest.h>
 
 // Code coverage is optional and requires VS Premium or Ultimate.
 #ifdef CODECOVERAGE

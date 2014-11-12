@@ -364,6 +364,7 @@ namespace amp_stl_algorithms
         amp_stl_algorithms::generate(first, last, [value]() restrict(amp) { return value; });
     }
 
+    // TODO: fill_n should return an iterator
     template<typename RandomAccessIterator, typename Size, typename T>
     void fill_n( RandomAccessIterator first, Size count, const T& value )
     {
@@ -522,6 +523,7 @@ namespace amp_stl_algorithms
     // to be blittable and cannot contain any array, array_view, or textures.
     //----------------------------------------------------------------------------
 
+    // TODO: generate_n should return an iterator
     template<typename RandomAccessIterator, typename Size, typename Generator>
     void generate_n(RandomAccessIterator first, Size count, Generator g)
     {
