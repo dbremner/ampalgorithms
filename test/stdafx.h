@@ -40,8 +40,3 @@
 #include <utility>
 
 #include <CppUnitTest.h>
-
-// Code coverage is optional and requires VS Premium or Ultimate.
-#ifdef CODECOVERAGE
-#include <CodeCoverage\CodeCoverage.h>
-#endif

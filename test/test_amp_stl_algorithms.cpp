@@ -24,15 +24,6 @@
 #include <amp_stl_algorithms.h>
 #include "testtools.h"
 
-// Code coverage is optional and requires VS Premium or Ultimate.
-#ifdef CODECOVERAGE
-#pragma managed(push, off)
-ExcludeFromCodeCoverage(exclude_amp_stl_algorithms_tests, L"amp_stl_algorithms_tests::*");
-ExcludeFromCodeCoverage(exclude_testtools, L"testtools::*")
-ExcludeFromCodeCoverage(exclude_wrl, L"Microsoft::WRL::*")
-#pragma managed(pop)
-#endif
-
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace concurrency;
 using namespace amp_stl_algorithms;
@@ -88,11 +79,6 @@ namespace amp_stl_algorithms_tests
         {
             set_default_accelerator(L"amp_stl_algorithms_tests_configuration");
         }
-
-        //TEST_METHOD_CATEGORY(stl_accelerator_configuration, "stl")
-        //{
-        //    log_accellerator(L"amp_stl_algorithms_tests_configuration");
-        //}
     };
     
     // TODO: Get the tests, header and internal implementations into the same logical order.
