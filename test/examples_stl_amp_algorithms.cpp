@@ -41,6 +41,11 @@ namespace examples
             testtools::set_default_accelerator(L"stl_examples");
         }
 
+        TEST_METHOD_INITIALIZE(initialize_test)
+        {
+            accelerator().default_view.flush();
+        }
+
         // SAXPY functor (for both C++ and C++ AMP.
 
         struct saxpy_functor 

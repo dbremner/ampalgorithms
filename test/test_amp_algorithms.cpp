@@ -54,6 +54,11 @@ namespace amp_algorithms_tests
             set_default_accelerator(L"amp_padded_read_write_tests");
         }
 
+        TEST_METHOD_INITIALIZE(initialize_test)
+        {
+            accelerator().default_view.flush();
+        }
+
         TEST_METHOD_CATEGORY(amp_padded_read, "amp")
         {
             std::array<int, 10> vec = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
@@ -80,6 +85,11 @@ namespace amp_algorithms_tests
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
             set_default_accelerator(L"amp_operator_tests");
+        }
+
+        TEST_METHOD_INITIALIZE(initialize_test)
+        {
+            accelerator().default_view.flush();
         }
 
         TEST_METHOD_CATEGORY(amp_arithmetic_operators, "amp")
@@ -150,6 +160,11 @@ namespace amp_algorithms_tests
             set_default_accelerator(L"amp_reduce_tests");
         }
 
+        TEST_METHOD_INITIALIZE(initialize_test)
+        {
+            accelerator().default_view.flush();
+        }
+
         /*
         TEST_METHOD_CATEGORY(amp_reduce_double_sum)
         {
@@ -207,6 +222,11 @@ namespace amp_algorithms_tests
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
             set_default_accelerator(L"amp_functor_view_tests");
+        }
+
+        TEST_METHOD_INITIALIZE(initialize_test)
+        {
+            accelerator().default_view.flush();
         }
 
         TEST_METHOD_CATEGORY(amp_functor_view_float, "amp")
@@ -298,6 +318,11 @@ namespace amp_algorithms_tests
             set_default_accelerator(L"amp_transform_tests");
         }
 
+        TEST_METHOD_INITIALIZE(initialize_test)
+        {
+            accelerator().default_view.flush();
+        }
+
         TEST_METHOD_CATEGORY(amp_transform_unary, "amp")
         {
             const int height = 16;
@@ -361,6 +386,11 @@ namespace amp_algorithms_tests
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
             set_default_accelerator(L"amp_fill_tests");
+        }
+
+        TEST_METHOD_INITIALIZE(initialize_test)
+        {
+            accelerator().default_view.flush();
         }
 
         TEST_METHOD_CATEGORY(amp_fill_int, "amp")

@@ -28,6 +28,11 @@ namespace amp_stl_algorithms_tests
 {
     TEST_CLASS(stl_iterator_tests)
     {
+        TEST_METHOD_INITIALIZE(initialize_test)
+        {
+            accelerator().default_view.flush();
+        }
+
         TEST_METHOD_CATEGORY(stl_begin_end_array_view, "stl")
         {
             std::vector<int> v1(6);

@@ -49,6 +49,11 @@ namespace amp_algorithms_tests
             set_default_accelerator(L"amp_scan_tests");
         }
 
+        TEST_METHOD_INITIALIZE(initialize_test)
+        {
+            accelerator().default_view.flush();
+        }
+
         TEST_METHOD(amp_details_scan_tile_exclusive)
         {
             static const int tile_size = 4;

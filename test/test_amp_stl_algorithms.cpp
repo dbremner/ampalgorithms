@@ -91,6 +91,11 @@ namespace amp_stl_algorithms_tests
             set_default_accelerator(L"stl_pair_tests");
         }
 
+        TEST_METHOD_INITIALIZE(initialize_test)
+        {
+            accelerator().default_view.flush();
+        }
+
         TEST_METHOD_CATEGORY(stl_pair_property_accessors, "stl")
         {
             amp_stl_algorithms::pair<int, int> dat(1, 2);
@@ -146,6 +151,11 @@ namespace amp_stl_algorithms_tests
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
             set_default_accelerator(L"stl_algorithms_tests");
+        }
+
+        TEST_METHOD_INITIALIZE(initialize_test)
+        {
+            accelerator().default_view.flush();
         }
 
         //----------------------------------------------------------------------------

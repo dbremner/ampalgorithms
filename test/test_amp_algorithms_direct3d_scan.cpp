@@ -71,6 +71,11 @@ namespace amp_algorithms_direct3d_tests
             set_default_accelerator(L"amp_direct3d_scan_tests");
         }
 
+        TEST_METHOD_INITIALIZE(flush)
+        {
+            accelerator().default_view.flush();
+        }
+
         TEST_METHOD(amp_dx_scan_backwards)
         {
             test_scan<float>(amp_algorithms::scan_direction::backward);

@@ -47,6 +47,11 @@ public:
             set_default_accelerator(L"amp_sort_tests");
         }
 
+        TEST_METHOD_INITIALIZE(initialize_test)
+        {
+            accelerator().default_view.flush();
+        }
+
         TEST_METHOD(amp_details_radix_key_value_width_2_tests)
         {
             //  0 0000  0  0        8 1000  2  0
