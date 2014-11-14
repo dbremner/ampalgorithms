@@ -308,7 +308,7 @@ namespace amp_algorithms_direct3d_tests
         template<typename T>
         void test_segmented(amp_algorithms::scan_direction direction)
         {
-            //test_scan_internal<T>(7123127, amp_algorithms::plus<T>(), "Test segmented scan", direction, /*inplace=*/false, scan_type::segmented);
+            test_scan_internal<T>(7123127, amp_algorithms::plus<T>(), "Test segmented scan", direction, /*inplace=*/false, scan_type::segmented);
             test_scan_internal<T>(31, amp_algorithms::multiplies<T>(), "Test segmented scan", direction, /*inplace=*/true, scan_type::segmented);
             test_scan_internal<T>(222, amp_algorithms::min<T>(), "Test segmented scan", direction, /*inplace=*/false, scan_type::segmented);
             test_scan_internal<T>(333, amp_algorithms::max<T>(), "Test segmented scan", direction, /*inplace=*/true, scan_type::segmented);
