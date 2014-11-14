@@ -23,13 +23,6 @@
 #include "amp_stl_algorithms.h"
 #include "testtools.h"
 
-// Code coverage is optional and requires VS Premium or Ultimate.
-#ifdef CODECOVERAGE
-#pragma managed(push, off)
-ExcludeFromCodeCoverage(exclude_test_tool_tests, L"testtools_tests::*");
-#pragma managed(pop)
-#endif
-
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace concurrency;
 using namespace amp_stl_algorithms;

@@ -315,6 +315,7 @@ namespace amp_stl_algorithms
     template<typename RandomAccessIterator, typename T>
     void fill( RandomAccessIterator first, RandomAccessIterator last, const T& value );
 
+    // TODO: fill_n() should return an iterator for C++11 compliance.
     template<typename RandomAccessIterator, typename Size, typename T>
     void fill_n( RandomAccessIterator first, Size count, const T& value );
 
@@ -389,6 +390,7 @@ namespace amp_stl_algorithms
     template<typename RandomAccessIterator, typename Generator>
     void generate( RandomAccessIterator first, RandomAccessIterator last, Generator g );
 
+    // TODO: generate_n() should return an iterator for C++11 compliance.
     template<typename RandomAccessIterator, typename Size, typename Generator>
     void generate_n( RandomAccessIterator first, Size count, Generator g );
 

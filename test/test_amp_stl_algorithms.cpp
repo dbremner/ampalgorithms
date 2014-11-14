@@ -95,6 +95,7 @@ class stl_algorithms_tests : public stl_algorithms_testbase<13>, public ::testin
 // pair<T1, T2>
 //----------------------------------------------------------------------------
 
+
 TEST(stl_pair_tests, stl_pair_property_accessors)
 {
     amp_stl_algorithms::pair<int, int> input(1, 2);
@@ -179,6 +180,7 @@ TEST_F(stl_algorithms_tests, adjacent_difference_with_empty_array)
 {
     auto result_last = amp_stl_algorithms::adjacent_difference(begin(input_av), begin(input_av), begin(output_av));
     ASSERT_EQ(0, std::distance(begin(output_av), result_last));
+
 }
 
 TEST_F(stl_algorithms_tests, adjacent_difference_with_single_element_array)

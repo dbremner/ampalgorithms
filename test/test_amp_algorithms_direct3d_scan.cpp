@@ -62,13 +62,14 @@ namespace amp_algorithms_direct3d_tests
 
     TEST_CLASS_CATEGORY(amp_direct3d_scan_tests, "amp::direct3d")
     // {
-        // Run smaller array sizes in debug mode as the REF accelerator is much slower.
-        static const int max_debug_cols = 252;
-        static const int max_debug_rows = 3;
-
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
             set_default_accelerator(L"amp_direct3d_scan_tests");
+        }
+
+        TEST_METHOD_INITIALIZE(flush)
+        {
+            accelerator().default_view.wait();
         }
 
         TEST_METHOD(amp_dx_scan_backwards)
@@ -209,6 +210,7 @@ namespace amp_algorithms_direct3d_tests
             column_count = std::min(200, column_count);
             row_count = std::min(200u, row_count);
 #endif
+            accelerator().default_view.wait();
             Logger::WriteMessage(get_extended_test_name<T, BinaryFunction>(test_name, direction, inplace).c_str());
 
             std::vector<T> in(row_count * column_count);
@@ -306,7 +308,7 @@ namespace amp_algorithms_direct3d_tests
         template<typename T>
         void test_segmented(amp_algorithms::scan_direction direction)
         {
-            //test_scan_internal<T>(7123127, amp_algorithms::plus<T>(), "Test segmented scan", direction, /*inplace=*/false, scan_type::segmented);
+            test_scan_internal<T>(7123127, amp_algorithms::plus<T>(), "Test segmented scan", direction, /*inplace=*/false, scan_type::segmented);
             test_scan_internal<T>(31, amp_algorithms::multiplies<T>(), "Test segmented scan", direction, /*inplace=*/true, scan_type::segmented);
             test_scan_internal<T>(222, amp_algorithms::min<T>(), "Test segmented scan", direction, /*inplace=*/false, scan_type::segmented);
             test_scan_internal<T>(333, amp_algorithms::max<T>(), "Test segmented scan", direction, /*inplace=*/true, scan_type::segmented);
