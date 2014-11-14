@@ -92,7 +92,7 @@ namespace testtools
         }
 #endif
         log_accellerator(test_name);
-        accelerator().get_default_view().flush();
+        accelerator().get_default_view().wait();
     }
 
     //===============================================================================

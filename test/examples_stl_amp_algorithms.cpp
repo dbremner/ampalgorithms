@@ -43,7 +43,7 @@ namespace examples
 
         TEST_METHOD_INITIALIZE(initialize_test)
         {
-            accelerator().default_view.flush();
+            accelerator().default_view.wait();
         }
 
         // SAXPY functor (for both C++ and C++ AMP.

@@ -51,7 +51,7 @@ namespace amp_algorithms_tests
 
         TEST_METHOD_INITIALIZE(initialize_test)
         {
-            accelerator().default_view.flush();
+            accelerator().default_view.wait();
         }
 
         TEST_METHOD(amp_details_scan_tile_exclusive)

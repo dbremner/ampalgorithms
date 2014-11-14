@@ -62,10 +62,6 @@ namespace amp_algorithms_direct3d_tests
 
     TEST_CLASS_CATEGORY(amp_direct3d_scan_tests, "amp::direct3d")
     // {
-        // Run smaller array sizes in debug mode as the REF accelerator is much slower.
-        static const int max_debug_cols = 252;
-        static const int max_debug_rows = 3;
-
         TEST_CLASS_INITIALIZE(initialize_tests)
         {
             set_default_accelerator(L"amp_direct3d_scan_tests");
@@ -73,7 +69,7 @@ namespace amp_algorithms_direct3d_tests
 
         TEST_METHOD_INITIALIZE(flush)
         {
-            accelerator().default_view.flush();
+            accelerator().default_view.wait();
         }
 
         TEST_METHOD(amp_dx_scan_backwards)
@@ -214,6 +210,7 @@ namespace amp_algorithms_direct3d_tests
             column_count = std::min(200, column_count);
             row_count = std::min(200u, row_count);
 #endif
+            accelerator().default_view.wait();
             Logger::WriteMessage(get_extended_test_name<T, BinaryFunction>(test_name, direction, inplace).c_str());
 
             std::vector<T> in(row_count * column_count);

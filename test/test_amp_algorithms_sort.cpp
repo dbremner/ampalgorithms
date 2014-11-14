@@ -49,7 +49,7 @@ public:
 
         TEST_METHOD_INITIALIZE(initialize_test)
         {
-            accelerator().default_view.flush();
+            accelerator().default_view.wait();
         }
 
         TEST_METHOD(amp_details_radix_key_value_width_2_tests)

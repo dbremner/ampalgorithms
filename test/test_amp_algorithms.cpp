@@ -56,7 +56,7 @@ namespace amp_algorithms_tests
 
         TEST_METHOD_INITIALIZE(initialize_test)
         {
-            accelerator().default_view.flush();
+            accelerator().default_view.wait();
         }
 
         TEST_METHOD_CATEGORY(amp_padded_read, "amp")
@@ -89,7 +89,7 @@ namespace amp_algorithms_tests
 
         TEST_METHOD_INITIALIZE(initialize_test)
         {
-            accelerator().default_view.flush();
+            accelerator().default_view.wait();
         }
 
         TEST_METHOD_CATEGORY(amp_arithmetic_operators, "amp")
@@ -162,7 +162,7 @@ namespace amp_algorithms_tests
 
         TEST_METHOD_INITIALIZE(initialize_test)
         {
-            accelerator().default_view.flush();
+            accelerator().default_view.wait();
         }
 
         /*
@@ -226,7 +226,7 @@ namespace amp_algorithms_tests
 
         TEST_METHOD_INITIALIZE(initialize_test)
         {
-            accelerator().default_view.flush();
+            accelerator().default_view.wait();
         }
 
         TEST_METHOD_CATEGORY(amp_functor_view_float, "amp")
@@ -320,7 +320,7 @@ namespace amp_algorithms_tests
 
         TEST_METHOD_INITIALIZE(initialize_test)
         {
-            accelerator().default_view.flush();
+            accelerator().default_view.wait();
         }
 
         TEST_METHOD_CATEGORY(amp_transform_unary, "amp")
@@ -390,7 +390,7 @@ namespace amp_algorithms_tests
 
         TEST_METHOD_INITIALIZE(initialize_test)
         {
-            accelerator().default_view.flush();
+            accelerator().default_view.wait();
         }
 
         TEST_METHOD_CATEGORY(amp_fill_int, "amp")

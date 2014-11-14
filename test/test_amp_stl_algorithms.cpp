@@ -93,7 +93,7 @@ namespace amp_stl_algorithms_tests
 
         TEST_METHOD_INITIALIZE(initialize_test)
         {
-            accelerator().default_view.flush();
+            accelerator().default_view.wait();
         }
 
         TEST_METHOD_CATEGORY(stl_pair_property_accessors, "stl")
@@ -155,7 +155,7 @@ namespace amp_stl_algorithms_tests
 
         TEST_METHOD_INITIALIZE(initialize_test)
         {
-            accelerator().default_view.flush();
+            accelerator().default_view.wait();
         }
 
         //----------------------------------------------------------------------------

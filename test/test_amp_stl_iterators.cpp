@@ -30,7 +30,7 @@ namespace amp_stl_algorithms_tests
     {
         TEST_METHOD_INITIALIZE(initialize_test)
         {
-            accelerator().default_view.flush();
+            accelerator().default_view.wait();
         }
 
         TEST_METHOD_CATEGORY(stl_begin_end_array_view, "stl")
