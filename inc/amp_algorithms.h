@@ -69,6 +69,16 @@ namespace amp_algorithms
         }
     };
 
+    template <typename T>
+    class bit_not
+    {
+    public:
+        T operator()(const T &a) const restrict(cpu, amp)
+        {
+            return (~a);
+        }
+    };
+
     namespace _details
     {
         static const unsigned int bit08 = 0x80;
@@ -157,7 +167,7 @@ namespace amp_algorithms
     };
 
     template <typename T>
-    class negates
+    class negate
     {
     public:
         T operator()(const T &a) const restrict(cpu, amp)
