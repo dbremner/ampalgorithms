@@ -16,7 +16,7 @@
 * 
 * C++ AMP standard algorithm library.
 *
-* This file contains the unit tests for scan.
+* This file contains unit tests for scan.
 *---------------------------------------------------------------------------*/
 
 #include "stdafx.h"

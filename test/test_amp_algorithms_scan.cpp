@@ -16,7 +16,7 @@
 *
 * C++ AMP standard algorithms library.
 *
-* This file contains the helpers classes in amp_algorithms::_details namespace
+* This file contains unit tests.
 *---------------------------------------------------------------------------*/
 
 #include "stdafx.h"
