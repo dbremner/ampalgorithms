@@ -258,13 +258,17 @@ namespace testtools
     }
 
     template <typename T1, typename T2>
-    bool are_equal(const T1& expected, const T2& actual, int expected_size = 0)
+    bool are_equal(const T1& expected, const T2& actual, size_t expected_size = -1)
     {    
         const int output_range = 8;
-        if (expected_size == 0)
+        if (expected_size == -1)
         {
             expected_size = std::distance(begin(expected), end(expected));
             EXPECT_EQ(expected_size, std::distance(begin(actual), end(actual)));
+        }
+        if (expected_size == 0)
+        {
+            return true;
         }
 
         std::ostringstream stream;
@@ -409,3 +413,14 @@ namespace testtools
         return elapsed_time(start, end);
     }
 }; // namespace test_tools
+
+class testbase
+{
+protected:
+    testbase()
+    {
+        testtools::set_default_accelerator(L"stl_algorithms_tests");
+        accelerator().default_view.wait();
+    }
+};
+

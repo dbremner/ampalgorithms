@@ -32,8 +32,7 @@ using namespace testtools;
 int main(int argc, char **argv) 
 {
     ::testing::InitGoogleTest(&argc, argv);
-    auto r =  RUN_ALL_TESTS();
-    return r;
+    return  RUN_ALL_TESTS();
 }
 
 template <typename T>
@@ -59,7 +58,7 @@ const std::array<int, 13> remove_if_data[] = {
 };
 
 template<int _Size = 13>
-class stl_algorithms_testbase 
+class stl_algorithms_testbase : public testbase
 {
 protected:
     std::array<int, _Size> input;
@@ -68,24 +67,21 @@ protected:
     array_view<int> output_av;
     std::array<int, _Size> expected;
 
-    virtual void SetUp()
-    {
-        set_default_accelerator(L"stl_algorithms_tests");
-    }
-
     stl_algorithms_testbase() :
-        input_av(concurrency::extent<1>(input.size()), input),
-        output_av(concurrency::extent<1>(output.size()), output)
+        input_av(concurrency::extent<1>(int(input.size())), input),
+        output_av(concurrency::extent<1>(int(output.size())), output)
     {
         const std::array<int, _Size> input_data = { { 1, 3, 6, 3, 2, 2, 7, 8, 2, 9, 2, 10, 2 } };
         int i = 0;
         for (auto& v : input)
         {
-            v = input_data[i++];
+            v = input_data[i++ % 13];
         }
         std::fill(begin(output), end(output), -1);
         std::fill(begin(expected), end(expected), -1);
     }
+
+    static const int size = _Size;
 };
 
 class stl_algorithms_tests : public stl_algorithms_testbase<13>, public ::testing::Test {};
@@ -94,7 +90,6 @@ class stl_algorithms_tests : public stl_algorithms_testbase<13>, public ::testin
 //----------------------------------------------------------------------------
 // pair<T1, T2>
 //----------------------------------------------------------------------------
-
 
 TEST(stl_pair_tests, stl_pair_property_accessors)
 {
@@ -269,32 +264,25 @@ TEST_F(stl_algorithms_tests, copy)
     ASSERT_TRUE(are_equal(input, output_av));
 }
 
-class copy_if_tests : public stl_algorithms_testbase<13>, public ::testing::TestWithParam < std::array<int, 13> > {};
+class copy_if_tests : public stl_algorithms_testbase<13>, public ::testing::TestWithParam<std::array<int, 13>> {};
 
 TEST_P(copy_if_tests, test)
 {
     std::copy(cbegin(GetParam()), cend(GetParam()), begin(input));
     auto expected_iter = std::copy_if(begin(input), end(input), begin(expected), greater_than<int>());
-    int expected_size = std::distance(begin(expected), expected_iter);
+    auto expected_size = std::distance(begin(expected), expected_iter);
 
     auto iter = amp_stl_algorithms::copy_if(begin(input_av), end(input_av), begin(output_av), greater_than<int>());
 
     ASSERT_EQ(expected_size, std::distance(begin(output_av), iter));
-    ASSERT_TRUE(are_equal(expected, output_av, expected_size -1));
+    ASSERT_TRUE(are_equal(expected, output_av, expected_size));
 }
 
 INSTANTIATE_TEST_CASE_P(stl_algorithms_tests, copy_if_tests, ::testing::ValuesIn(remove_if_data));
 
-//        TEST_METHOD_CATEGORY(stl_copy_if_multi_tile)
-//        {
-//            std::vector<int> numbers4(test_array_size<int>());
-//            generate_data(numbers4);
-//            test_copy_if(begin(numbers4), end(numbers4));
-//        }
-
 TEST_F(stl_algorithms_tests, copy_n)
 {
-    int size = input.size() / 2;
+    int size = int(input.size() / 2);
     std::copy_n(cbegin(input), size, begin(expected));
     auto iter = amp_stl_algorithms::copy_n(begin(input_av), size, begin(output_av));
 
@@ -343,8 +331,8 @@ protected:
     array_view<int> unequal_av;
 
     stl_algorithms_tests_2() :
-        equal_av(concurrency::extent<1>(input.size()), equal),
-        unequal_av(concurrency::extent<1>(output.size()), unequal)
+        equal_av(concurrency::extent<1>(int(input.size())), equal),
+        unequal_av(concurrency::extent<1>(int(output.size())), unequal)
     {
         std::copy(cbegin(input), cend(input), begin(equal));
         std::copy(cbegin(input), cend(input), begin(unequal));
@@ -409,7 +397,7 @@ TEST_F(stl_algorithms_tests, fill)
 
 TEST_F(stl_algorithms_tests, fill_n)
 {
-    int size = input.size() / 2;
+    int size = int(input.size() / 2);
     std::fill_n(begin(input), size, 3);
     amp_stl_algorithms::fill_n(begin(input_av), size, 3);
 
@@ -488,8 +476,8 @@ TEST_P(adjacent_find_tests, test)
     std::vector<int> input(cbegin(GetParam()), cend(GetParam()));
     array_view<int> input_av(10, input);
 
-    int expected = std::distance(cbegin(input), std::adjacent_find(cbegin(input), cend(input)));
-    int r = std::distance(begin(input_av), amp_stl_algorithms::adjacent_find(begin(input_av), end(input_av)));
+    auto expected = std::distance(cbegin(input), std::adjacent_find(cbegin(input), cend(input)));
+    auto r = std::distance(begin(input_av), amp_stl_algorithms::adjacent_find(begin(input_av), end(input_av)));
 
     ASSERT_EQ(expected, r);
 }
@@ -539,35 +527,35 @@ TEST_F(stl_algorithms_tests, generate_n)
 // inner_product
 //----------------------------------------------------------------------------
 
-//        TEST_METHOD_CATEGORY(stl_inner_product)
-//        {
-//            std::vector<int> vec1(1024);
-//            std::fill(begin(vec1), end(vec1), 1);
-//            array_view<int> av1(1024, vec1);
-//            std::vector<int> vec2(1024);
-//            std::fill(begin(vec2), end(vec2), 2);
-//            array_view<int> av2(1024, vec2);
-//            int expected = std::inner_product(begin(vec1), end(vec1), begin(vec2), 2);
-//
-//            int result = amp_stl_algorithms::inner_product(begin(av1), end(av1), begin(av2), 2);
-//
-//            ASSERT_EQ(expected, result);
-//        }
-//
-//        TEST_METHOD_CATEGORY(stl_inner_product_pred)
-//        {
-//            std::vector<int> vec1(1024);
-//            std::fill(begin(vec1), end(vec1), 1);
-//            array_view<int> av1(1024, vec1);
-//            std::vector<int> vec2(1024);
-//            std::fill(begin(vec2), end(vec2), 2);
-//            array_view<int> av2(1024, vec2);
-//            int expected = std::inner_product(begin(vec1), end(vec1), begin(vec2), 2, std::plus<int>(), std::plus<int>());
-//
-//            int result = amp_stl_algorithms::inner_product(begin(av1), end(av1), begin(av2), 2, amp_algorithms::plus<int>(), amp_algorithms::plus<int>());
-//
-//            ASSERT_EQ(expected, result);
-//        }
+TEST_F(stl_algorithms_tests, inner_product)
+{
+    std::vector<int> vec1(1024);
+    std::fill(begin(vec1), end(vec1), 1);
+    array_view<int> av1(1024, vec1);
+    std::vector<int> vec2(1024);
+    std::fill(begin(vec2), end(vec2), 2);
+    array_view<int> av2(1024, vec2);
+    int expected = std::inner_product(begin(vec1), end(vec1), begin(vec2), 2);
+
+    int result = amp_stl_algorithms::inner_product(begin(av1), end(av1), begin(av2), 2);
+
+    ASSERT_EQ(expected, result);
+}
+
+TEST_F(stl_algorithms_tests, inner_product_pred)
+{
+    std::vector<int> vec1(1024);
+    std::fill(begin(vec1), end(vec1), 1);
+    array_view<int> av1(1024, vec1);
+    std::vector<int> vec2(1024);
+    std::fill(begin(vec2), end(vec2), 2);
+    array_view<int> av2(1024, vec2);
+    int expected = std::inner_product(begin(vec1), end(vec1), begin(vec2), 2, std::plus<int>(), std::plus<int>());
+
+    int result = amp_stl_algorithms::inner_product(begin(av1), end(av1), begin(av2), 2, amp_algorithms::plus<int>(), amp_algorithms::plus<int>());
+
+    ASSERT_EQ(expected, result);
+}
 
 //----------------------------------------------------------------------------
 // iota
@@ -643,7 +631,7 @@ TEST_P(remove_tests, test)
 {
     std::copy(begin(GetParam()), end(GetParam()), begin(expected));
     auto expected_iter = std::remove(begin(expected), end(expected), 1);
-    int expected_size = std::distance(begin(expected), expected_iter);
+    auto expected_size = std::distance(begin(expected), expected_iter);
     std::copy(cbegin(GetParam()), cend(GetParam()), begin(input));
 
     auto iter = amp_stl_algorithms::remove(begin(input_av), end(input_av), 1);
@@ -660,7 +648,7 @@ TEST_P(remove_if_tests, test)
 {
     std::copy(begin(GetParam()), end(GetParam()), begin(expected));
     auto expected_iter = std::remove_if(begin(expected), end(expected), greater_than<int>());
-    int expected_size = std::distance(begin(expected), expected_iter);
+    auto expected_size = std::distance(begin(expected), expected_iter);
     std::copy(cbegin(GetParam()), cend(GetParam()), begin(input));
 
     auto iter = amp_stl_algorithms::remove_if(begin(input_av), end(input_av), greater_than<int>());
@@ -675,18 +663,18 @@ class remove_copy_tests : public stl_algorithms_testbase<13>, public ::testing::
 
 TEST_P(remove_copy_tests, test)
 {
-    std::array<int, 13> expected_output;
+    std::array<int, size> expected_output;
     std::fill(begin(expected_output), end(expected_output), -1);
     std::copy(begin(GetParam()), end(GetParam()), begin(expected));
     auto expected_iter = std::remove_copy(begin(expected), end(expected), begin(expected_output), 1);
     std::copy(cbegin(GetParam()), cend(GetParam()), begin(input));
-    int expected_size = std::distance(begin(expected_output), expected_iter);
+    auto expected_size = std::distance(begin(expected_output), expected_iter);
 
     auto iter = amp_stl_algorithms::remove_copy(begin(input_av), end(input_av), begin(output_av), 1);
 
     ASSERT_EQ(expected_size, std::distance(begin(input_av), iter));
-    ASSERT_TRUE(are_equal(expected, input_av, 12 - expected_size));
-    ASSERT_TRUE(are_equal(expected_output, output_av, expected_size - 1));
+    ASSERT_TRUE(are_equal(expected, input_av, size - expected_size));
+    ASSERT_TRUE(are_equal(expected_output, output_av, expected_size));
 }
 
 INSTANTIATE_TEST_CASE_P(stl_algorithms_tests, remove_copy_tests, ::testing::ValuesIn(remove_if_data));
@@ -695,18 +683,18 @@ class remove_copy_if_tests : public stl_algorithms_testbase<13>, public ::testin
 
 TEST_P(remove_copy_if_tests, test)
 {
-    std::array<int, 13> expected_output;
+    std::array<int, size> expected_output;
     std::fill(begin(expected_output), end(expected_output), -1);
     std::copy(begin(GetParam()), end(GetParam()), begin(expected));
     auto expected_iter = std::remove_copy_if(begin(expected), end(expected), begin(expected_output), greater_than<int>());
     std::copy(cbegin(GetParam()), cend(GetParam()), begin(input));
-    int expected_size = std::distance(begin(expected_output), expected_iter);
+    auto expected_size = std::distance(begin(expected_output), expected_iter);
 
     auto iter = amp_stl_algorithms::remove_copy_if(begin(input_av), end(input_av), begin(output_av), greater_than<int>());
 
     ASSERT_EQ(expected_size, std::distance(begin(input_av), iter));
-    ASSERT_TRUE(are_equal(expected, input_av, 12 - expected_size));
-    ASSERT_TRUE(are_equal(expected_output, output_av, expected_size - 1));
+    ASSERT_TRUE(are_equal(expected, input_av, size - expected_size));
+    ASSERT_TRUE(are_equal(expected_output, output_av, expected_size));
 }
 
 INSTANTIATE_TEST_CASE_P(stl_algorithms_tests, remove_copy_if_tests, ::testing::ValuesIn(remove_if_data));
@@ -763,7 +751,7 @@ TEST_P(replace_copy_tests, test)
     std::fill(begin(expected_output), end(expected_output), -1);
     std::copy(begin(GetParam()), end(GetParam()), begin(expected));
     auto expected_iter = std::replace_copy(begin(expected), end(expected), begin(expected_output), 1, -1);
-    int expected_size = std::distance(begin(expected_output), expected_iter);
+    auto expected_size = std::distance(begin(expected_output), expected_iter);
     std::copy(cbegin(GetParam()), cend(GetParam()), begin(input));
 
     auto iter = amp_stl_algorithms::replace_copy(begin(input_av), end(input_av), begin(output_av), 1, -1);
@@ -783,7 +771,7 @@ TEST_P(replace_copy_if_tests, test)
     std::fill(begin(expected_output), end(expected_output), -1);
     std::copy(begin(GetParam()), end(GetParam()), begin(expected));
     auto expected_iter = std::replace_copy(begin(expected), end(expected), begin(expected_output), 1, -1);
-    int expected_size = std::distance(begin(expected_output), expected_iter);
+    auto expected_size = std::distance(begin(expected_output), expected_iter);
     std::copy(cbegin(GetParam()), cend(GetParam()), begin(input));
 
     auto iter = amp_stl_algorithms::replace_copy(begin(input_av), end(input_av), begin(output_av), 1, -1);
@@ -808,7 +796,7 @@ TEST_P(stl_reverse_tests, test)
     std::reverse(begin(expected), end(expected));
     std::vector<int> input(GetParam());
     std::iota(begin(input), end(input), 0);
-    array_view<int> input_av(input.size(), input);
+    array_view<int> input_av(int(input.size()), input);
 
     amp_stl_algorithms::reverse(begin(input_av), end(input_av));
 
@@ -829,7 +817,7 @@ TEST_P(rotate_copy_tests, test)
     int middle_offset = GetParam().second;
     std::vector<int> vec(size);
     std::iota(begin(vec), end(vec), 0);
-    array_view<int> av(vec.size(), vec);
+    array_view<int> av(int(vec.size()), vec);
     
     std::vector<int> result(size, 0);
     concurrency::array_view<int> result_av(size, result);
@@ -869,8 +857,8 @@ TEST_P(is_sorted_sorted_tests, test)
     std::copy(cbegin(GetParam()), cend(GetParam()), begin(input));
     array_view<int> input_av(10, input);
 
-    int expected = std::distance(cbegin(input), std::is_sorted_until(cbegin(input), cend(input)));
-    int r = std::distance(begin(input_av), amp_stl_algorithms::is_sorted_until(begin(input_av), end(input_av)));
+    auto expected = std::distance(cbegin(input), std::is_sorted_until(cbegin(input), cend(input)));
+    auto r = std::distance(begin(input_av), amp_stl_algorithms::is_sorted_until(begin(input_av), end(input_av)));
     ASSERT_EQ(expected, r);
     ASSERT_TRUE(amp_stl_algorithms::is_sorted(begin(input_av), end(input_av), amp_algorithms::less_equal<int>()));
     ASSERT_TRUE(amp_stl_algorithms::is_sorted(begin(input_av), end(input_av)));
@@ -900,8 +888,8 @@ TEST_P(is_sorted_until_sorted_tests, test)
     std::copy(cbegin(GetParam()), cend(GetParam()), begin(input));
     array_view<int> input_av(10, input);
 
-    int expected = std::distance(cbegin(input), std::is_sorted_until(cbegin(input), cend(input)));
-    int r = std::distance(begin(input_av), amp_stl_algorithms::is_sorted_until(begin(input_av), end(input_av)));
+    auto expected = std::distance(cbegin(input), std::is_sorted_until(cbegin(input), cend(input)));
+    auto r = std::distance(begin(input_av), amp_stl_algorithms::is_sorted_until(begin(input_av), end(input_av)));
     ASSERT_EQ(expected, r);
 }
 
@@ -915,8 +903,8 @@ TEST_P(is_sorted_until_unsorted_tests, test)
     std::copy(cbegin(GetParam()), cend(GetParam()), begin(input));
     array_view<int> input_av(10, input);
 
-    int expected = std::distance(cbegin(input), std::is_sorted_until(cbegin(input), cend(input)));
-    int r = std::distance(begin(input_av), amp_stl_algorithms::is_sorted_until(begin(input_av), end(input_av)));
+    auto expected = std::distance(cbegin(input), std::is_sorted_until(cbegin(input), cend(input)));
+    auto r = std::distance(begin(input_av), amp_stl_algorithms::is_sorted_until(begin(input_av), end(input_av)));
     ASSERT_EQ(expected, r);
 }
 
@@ -939,8 +927,7 @@ TEST_F(stl_algorithms_tests, swap_cpu)
 
 TEST_F(stl_algorithms_tests, swap_amp)
 {
-    const int size = 2;
-    std::vector<int> vec(size);
+    std::vector<int> vec(2);
     std::iota(begin(vec), end(vec), 1);
     array_view<int> av(2, vec);
     
@@ -955,145 +942,112 @@ TEST_F(stl_algorithms_tests, swap_amp)
 
 TEST_F(stl_algorithms_tests, swap_n_cpu)
 {
-    const int size = 10;
     int arr1[size];
     int arr2[size];
     std::iota(arr1, arr1 + size, 0);
     std::iota(arr2, arr2 + size, -9);
 
-    amp_stl_algorithms::swap<int, 10>(arr1, arr2);
+    amp_stl_algorithms::swap<int, size>(arr1, arr2);
 
     for (int i = 0; i < size; ++i)
     {
-        ASSERT_EQ(i, arr2[i]);
-        ASSERT_EQ((-9 + i), arr1[i]);
+        EXPECT_EQ(i, arr2[i]);
+        EXPECT_EQ((-9 + i), arr1[i]);
     }
 }
 
-//        TEST_METHOD_CATEGORY(stl_swap_n_amp)
-//        {
-//            std::array<int, 10> expected = { 6, 7, 8, 9, 10, 1, 2, 3, 4, 5 };
-//
-//            std::vector<int> vec(10);
-//            std::iota(begin(vec), end(vec), 1);
-//            array_view<int> av(10, vec);
-//
-//            parallel_for_each(concurrency::tiled_extent<5>(concurrency::extent<1>(5)), 
-//                [=](concurrency::tiled_index<5> tidx) restrict(amp)
-//            {
-//                tile_static int arr1[5];
-//                tile_static int arr2[5];
-//
-//                int idx = tidx.global[0];
-//                int i = tidx.local[0];
-//            
-//                arr1[i] = av[i];
-//                arr2[i] = av[i + 5];
-//
-//                tidx.barrier.wait();
-//
-//                if (i == 0)
-//                {
-//                    amp_stl_algorithms::swap<int, 5>(arr1, arr2);
-//                }
-//
-//                tidx.barrier.wait();
-//
-//                av[i] = arr1[i];
-//                av[i + 5] = arr2[i];
-//
-//                tidx.barrier.wait();
-//            });
-//
-//            av.synchronize();
-//            ASSERT_TRUE(are_equal(expected, av));
-//        }
-//        
-//        TEST_METHOD_CATEGORY(stl_swap_ranges)
-//        {
-//            const int size = 10;
-//            std::array<int, size> expected = { 0, 6, 7, 8, 4, 5, 1, 2, 3, 9 };
-//            std::vector<int> vec(size);
-//            std::iota(begin(vec), end(vec), 0);
-//            array_view<int> av(size, vec);
-//
-//            auto expected_end = amp_stl_algorithms::swap_ranges(begin(av) + 1, begin(av) + 4, begin(av) + 6);
-//
-//            ASSERT_TRUE(are_equal(expected, av));
-//            ASSERT_EQ(0, std::distance(begin(av) + 6 + 3, expected_end));
-//            ASSERT_EQ(3, *--expected_end);
-//        }
-//
-//        TEST_METHOD_CATEGORY(stl_swap_iter)
-//        {
-//            const int size = 2;
-//            std::vector<int> vec(size);
-//            std::iota(begin(vec), end(vec), 1);
-//            array_view<int> av(2, vec);
-//
-//            parallel_for_each(concurrency::extent<1>(1), [=](concurrency::index<1> idx) restrict(amp)
-//            {
-//                amp_stl_algorithms::iter_swap(begin(av), begin(av) + 1);
-//            });
-//
-//            ASSERT_EQ(2, av[0]);
-//            ASSERT_EQ(1, av[1]);
-//        }
-//
+TEST_F(stl_algorithms_tests, swap_n_amp)
+{
+    std::array<int, 10> expected = { 6, 7, 8, 9, 10, 1, 2, 3, 4, 5 };
+
+    std::vector<int> vec(10);
+    std::iota(begin(vec), end(vec), 1);
+    array_view<int> av(10, vec);
+
+    parallel_for_each(concurrency::tiled_extent<5>(concurrency::extent<1>(5)),
+        [=](concurrency::tiled_index<5> tidx) restrict(amp)
+    {
+        tile_static int arr1[5];
+        tile_static int arr2[5];
+
+        int idx = tidx.global[0];
+        int i = tidx.local[0];
+
+        arr1[i] = av[i];
+        arr2[i] = av[i + 5];
+
+        tidx.barrier.wait();
+
+        if (i == 0)
+        {
+            amp_stl_algorithms::swap<int, 5>(arr1, arr2);
+        }
+
+        tidx.barrier.wait();
+
+        av[i] = arr1[i];
+        av[i + 5] = arr2[i];
+
+        tidx.barrier.wait();
+    });
+    ASSERT_TRUE(are_equal(expected, av));
+}
+
+TEST_F(stl_algorithms_tests, swap_ranges)
+{
+    auto block_size = size / 6;
+    std::copy(cbegin(input), cend(input), begin(expected));
+    std::swap_ranges(begin(expected) + block_size, begin(expected) + block_size * 2, begin(expected) + block_size * 4);
+
+    auto expected_end = amp_stl_algorithms::swap_ranges(begin(input_av) + block_size, begin(input_av) + block_size * 2, begin(input_av) + block_size * 4);
+
+    ASSERT_TRUE(are_equal(expected, input_av));
+}
+
+TEST_F(stl_algorithms_tests, swap_iter)
+{
+    std::vector<int> vec(2);
+    std::iota(begin(vec), end(vec), 1);
+    array_view<int> av(2, vec);
+
+    parallel_for_each(concurrency::extent<1>(1), [=](concurrency::index<1> idx) restrict(amp)
+    {
+        amp_stl_algorithms::iter_swap(begin(av), begin(av) + 1);
+    });
+
+    ASSERT_EQ(2, av[0]);
+    ASSERT_EQ(1, av[1]);
+}
+
 //----------------------------------------------------------------------------
 // transform
 //----------------------------------------------------------------------------
-//
-//        TEST_METHOD_CATEGORY(stl_unary_transform)
-//        {
-//            const int size = 1024;
-//            std::vector<int> vec_in(size);
-//            std::fill(begin(vec_in), end(vec_in), 7);
-//            array_view<const int> av_in(size, vec_in);
-//
-//            std::vector<int> vec_out(size);
-//            array_view<int> av_out(size, vec_out);
-//
-//            // Test "transform" by doubling the input elements
-//
-//            amp_stl_algorithms::transform(begin(av_in), end(av_in), begin(av_out), [] (int x) restrict(amp) 
-//            {
-//                return 2 * x;
-//            });
-//            av_out.synchronize();
-//
-//            for (auto element : vec_out)
-//            {
-//                ASSERT_EQ(2 * 7, element);
-//            }
-//        }
-//
-//        TEST_METHOD_CATEGORY(stl_binary_transform)
-//        {
-//            const int size = 1024;
-//
-//            std::vector<int> vec_in1(size);
-//            std::fill(begin(vec_in1), end(vec_in1), 343);
-//            array_view<const int> av_in1(size, vec_in1);
-//
-//            std::vector<int> vec_in2(size);
-//            std::fill(begin(vec_in2), end(vec_in2), 323);
-//            array_view<const int> av_in2(size, vec_in2);
-//
-//            std::vector<int> vec_out(size);
-//            array_view<int> av_out(size, vec_out);
-//
-//            // Test "transform" by adding the two input elements
-//
-//            amp_stl_algorithms::transform(begin(av_in1), end(av_in1), begin(av_in2), begin(av_out), [] (int x1, int x2) restrict(amp) {
-//                return x1 + x2;
-//            });
-//            av_out.synchronize();
-//
-//            for (auto element : vec_out)
-//            {
-//                ASSERT_EQ(343 + 323, element);
-//            }
-//        }
-//    };
-//};// namespace tests
+
+TEST_F(stl_algorithms_tests, unary_transform)
+{
+    std::iota(begin(input), end(input), 7);
+    std::transform(cbegin(input), cend(input), begin(expected), [](int x) { return x * 2; });
+
+    amp_stl_algorithms::transform(begin(input_av), end(input_av), begin(output_av), [] (int x) restrict(amp) 
+    {
+        return 2 * x;
+    });
+
+    ASSERT_TRUE(are_equal(expected, output_av));
+}
+
+TEST_F(stl_algorithms_tests, binary_transform)
+{
+    std::iota(begin(input), end(input), 99);
+    std::vector<int> input2(size);
+    std::iota(begin(input2), end(input2), 0);
+    array_view<const int> input2_av(size, input2);
+    std::transform(cbegin(input), cend(input), cbegin(input2), begin(expected), std::plus<int>());
+
+    amp_stl_algorithms::transform(begin(input_av), end(input_av), begin(input2_av), begin(output_av), [] (int x1, int x2) restrict(amp) 
+    {
+        return x1 + x2;
+    });
+
+    ASSERT_TRUE(are_equal(expected, output_av));
+}

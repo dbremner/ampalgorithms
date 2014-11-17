@@ -964,6 +964,7 @@ namespace amp_stl_algorithms
         b = tmp;
     }
 
+    // TODO: Are there other overloads of swap() that should be implemented.
     template<typename T, int N>
     void swap( T (&a)[N], T (&b)[N]) restrict(cpu, amp)
     {
@@ -974,9 +975,9 @@ namespace amp_stl_algorithms
     }
 
     template<typename RandomAccessIterator1, typename RandomAccessIterator2>
-    RandomAccessIterator2 swap_ranges( RandomAccessIterator1 first1,
+    RandomAccessIterator2 swap_ranges(RandomAccessIterator1 first1,
         RandomAccessIterator1 last1, 
-        RandomAccessIterator2 first2 )
+        RandomAccessIterator2 first2)
     {
         typedef std::iterator_traits<RandomAccessIterator1>::difference_type difference_type;
         typedef std::iterator_traits<RandomAccessIterator1>::value_type T;
