@@ -169,7 +169,9 @@ namespace amp_stl_algorithms
         typedef typename std::iterator_traits<ConstRandomAccessIterator>::difference_type diff_type;
         const diff_type element_count = std::distance(first, last);
         if (element_count <= 0)
+        {
             return dest_first;
+        }
         auto src_view = _details::create_section(first, element_count);
         concurrency::copy(src_view, dest_first);
         return dest_first + element_count;
