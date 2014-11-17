@@ -104,28 +104,28 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <TreatWarningAsError>$(WARNINGS_AS_ERRORS)</TreatWarningAsError>
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(VCInstallDir)UnitTest\include;$(ProjectDir)inc;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(GTEST_ROOT)\Include</IncludePath>
+    <IncludePath>$(ProjectDir)inc;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(GTEST_ROOT)\Include</IncludePath>
     <OutDir>$(SolutionDir)Bin\$(PlatformToolset)\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TreatWarningAsError>$(WARNINGS_AS_ERRORS)</TreatWarningAsError>
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(VCInstallDir)UnitTest\include;$(ProjectDir)inc;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(GTEST_ROOT)\Include</IncludePath>
+    <IncludePath>$(ProjectDir)inc;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(GTEST_ROOT)\Include</IncludePath>
     <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)Bin\$(PlatformToolset)\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <TreatWarningAsError>$(WARNINGS_AS_ERRORS)</TreatWarningAsError>
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(VCInstallDir)UnitTest\include;$(ProjectDir)inc;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(GTEST_ROOT)\Include</IncludePath>
+    <IncludePath>$(ProjectDir)inc;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(GTEST_ROOT)\Include</IncludePath>
     <OutDir>$(SolutionDir)Bin\$(PlatformToolset)\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TreatWarningAsError>$(WARNINGS_AS_ERRORS)</TreatWarningAsError>
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(VCInstallDir)UnitTest\include;$(ProjectDir)inc;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(GTEST_ROOT)\Include</IncludePath>
+    <IncludePath>$(ProjectDir)inc;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(GTEST_ROOT)\Include</IncludePath>
     <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)Bin\$(PlatformToolset)\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
@@ -141,7 +141,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(VCInstallDir)UnitTest\lib;$(GTEST_ROOT)\msvc\gtest\Debug</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(GTEST_ROOT)\msvc\gtest\Debug</AdditionalLibraryDirectories>
       <AdditionalDependencies>gtestd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
@@ -183,7 +183,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(VCInstallDir)UnitTest\lib;$(GTEST_ROOT)\msvc\gtest\Release</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(GTEST_ROOT)\msvc\gtest\Release</AdditionalLibraryDirectories>
       <AdditionalDependencies>gtest.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>

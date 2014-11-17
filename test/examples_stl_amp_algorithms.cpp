@@ -16,7 +16,7 @@
 * 
 * C++ AMP standard algorithm library.
 *
-* This file contains unit tests.
+* This file contains examples.
 *---------------------------------------------------------------------------*/
 
 #include "stdafx.h"
@@ -26,7 +26,7 @@
 #include <xx_amp_algorithms_impl_inl.h>
 #include <amp_stl_algorithms.h>
 
-#include "testtools_gtest.h"
+#include "testtools.h"
 
 using namespace concurrency;
 using namespace amp_stl_algorithms;

@@ -25,9 +25,8 @@
     <ClInclude Include="..\inc\xx_amp_algorithms_direct3d_impl.h" />
     <ClInclude Include="..\inc\xx_amp_algorithms_impl.h" />
     <ClInclude Include="..\inc\xx_amp_algorithms_impl_inl.h" />
-    <ClInclude Include="..\test\testtools.h" />
     <ClInclude Include="..\test\stdafx.h" />
-    <ClInclude Include="..\test\testtools_gtest.h" />
+    <ClInclude Include="..\test\testtools.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\test\stdafx.cpp">
@@ -38,6 +37,7 @@
     </ClCompile>
     <ClCompile Include="..\test\test_amp_algorithms.cpp" />
     <ClCompile Include="..\test\test_amp_algorithms_direct3d_scan.cpp" />
+    <ClCompile Include="..\test\test_amp_algorithms_operators.cpp" />
     <ClCompile Include="..\test\test_testtools.cpp" />
     <ClCompile Include="..\test\test_amp_algorithms_sort.cpp" />
     <ClCompile Include="..\test\test_amp_algorithms_scan.cpp" />
@@ -61,26 +61,26 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -104,27 +104,30 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(VCInstallDir)UnitTest\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(GTEST_ROOT)\Include;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)Bin\$(PlatformToolset)\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(VCInstallDir)UnitTest\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(GTEST_ROOT)\Include;$(IncludePath)</IncludePath>
     <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)Bin\$(PlatformToolset)\$(Platform)\$(Configuration)\</OutDir>
+    <TargetExt>.exe</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(VCInstallDir)UnitTest\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(GTEST_ROOT)\Include;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)Bin\$(PlatformToolset)\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
+    <TargetExt>.exe</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(VCInstallDir)UnitTest\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(GTEST_ROOT)\Include;$(IncludePath)</IncludePath>
     <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\$(PlatformToolset)\$(Platform)\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)Bin\$(PlatformToolset)\$(Platform)\$(Configuration)\</OutDir>
+    <TargetExt>.exe</TargetExt>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -135,11 +138,13 @@
       <PreprocessorDefinitions>WIN32;_CONSOLE;%(PreprocessorDefinitions); $(USE_REF);_DEBUG;</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\inc</AdditionalIncludeDirectories>
       <AdditionalOptions>/Zc:inline /MP %(AdditionalOptions)</AdditionalOptions>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(VCInstallDir)UnitTest\lib;</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(GTEST_ROOT)\msvc\gtest\Debug</AdditionalLibraryDirectories>
+      <AdditionalDependencies>gtestd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(FrameworkSdkDir)bin\$(PlatformTarget)\d3dcsx_47.dll" "$(OutDir)"
@@ -180,13 +185,15 @@
       <PreprocessorDefinitions>WIN32;_CONSOLE;%(PreprocessorDefinitions); $(USE_REF);_NDEBUG</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\inc</AdditionalIncludeDirectories>
       <AdditionalOptions>/Zc:inline /MP %(AdditionalOptions)</AdditionalOptions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(VCInstallDir)UnitTest\lib;</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(GTEST_ROOT)\msvc\gtest\Release</AdditionalLibraryDirectories>
+      <AdditionalDependencies>gtest.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(FrameworkSdkDir)bin\$(PlatformTarget)\d3dcsx_47.dll" "$(OutDir)"

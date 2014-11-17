@@ -24,12 +24,10 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
-#include <CppUnitTest.h>
 
 #include <amp_algorithms.h>
 #include <amp_stl_algorithms.h>
 
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace concurrency;
 using namespace amp_algorithms;
 using namespace amp_stl_algorithms;
@@ -51,21 +49,6 @@ class array { };
 //  Set USE_REF to use the REF accelerator for all tests. This is useful if tests fail on a particular machine as
 //  failure may be due to a driver bug.
 
-#define TEST_CATEGORY(category)  TEST_METHOD_ATTRIBUTE(TEXT("TestCategory"), L#category)
-
-#define TEST_METHOD_CATEGORY(methodName, category)                      \
-    BEGIN_TEST_METHOD_ATTRIBUTE(methodName)                             \
-        TEST_METHOD_ATTRIBUTE(TEXT("TestCategory"), TEXT(#category))    \
-    END_TEST_METHOD_ATTRIBUTE()                                         \
-    TEST_METHOD(methodName)
-
-#define TEST_CLASS_CATEGORY(className, category)                        \
-    TEST_CLASS(className)                                               \
-    {                                                                   \
-        BEGIN_TEST_CLASS_ATTRIBUTE()                                    \
-            TEST_CLASS_ATTRIBUTE(TEXT("TestCategory"), TEXT(#category)) \
-        END_TEST_CLASS_ATTRIBUTE()
-
 namespace testtools
 {
     inline void log_accellerator(std::wstring test_name)
@@ -73,7 +56,6 @@ namespace testtools
         std::wstringstream str;
         str << "Running '" << test_name << "' tests on '" <<
             accelerator().description.c_str() << "', " << accelerator().device_path.c_str() << "." << std::endl;
-        Logger::WriteMessage(str.str().c_str());
         std::cout << str.str().c_str() << std::endl;
     }
 
@@ -88,11 +70,11 @@ namespace testtools
         {
             std::wstringstream str;
             str << "Unable to set default accelerator to REF. Using " << dev_path << "." << std::endl;
-            Logger::WriteMessage(str.str().c_str());
+            //Logger::WriteMessage(str.str().c_str());
         }
 #endif
-        log_accellerator(test_name);
-        accelerator().get_default_view().wait();
+        //log_accellerator(test_name);
+        accelerator().get_default_view().flush();
     }
 
     //===============================================================================
@@ -223,42 +205,21 @@ namespace testtools
         return true;
     }
 
-    template<typename StlFunc, typename AmpFunc>
-    void compare_operators(StlFunc stl_func, AmpFunc amp_func)
+    template<typename StlFunc, typename AmpFunc, typename Data>
+    void compare_binary_operator(StlFunc stl_func, AmpFunc amp_func, Data tests)
     {
-        typedef std::pair<int, int> test_pair;
-        
-        std::array<test_pair, 6> tests = {
-            test_pair(1, 2),
-            test_pair(100, 100),
-            test_pair(150, 300),
-            test_pair(1000, -50),
-            test_pair(11, 12),
-            test_pair(-12, 33)
-        };
-        
         for (auto p : tests)
         {
-            Assert::AreEqual(stl_func(p.first, p.second), amp_func(p.first, p.second));
+           EXPECT_EQ(stl_func(p.first, p.second), amp_func(p.first, p.second));
         }
     }
 
-    template<typename StlFunc, typename AmpFunc>
-    void compare_logical_operators(StlFunc stl_func, AmpFunc amp_func)
+    template<typename StlFunc, typename AmpFunc, typename Data>
+    void compare_unary_operator(StlFunc stl_func, AmpFunc amp_func, Data tests)
     {
-        typedef std::pair<unsigned int, unsigned int> test_pair;
-
-        std::array<test_pair, 8> tests = {
-            test_pair(0xF, 0xF),
-            test_pair(0xFF, 0x0A),
-            test_pair(0x0A, 0xFF),
-            test_pair(0xFF, 0x00),
-            test_pair(0x00, 0x00)
-        };
-
-        for (auto& p : tests)
+        for (auto p : tests)
         {
-            Assert::AreEqual(stl_func(p.first, p.second), amp_func(p.first, p.second));
+            EXPECT_EQ(stl_func(p), amp_func(p));
         }
     }
 
@@ -276,37 +237,29 @@ namespace testtools
     }
 
     template <typename T1, typename T2>
-    bool are_equal(const T1& expected, const T2& actual)
+    bool are_equal(const T1& expected, const T2& actual, size_t expected_size = -1)
     {    
         const int output_range = 8;
-        const size_t expected_count = std::distance(begin(expected), end(expected));
-        const size_t actual_count = std::distance(begin(actual), end(actual));
-
-        if (expected_count != actual_count)
+        if (expected_size == -1)
         {
-            Logger::WriteMessage("Containers expected and actual are different sizes.");
-            return false;
+            expected_size = std::distance(begin(expected), end(expected));
+            EXPECT_EQ(expected_size, std::distance(begin(actual), end(actual)));
+        }
+        if (expected_size == 0)
+        {
+            return true;
         }
 
         std::ostringstream stream;
         bool is_same = true;
-        for (int i = 0; i < int(expected_count); ++i)
+        for (int i = 0; (i < int(expected_size) && is_same); ++i)
         {
+            EXPECT_EQ(expected[i], actual[i]);
             if (expected[i] != actual[i])
             {
                 is_same = false;
             }
-
-            if ((i < output_range) || (i > int(expected_count - output_range)))
-            {
-                stream << " [ " << i << " ] : " << expected[i] << " = " << actual[i] << ((expected[i] != actual[i]) ? " Failed" : "") << std::endl;
-            }
-            else if ((expected_count > output_range * 2) && (i == output_range))
-            {
-                stream << " ..." << std::endl;
-            }
         }
-        Logger::WriteMessage(stream.str().c_str());
         return is_same;
     }
 
@@ -439,3 +392,41 @@ namespace testtools
         return elapsed_time(start, end);
     }
 }; // namespace test_tools
+
+class testbase
+{
+protected:
+    testbase()
+    {
+        testtools::set_default_accelerator(L"stl_algorithms_tests");
+        accelerator().default_view.wait();
+    }
+};
+
+template<int _Size = 13>
+class stl_algorithms_testbase : public testbase
+{
+protected:
+    std::array<int, _Size> input;
+    array_view<int> input_av;
+    std::array<int, _Size> output;
+    array_view<int> output_av;
+    std::array<int, _Size> expected;
+
+    stl_algorithms_testbase() :
+        input_av(concurrency::extent<1>(int(input.size())), input),
+        output_av(concurrency::extent<1>(int(output.size())), output)
+    {
+        const std::array<int, _Size> input_data = { { 1, 3, 6, 3, 2, 2, 7, 8, 2, 9, 2, 10, 2 } };
+        int i = 0;
+        for (auto& v : input)
+        {
+            v = input_data[i++ % 13];
+        }
+        std::fill(begin(output), end(output), -1);
+        std::fill(begin(expected), end(expected), -1);
+    }
+
+    static const int size = _Size;
+};
+

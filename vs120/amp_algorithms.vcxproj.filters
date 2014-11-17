@@ -6,12 +6,9 @@
     <ClInclude Include="..\inc\xx_amp_algorithms_impl.h" />
     <ClInclude Include="..\inc\xx_amp_algorithms_impl_inl.h" />
     <ClInclude Include="..\test\stdafx.h" />
-    <ClInclude Include="..\test\testtools.h">
-      <Filter>Tests</Filter>
-    </ClInclude>
     <ClInclude Include="..\inc\amp_algorithms_direct3d.h" />
     <ClInclude Include="..\inc\xx_amp_algorithms_direct3d_impl.h" />
-    <ClInclude Include="..\test\testtools_gtest.h">
+    <ClInclude Include="..\test\testtools.h">
       <Filter>Tests</Filter>
     </ClInclude>
   </ItemGroup>
@@ -37,6 +34,9 @@
       <Filter>Tests</Filter>
     </ClCompile>
     <ClCompile Include="..\test\test_amp_algorithms_sort.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_algorithms_operators.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
   </ItemGroup>

@@ -23,7 +23,7 @@
 #include <gtest/gtest.h>
 
 #include <amp_stl_algorithms.h>
-#include "testtools_gtest.h"
+#include "testtools.h"
 
 TEST(stl_iterator_tests, begin_end_array_view)
 {

@@ -23,7 +23,7 @@
 #include <gtest/gtest.h>
 
 #include <amp_stl_algorithms.h>
-#include "testtools_gtest.h"
+#include "testtools.h"
 
 using namespace concurrency;
 using namespace amp_stl_algorithms;
@@ -55,33 +55,6 @@ const std::array<int, 13> remove_if_data[] = {
     { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
     { 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 1 },
     { 3, 1, 0, 2, 3, 0, 0, 4, 0, 1, 0, 6, 7 }
-};
-
-template<int _Size = 13>
-class stl_algorithms_testbase : public testbase
-{
-protected:
-    std::array<int, _Size> input;
-    array_view<int> input_av;
-    std::array<int, _Size> output;
-    array_view<int> output_av;
-    std::array<int, _Size> expected;
-
-    stl_algorithms_testbase() :
-        input_av(concurrency::extent<1>(int(input.size())), input),
-        output_av(concurrency::extent<1>(int(output.size())), output)
-    {
-        const std::array<int, _Size> input_data = { { 1, 3, 6, 3, 2, 2, 7, 8, 2, 9, 2, 10, 2 } };
-        int i = 0;
-        for (auto& v : input)
-        {
-            v = input_data[i++ % 13];
-        }
-        std::fill(begin(output), end(output), -1);
-        std::fill(begin(expected), end(expected), -1);
-    }
-
-    static const int size = _Size;
 };
 
 class stl_algorithms_tests : public stl_algorithms_testbase<13>, public ::testing::Test {};
@@ -577,7 +550,7 @@ TEST_F(stl_algorithms_tests, iota)
 // TODO: Should be able to make these tests a bit tidier with better casting support for pair<T, T>
 TEST_F(stl_algorithms_tests, stl_minmax)
 {
-    compare_operators(
+    compare_binary_operators(
         [=](int a, int b)->std::pair<const int, const int> { return std::minmax(a, b); },
         [=](int a, int b)->std::pair<const int, const int> 
     { 
