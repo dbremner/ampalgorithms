@@ -141,7 +141,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(GTEST_ROOT)\msvc\gtest\Debug</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(GTEST_ROOT)\msvc\gtest\$(Configuration)\$(Platform)</AdditionalLibraryDirectories>
       <AdditionalDependencies>gtestd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
@@ -160,7 +160,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(VCInstallDir)UnitTest\lib;$(GTEST_ROOT)\msvc\gtest\Debug</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(GTEST_ROOT)\msvc\gtest\$(Configuration)\$(Platform)</AdditionalLibraryDirectories>
       <AdditionalDependencies>gtestd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
@@ -183,7 +183,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(GTEST_ROOT)\msvc\gtest\Release</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(GTEST_ROOT)\msvc\gtest\$(Configuration)\$(Platform)</AdditionalLibraryDirectories>
       <AdditionalDependencies>gtest.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
@@ -206,7 +206,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(VCInstallDir)UnitTest\lib;$(GTEST_ROOT)\msvc\gtest\Release</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(GTEST_ROOT)\msvc\gtest\$(Configuration)\$(Platform)</AdditionalLibraryDirectories>
       <AdditionalDependencies>gtest.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
