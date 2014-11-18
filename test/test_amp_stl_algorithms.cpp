@@ -463,7 +463,7 @@ INSTANTIATE_TEST_CASE_P(stl_algorithms_tests, adjacent_find_tests, ::testing::Va
 
 TEST_F(stl_algorithms_tests, for_each_no_return)
 {
-    std::fill(input.begin(), input.end(), 2);
+    std::fill(begin(input), end(input), 2);
     int sum = 0;
     array_view<int> av_sum(1, &sum);
     amp_stl_algorithms::for_each_no_return(begin(input_av), end(input_av), [av_sum] (int val) restrict(amp) {
@@ -547,27 +547,36 @@ TEST_F(stl_algorithms_tests, iota)
 // minmax, max_element, min_element, minmax_element
 //----------------------------------------------------------------------------
 
+std::array<std::pair<int, int>, 6> arithmetic_operator_data = {
+    std::pair<int, int>(1, 2),
+    std::pair<int, int>(100, 100),
+    std::pair<int, int>(150, 300),
+    std::pair<int, int>(1000, -50),
+    std::pair<int, int>(11, 12),
+    std::pair<int, int>(-12, 33)
+};
+
 // TODO: Should be able to make these tests a bit tidier with better casting support for pair<T, T>
 TEST_F(stl_algorithms_tests, stl_minmax)
 {
-    compare_binary_operators(
+    compare_binary_operator(
         [=](int a, int b)->std::pair<const int, const int> { return std::minmax(a, b); },
         [=](int a, int b)->std::pair<const int, const int> 
-    { 
-        return amp_stl_algorithms::minmax(a, b); 
-    });
+        { 
+            return amp_stl_algorithms::minmax(a, b); 
+        },
+        arithmetic_operator_data);
 }
 
 TEST_F(stl_algorithms_tests, stl_minmax_pred)
 {
-    //std::pair<const int&, const int&>(*minmax) (const int&, const int&) = std::minmax<int>;
-
-    compare_operators(
+    compare_binary_operator(
         [=](int& a, int& b)->std::pair<const int, const int> { return std::minmax(a, b, std::greater_equal<int>()); },
         [=](int& a, int& b)->std::pair<const int, const int>
-    { 
-        return amp_stl_algorithms::minmax(a, b, amp_algorithms::greater_equal<int>()); 
-    });
+        { 
+            return amp_stl_algorithms::minmax(a, b, amp_algorithms::greater_equal<int>()); 
+        },
+        arithmetic_operator_data);
 }
 
 //----------------------------------------------------------------------------

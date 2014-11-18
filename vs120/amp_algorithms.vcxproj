@@ -38,6 +38,7 @@
     <ClCompile Include="..\test\test_amp_algorithms.cpp" />
     <ClCompile Include="..\test\test_amp_algorithms_direct3d_scan.cpp" />
     <ClCompile Include="..\test\test_amp_algorithms_operators.cpp" />
+    <ClCompile Include="..\test\test_amp_algorithms_reduce.cpp" />
     <ClCompile Include="..\test\test_testtools.cpp" />
     <ClCompile Include="..\test\test_amp_algorithms_sort.cpp" />
     <ClCompile Include="..\test\test_amp_algorithms_scan.cpp" />

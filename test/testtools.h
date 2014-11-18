@@ -51,14 +51,6 @@ class array { };
 
 namespace testtools
 {
-    inline void log_accellerator(std::wstring test_name)
-    {
-        std::wstringstream str;
-        str << "Running '" << test_name << "' tests on '" <<
-            accelerator().description.c_str() << "', " << accelerator().device_path.c_str() << "." << std::endl;
-        std::cout << str.str().c_str() << std::endl;
-    }
-
     inline void set_default_accelerator(std::wstring test_name)
     {
 #if (defined(USE_REF) || defined(_DEBUG))
@@ -70,10 +62,8 @@ namespace testtools
         {
             std::wstringstream str;
             str << "Unable to set default accelerator to REF. Using " << dev_path << "." << std::endl;
-            //Logger::WriteMessage(str.str().c_str());
         }
 #endif
-        //log_accellerator(test_name);
         accelerator().get_default_view().flush();
     }
 
@@ -249,8 +239,6 @@ namespace testtools
         {
             return true;
         }
-
-        std::ostringstream stream;
         bool is_same = true;
         for (int i = 0; (i < int(expected_size) && is_same); ++i)
         {

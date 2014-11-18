@@ -29,7 +29,9 @@ using namespace testtools;
 
 static const int test_tile_size = 256;
 
-TEST(amp_algorithms_scan_tests, details_scan_tile_exclusive)
+class amp_algorithms_scan_tests : public testbase, public ::testing::Test {};
+
+TEST_F(amp_algorithms_scan_tests, details_scan_tile_exclusive)
 {
     static const int tile_size = 4;
 
@@ -60,7 +62,7 @@ TEST(amp_algorithms_scan_tests, details_scan_tile_exclusive)
     ASSERT_TRUE(are_equal(expected, output_av));
 }
 
-TEST(amp_algorithms_scan_tests, details_segment_scan_width_2)
+TEST_F(amp_algorithms_scan_tests, details_segment_scan_width_2)
 {
     std::array<unsigned, 16> input =    { 3, 2,   1, 6,   10, 11,   13,  1,   15, 10,    5, 14,     4,  12,     9,   8 };
     // exclusive scan                     0, 3,   5, 6,   12, 22,   33, 47,   62, 77,   87, 92,   106, 118,   127, 135
@@ -78,7 +80,7 @@ TEST(amp_algorithms_scan_tests, details_segment_scan_width_2)
     ASSERT_TRUE(are_equal(expected, output));
 }
 
-TEST(amp_algorithms_scan_tests, details_segment_scan_width_8)
+TEST_F(amp_algorithms_scan_tests, details_segment_scan_width_8)
 {
     std::array<unsigned, 16> input =    { 3, 2, 1, 6, 10, 11, 13,  1,   15, 10,  5, 14,   4,  12,   9,   8 };
     // exclusive scan                     0, 3, 5, 6, 12, 22, 33, 46,   62, 77, 87, 92, 106, 118, 127, 135
@@ -96,7 +98,7 @@ TEST(amp_algorithms_scan_tests, details_segment_scan_width_8)
     ASSERT_TRUE(are_equal(expected, output));
 }
 
-TEST(amp_algorithms_scan_tests, details_scan_tile_exclusive_partial)
+TEST_F(amp_algorithms_scan_tests, details_scan_tile_exclusive_partial)
 {
     std::array<unsigned, 7> input =    { 3, 2, 1, 6, 10, 11,  5 };
     std::array<unsigned, 7> expected = { 0, 3, 5, 6, 12, 22, 33 };
@@ -122,7 +124,7 @@ TEST(amp_algorithms_scan_tests, details_scan_tile_exclusive_partial)
     ASSERT_TRUE(are_equal(expected, output_av));
 }
 
-TEST(amp_algorithms_scan_tests, exclusive_multi_tile)
+TEST_F(amp_algorithms_scan_tests, exclusive_multi_tile)
 {
     std::vector<int> input(test_tile_size * 4);
     //generate_data(input);
@@ -136,7 +138,7 @@ TEST(amp_algorithms_scan_tests, exclusive_multi_tile)
     ASSERT_TRUE(are_equal(expected, input_vw));
 }
 
-TEST(amp_algorithms_scan_tests, exclusive_multi_tile_partial)
+TEST_F(amp_algorithms_scan_tests, exclusive_multi_tile_partial)
 {
     std::vector<int> input(test_tile_size * 4 + 4);
     generate_data(input);
@@ -150,7 +152,7 @@ TEST(amp_algorithms_scan_tests, exclusive_multi_tile_partial)
     ASSERT_TRUE(expected == input);
 }
 
-TEST(amp_algorithms_scan_tests, exclusive_recursive_scan)
+TEST_F(amp_algorithms_scan_tests, exclusive_recursive_scan)
 {
     std::vector<int> input(test_tile_size * (test_tile_size + 2));
     generate_data(input);
@@ -164,7 +166,7 @@ TEST(amp_algorithms_scan_tests, exclusive_recursive_scan)
     ASSERT_TRUE(expected == input);
 }
 
-TEST(amp_algorithms_scan_tests, exclusive_large_data)
+TEST_F(amp_algorithms_scan_tests, exclusive_large_data)
 {
     std::vector<int> input(test_tile_size * (test_tile_size + 10));
     generate_data(input);
@@ -178,7 +180,7 @@ TEST(amp_algorithms_scan_tests, exclusive_large_data)
     ASSERT_TRUE(expected == input);
 }
 
-TEST(amp_algorithms_scan_tests, inclusive_multi_tile)
+TEST_F(amp_algorithms_scan_tests, inclusive_multi_tile)
 {
     std::vector<int> input(test_tile_size * 4);
     //generate_data(input);
@@ -192,7 +194,7 @@ TEST(amp_algorithms_scan_tests, inclusive_multi_tile)
     ASSERT_TRUE(are_equal(expected, input_vw));
 }
 
-TEST(amp_algorithms_scan_tests, inclusive_multi_tile_partial)
+TEST_F(amp_algorithms_scan_tests, inclusive_multi_tile_partial)
 {
     std::vector<int> input(test_tile_size * 4 + 4, 1);
     generate_data(input);
@@ -206,7 +208,7 @@ TEST(amp_algorithms_scan_tests, inclusive_multi_tile_partial)
     ASSERT_TRUE(expected == input);
 }
         
-TEST(amp_algorithms_scan_tests, inclusive_recursive_scan)
+TEST_F(amp_algorithms_scan_tests, inclusive_recursive_scan)
 {
     std::vector<int> input(test_tile_size * (test_tile_size + 2));
     generate_data(input);
@@ -220,7 +222,7 @@ TEST(amp_algorithms_scan_tests, inclusive_recursive_scan)
     ASSERT_TRUE(expected == input);
 }
 
-TEST(amp_algorithms_scan_tests, inclusive_large_data)
+TEST_F(amp_algorithms_scan_tests, inclusive_large_data)
 {
     std::vector<int> input(test_tile_size * (test_tile_size + 10), 1);
     generate_data(input);
