@@ -315,14 +315,8 @@ namespace amp_stl_algorithms
     template<typename RandomAccessIterator, typename T>
     void fill( RandomAccessIterator first, RandomAccessIterator last, const T& value );
 
-    // TODO: fill_n() should return an iterator for C++11 compliance.
     template<typename RandomAccessIterator, typename Size, typename T>
-    void fill_n( RandomAccessIterator first, Size count, const T& value );
-
-    // TODO_NOT_IMPLEMENTED: This fill_n differs only by return type. Probably better to implement the one that returns the end iterator than void.
-    /*
-    template<typename RandomAccessIterator, typename Size, typename T>
-    RandomAccessIterator fill_n( RandomAccessIterator first, Size count, const T& value );*/
+    RandomAccessIterator fill_n(RandomAccessIterator first, Size count, const T& value);
 
     //----------------------------------------------------------------------------
     // find, find_if, find_if_not, find_end, find_first_of, adjacent_find
@@ -392,12 +386,7 @@ namespace amp_stl_algorithms
 
     // TODO: generate_n() should return an iterator for C++11 compliance.
     template<typename RandomAccessIterator, typename Size, typename Generator>
-    void generate_n( RandomAccessIterator first, Size count, Generator g );
-
-    // TODO_NOT_IMPLEMENTED: This generate_n differs only by return type. Probably better to implement the one that returns the end iterator than void.
-    /*
-    template<typename RandomAccessIterator, typename Size, typename Generator>
-    RandomAccessIterator generate_n( RandomAccessIterator first, Size count, Generator g );*/
+    RandomAccessIterator generate_n(RandomAccessIterator first, Size count, Generator g);
 
     //----------------------------------------------------------------------------
     // includes

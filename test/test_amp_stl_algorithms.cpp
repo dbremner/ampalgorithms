@@ -372,9 +372,19 @@ TEST_F(stl_algorithms_tests, fill_n)
 {
     int size = int(input.size() / 2);
     std::fill_n(begin(input), size, 3);
-    amp_stl_algorithms::fill_n(begin(input_av), size, 3);
+    auto iter = amp_stl_algorithms::fill_n(begin(input_av), size, 3);
 
-    //ASSERT_EQ(size, std::distance(begin(output_av), iter));
+    ASSERT_EQ(expected.size() / 2, std::distance(begin(output_av), iter));
+    ASSERT_TRUE(are_equal(expected, output_av));
+}
+
+TEST_F(stl_algorithms_tests, fill_n_for_zero_elements)
+{
+    int size = int(input.size() / 2);
+    std::fill_n(begin(input), size, 3);
+    auto iter = amp_stl_algorithms::fill_n(begin(input_av), 0, 3);
+
+    ASSERT_EQ(0, std::distance(begin(output_av), iter));
     ASSERT_TRUE(are_equal(expected, output_av));
 }
 
@@ -491,8 +501,9 @@ TEST_F(stl_algorithms_tests, generate_n)
     std::fill(begin(expected), end(expected), -1);
     std::generate_n(begin(expected), expected.size() / 2, [=]() { return 7; });
 
-    amp_stl_algorithms::generate_n(begin(output_av), output_av.extent.size() / 2, []() restrict(amp) { return 7; });
+    auto iter = amp_stl_algorithms::generate_n(begin(output_av), output_av.extent.size() / 2, []() restrict(amp) { return 7; });
 
+    ASSERT_EQ(expected.size() / 2, std::distance(begin(output_av), iter));
     ASSERT_TRUE(are_equal(expected, output_av));
 }
 

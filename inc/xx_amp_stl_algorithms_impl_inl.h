@@ -364,11 +364,10 @@ namespace amp_stl_algorithms
         amp_stl_algorithms::generate(first, last, [value]() restrict(amp) { return value; });
     }
 
-    // TODO: fill_n should return an iterator
     template<typename RandomAccessIterator, typename Size, typename T>
-    void fill_n( RandomAccessIterator first, Size count, const T& value )
+    RandomAccessIterator fill_n(RandomAccessIterator first, Size count, const T& value)
     {
-        amp_stl_algorithms::generate_n(first, count, [value]() restrict(amp) { return value; });
+        return amp_stl_algorithms::generate_n(first, count, [value]() restrict(amp) { return value; });
     }
 
     //----------------------------------------------------------------------------
@@ -504,13 +503,10 @@ namespace amp_stl_algorithms
     UnaryFunction for_each( ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryFunction f )
     {
         concurrency::array_view<UnaryFunction> functor_av(concurrency::extent<1>(1), &f);
-        for_each_no_return( 
-            first, last, 
-            [functor_av] (const decltype(*first)& val) restrict (amp)
+        for_each_no_return(first, last,[functor_av] (const decltype(*first)& val) restrict (amp)
         {
             functor_av(0)(val);
-        }
-        );
+        });
         functor_av.synchronize();
         return f;
     }
@@ -523,19 +519,19 @@ namespace amp_stl_algorithms
     // to be blittable and cannot contain any array, array_view, or textures.
     //----------------------------------------------------------------------------
 
-    // TODO: generate_n should return an iterator
     template<typename RandomAccessIterator, typename Size, typename Generator>
-    void generate_n(RandomAccessIterator first, Size count, Generator g)
+    RandomAccessIterator generate_n(RandomAccessIterator first, Size count, Generator g)
     {
         if (count <= 0) 
         {
-            return;
+            return first;
         }
         auto section_view = _details::create_section(first, count);
         concurrency::parallel_for_each(section_view.extent, [g,section_view] (concurrency::index<1> idx) restrict(amp) 
         {
             section_view[idx] = g();
         });
+        return first + count;
     }
 
     template <typename RandomAccessIterator, typename Generator>
