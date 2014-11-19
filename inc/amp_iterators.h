@@ -296,4 +296,6 @@ namespace amp_stl_algorithms
         return array_view_iterator<value_type>(arr, arr.get_extent().size());
     }
 
+    // TODO: Add cbegin() and cend()
+
 } // amp_stl_algorithms

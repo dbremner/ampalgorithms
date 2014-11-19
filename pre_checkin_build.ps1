@@ -128,7 +128,7 @@ foreach ($b in $builds)
 
     write-host "  $sln ( $conf | $plat )"
 }
-$builds_expected = $builds.Count * 2
+$builds_expected = $builds.Count * 2 ## Two projects get built for each build.
 $builds_ok = 0
 $builds_run = 0
 
@@ -180,16 +180,19 @@ else
 
     foreach ($ver in $vsvers)
     {
-        $vstest_dlls = @(  "$build_bin/v${ver}0/$plat/$conf/amp_algorithms.dll", "$build_bin/v${ver}0/$plat/$conf/amp_stl_algorithms.dll" )
-       
+        $test_exes = @("amp_algorithms", "amp_stl_algorithms" )
         $tests_failed = 0
         $tests_passed = 0
         write-host "Running tests for Visual Studio ${ver}.0 ( $plat | $conf ) build..." -fore yellow
-        ."$vstest_exe" $vstest_dlls /logger:trx 2>&1 | 
-            %{ if ( $_ -match @('^Passed +')) { $tests_passed++ } ; $_ } | 
-            %{ if ( $_ -match @('^Failed +')) { $tests_failed++ } ; $_ } | 
-            where { $_ -match @('^(Failed +| +Assert failed\.)') } | 
+
+        foreach  ($t in $test_exes)
+        {
+            ."$build_bin/v${ver}0/$plat/$conf/$t.exe" --gtest_color=no --gtest_shuffle 2>&1 |
+            %{ if ( $_ -match @('^\[       OK \]')) { $tests_passed++ } ; $_ } |
+            %{ if ( $_ -match @('^\[  FAILED  \].*ms\)$')) { $tests_failed++; } ; $_ } |
+            where { $_ -match @('^\[  FAILED  \].*ms\)$') } | 
             %{ write-host "  $_" -fore red }
+        }
 
         $tests_count = $tests_passed + $tests_failed
         if ($tests_failed -gt 0) 

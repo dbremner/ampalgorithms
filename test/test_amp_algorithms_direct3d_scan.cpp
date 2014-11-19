@@ -264,7 +264,7 @@ TEST_F(amp_algorithms_direct3d_scan_tests, scan_backwards)
     test_scan<int>(amp_algorithms::scan_direction::backward);
 }
 
-TEST_F(amp_algorithms_direct3d_scan_tests, scan_backwards_bitwisw)
+TEST_F(amp_algorithms_direct3d_scan_tests, scan_backwards_bitwise)
 {
     test_scan_bitwise_op<int>(amp_algorithms::scan_direction::backward);
 }
