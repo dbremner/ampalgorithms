@@ -28,22 +28,16 @@ using namespace concurrency;
 using namespace amp_algorithms;
 using namespace testtools;
 
-int main(int argc, char **argv)
-{
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-}
-
 // TODO: Add tests for indexable_view_traits
 class amp_algorithms_tests : public stl_algorithms_testbase<13>, public ::testing::Test {};
 
-TEST_F(amp_algorithms_tests, amp_padded_read)
+TEST_F(amp_algorithms_tests, padded_read)
 {
     ASSERT_EQ(input[1], padded_read(input_av, concurrency::index<1>(1)));
     ASSERT_EQ(int(), padded_read(input_av, concurrency::index<1>(size + 2)));
 }
 
-TEST_F(amp_algorithms_tests, amp_padded_write)
+TEST_F(amp_algorithms_tests, padded_write)
 {
     std::fill(begin(input), end(input), 0);
 
@@ -52,7 +46,7 @@ TEST_F(amp_algorithms_tests, amp_padded_write)
     padded_write(input_av, concurrency::index<1>(size + 2), 11);
 }
 
-TEST_F(amp_algorithms_tests, amp_generate_int)
+TEST_F(amp_algorithms_tests, generate_int)
 {
     std::vector<int> vec(1024);
     array_view<int,1> av(1024, vec);
@@ -69,7 +63,7 @@ TEST_F(amp_algorithms_tests, amp_generate_int)
     }
 }
 
-TEST_F(amp_algorithms_tests, amp_transform_unary)
+TEST_F(amp_algorithms_tests, transform_unary)
 {
     const int height = 16;
     const int width = 16;
@@ -95,7 +89,7 @@ TEST_F(amp_algorithms_tests, amp_transform_unary)
     }
 }
 
-TEST_F(amp_algorithms_tests, amp_transform_binary)
+TEST_F(amp_algorithms_tests, transform_binary)
 {
     const int depth = 16;
     const int height = 16;
@@ -126,7 +120,7 @@ TEST_F(amp_algorithms_tests, amp_transform_binary)
     }
 }
 
-TEST_F(amp_algorithms_tests, amp_fill_int)
+TEST_F(amp_algorithms_tests, fill_int)
 {
     std::vector<int> vec(1024);
     array_view<int> av(1024, vec);

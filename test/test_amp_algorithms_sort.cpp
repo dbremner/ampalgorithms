@@ -31,7 +31,7 @@ static const int test_tile_size = 256;
 
 class amp_algorithms_radix_sort_tests : public testbase, public ::testing::Test {};
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_key_value_width_2_tests)
+TEST_F(amp_algorithms_radix_sort_tests, details_radix_key_value_width_2_tests)
 {
     //  0 0000  0  0        8 1000  2  0
     //  1 0001  0  1        9 1001  2  1
@@ -65,7 +65,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_key_value_width_2_test
     }
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_key_value_width_4_tests)
+TEST_F(amp_algorithms_radix_sort_tests, details_radix_key_value_width_4_tests)
 {
     enum parameter
     {
@@ -89,7 +89,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_key_value_width_4_test
     }
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_tile_by_key_with_index_0_tile_4_bin_width_2_data_16)
+TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_tile_by_key_with_index_0_tile_4_bin_width_2_data_16)
 {
     std::array<unsigned, 16> input =     { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,   4, 12,  9,  8 };
     // Key 0 values, 2 bit key:            3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
@@ -117,7 +117,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_tile_by_key_with_
     ASSERT_TRUE(are_equal(expected, input_av));
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_tile_by_key_with_index_0_tile_32_bin_width_2_data_16)
+TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_tile_by_key_with_index_0_tile_32_bin_width_2_data_16)
 {
     std::array<unsigned, 16> input =     { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,   4, 12,  9,  8 };
     // rdx                                 3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
@@ -145,7 +145,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_tile_by_key_with_
     ASSERT_TRUE(are_equal(expected, input_av));
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_tile_by_key_with_index_0_tile_32_bin_width_2_data_32)
+TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_tile_by_key_with_index_0_tile_32_bin_width_2_data_32)
 {
     std::array<unsigned long, 32> input = { 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0 };
     // rdx                                 3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
@@ -179,7 +179,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_tile_by_key_with_
     ASSERT_TRUE(are_equal(expected, input_av));
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_tile_by_key_with_index_0_tile_32_bin_width_4_data_32)
+TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_tile_by_key_with_index_0_tile_32_bin_width_4_data_32)
 {
     std::array<unsigned long, 32> input = { 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0 };
     // rdx                                 3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
@@ -213,7 +213,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_tile_by_key_with_
     ASSERT_TRUE(are_equal(expected, input_av));
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_tile_by_key_with_index_0_tile_256_bin_width_2_data_16)
+TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_tile_by_key_with_index_0_tile_256_bin_width_2_data_16)
 {
     std::array<unsigned, 16> input = { 3, 2, 1, 6, 10, 11, 13, 0, 15, 10, 5, 14, 4, 12, 9, 8 };
     // rdx                                 3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
@@ -241,7 +241,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_tile_by_key_with_
     ASSERT_TRUE(are_equal(expected, input_av));
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_tile_by_key_with_index_1_tile_4_bin_width_2_data_16)
+TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_tile_by_key_with_index_1_tile_4_bin_width_2_data_16)
 {
     std::array<unsigned, 16> input = { 1, 2, 6, 3, 0, 13, 10, 11, 5, 10, 14, 15, 4, 12, 8, 9 };
     // Key 1 values, 2 bit key:            0   0   1   0    0   3   2   2    1   2   3   3    1   3   2   2
@@ -268,7 +268,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_tile_by_key_with_
     ASSERT_TRUE(are_equal(expected, input_av));
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_by_key_with_index_0_tile_4_data_16)
+TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_by_key_with_index_0_tile_4_data_16)
 {
     // gidx                                                    0   1   2   3     4   5   6   7     8   9  10  11    12  13  14  15
     std::array<unsigned, 16> input =                         { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,    4, 12,  9,  8 };
@@ -318,7 +318,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_by_key_with_index
     ASSERT_TRUE(are_equal(sorted_by_key_0, output_av));
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_by_key_with_index_0_tile_8_data_16)
+TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_by_key_with_index_0_tile_8_data_16)
 {
     // gidx                                                    0   1   2   3   4   5   6   7     8   9  10  11  12  13  14  15
     std::array<unsigned, 16> input =                         { 3,  2,  1,  6, 10, 11, 13,  0,   15, 10,  5, 14,  4, 12,  9,  8 };
@@ -348,7 +348,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_by_key_with_index
     ASSERT_TRUE(are_equal(sorted_by_key_0, output_av));
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_by_key_with_index_0_tile_32_data_16)
+TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_by_key_with_index_0_tile_32_data_16)
 {
     // gidx                                                    0   1   2   3   4   5   6   7     8   9  10  11  12  13  14  15
     std::array<unsigned, 16> input =                         { 3,  2,  1,  6, 10, 11, 13,  0,   15, 10,  5, 14,  4, 12,  9,  8 };
@@ -376,7 +376,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_by_key_with_index
     ASSERT_TRUE(are_equal(sorted_by_key_0, output_av));
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_by_key_with_index_1_tile_4_data_16)
+TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_by_key_with_index_1_tile_4_data_16)
 {
     // gidx                                                    0   1   2   3     4   5   6   7     8   9  10  11    12  13  14  15
     std::array<unsigned, 16> input =                         { 0,  4, 12,  8,   1, 13,  5,  9,    2,  6, 10, 10,   14,  3, 11, 15 };
@@ -395,7 +395,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_by_key_with_index
     ASSERT_TRUE(are_equal(sorted_by_key_1, output_av));
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_by_key_with_index_1_tile_8_data_16)
+TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_by_key_with_index_1_tile_8_data_16)
 {
     std::array<unsigned, 16> input =                         { 0,  4, 12,  8,    1, 13,  5,  9,    2,  6, 10, 10,   14,  3, 11, 15 };
     std::array<unsigned, 16> sorted_by_key_1 =               { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,   12, 13, 14, 15 };
@@ -410,7 +410,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_by_key_with_index
     ASSERT_TRUE(are_equal(sorted_by_key_1, output_av));
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_with_tile_4_data_16)
+TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_with_tile_4_data_16)
 {
     std::array<unsigned, 16> input =                         { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,    4, 12,  9,  8 };
     std::array<unsigned, 16> sorted =                        { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,   12, 13, 14, 15 };
@@ -425,7 +425,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_with_tile_4_data_
     ASSERT_TRUE(are_equal(sorted, output_av));
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_with_tile_8_data_16)
+TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_with_tile_8_data_16)
 {
     std::array<unsigned, 16> input =                         { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,    4, 12,  9,  8 };
     std::array<unsigned, 16> sorted =                        { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,   12, 13, 14, 15 };
@@ -440,7 +440,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_with_tile_8_data_
     ASSERT_TRUE(are_equal(sorted, output_av));
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_with_tile_32_data_16)
+TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_with_tile_32_data_16)
 {
     std::array<unsigned, 16> input =                         { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,    4, 12,  9,  8 };
     std::array<unsigned, 16> sorted =                        { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,   12, 13, 14, 15 };
@@ -455,7 +455,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_with_tile_32_data
     ASSERT_TRUE(are_equal(sorted, output_av));
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_with_tile_4_data_1024)
+TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_with_tile_4_data_1024)
 {
     std::vector<int> input(1024, 1);
 #if _MSC_VER < 1800
@@ -475,7 +475,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_with_tile_4_data_
     ASSERT_TRUE(are_equal(expected, output_av));
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_with_tile_8_data_1024)
+TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_with_tile_8_data_1024)
 {
     std::vector<int> input(1024, 1);
 #if _MSC_VER < 1800
@@ -495,7 +495,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_with_tile_8_data_
     ASSERT_TRUE(are_equal(expected, output_av));
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_with_tile_16_data_1024)
+TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_with_tile_16_data_1024)
 {
     std::vector<int> input(1024, 1);
 #if _MSC_VER < 1800
@@ -515,7 +515,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_with_tile_16_data
     ASSERT_TRUE(are_equal(expected, output_av));
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_with_tile_32_data_1024)
+TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_with_tile_32_data_1024)
 {
     std::vector<int> input(1024, 1);
 #if _MSC_VER < 1800
@@ -535,7 +535,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_details_radix_sort_with_tile_32_data
     ASSERT_TRUE(are_equal(expected, output_av));
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_radix_sort_with_data_16)
+TEST_F(amp_algorithms_radix_sort_tests, radix_sort_with_data_16)
 {
     std::array<int, 16> input =                              { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,    4, 12,  9,  8 };
     std::array<unsigned, 16> sorted_by_key_0 =               { 0,  4, 12,  8,    1, 13,  5,  9,    2,  6, 10, 10,   14,  3, 11, 15 };
@@ -551,7 +551,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_radix_sort_with_data_16)
     ASSERT_TRUE(are_equal(sorted_by_key_1, output_av));
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_radix_sort_with_data_64)
+TEST_F(amp_algorithms_radix_sort_tests, radix_sort_with_data_64)
 {
     std::vector<int> input(64, 1);
 #if _MSC_VER < 1800
@@ -571,7 +571,7 @@ TEST_F(amp_algorithms_radix_sort_tests, amp_radix_sort_with_data_64)
     ASSERT_TRUE(are_equal(expected, output_av));
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, amp_radix_sort_with_data_128)
+TEST_F(amp_algorithms_radix_sort_tests, radix_sort_with_data_128)
 {
     std::vector<int> input(128, 1);
 #if _MSC_VER < 1800

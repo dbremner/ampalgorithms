@@ -42,5 +42,8 @@
     <ClCompile Include="..\test\test_amp_algorithms_reduce.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
+    <ClCompile Include="..\test\gtest_main.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

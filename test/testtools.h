@@ -418,3 +418,16 @@ protected:
     static const int size = _Size;
 };
 
+template <typename T>
+class greater_than
+{
+private:
+    T m_value;
+public:
+    greater_than(const T& value = 0) : m_value(value) {}
+
+    T operator()(const T &v) const restrict(cpu, amp)
+    {
+        return (v > m_value) ? 1 : 0;
+    }
+};

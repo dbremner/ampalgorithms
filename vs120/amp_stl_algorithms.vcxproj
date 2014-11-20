@@ -82,7 +82,15 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_copy.cpp" />
+    <ClCompile Include="..\test\test_amp_stl_algorithms_fill.cpp" />
+    <ClCompile Include="..\test\test_amp_stl_algorithms_is_sorted.cpp" />
+    <ClCompile Include="..\test\test_amp_stl_algorithms_remove.cpp" />
+    <ClCompile Include="..\test\test_amp_stl_algorithms_replace.cpp" />
+    <ClCompile Include="..\test\test_amp_stl_algorithms_transform.cpp" />
     <ClCompile Include="..\test\test_amp_stl_algorithms.cpp" />
+    <ClCompile Include="..\test\test_amp_stl_algorithms_find.cpp" />
+    <ClCompile Include="..\test\test_amp_stl_algorithms_swap.cpp" />
     <ClCompile Include="..\test\test_amp_stl_iterators.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />

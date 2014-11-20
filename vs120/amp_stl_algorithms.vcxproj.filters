@@ -27,5 +27,29 @@
     <ClCompile Include="..\test\test_amp_stl_algorithms.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_swap.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_find.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_transform.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_replace.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_remove.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_fill.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_copy.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_is_sorted.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

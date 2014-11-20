@@ -240,7 +240,7 @@ namespace amp_stl_algorithms
     RandomAccessIterator copy_n(ConstRandomAccessIterator first, Size count, RandomAccessIterator dest_first)
     {
         // copy() will handle the case where count == 0.
-        return amp_stl_algorithms::copy(first, (first + count), dest_first);
+        return amp_stl_algorithms::copy(first, first + int(count), dest_first);
     }
 
     //----------------------------------------------------------------------------
@@ -251,9 +251,10 @@ namespace amp_stl_algorithms
     typename std::iterator_traits<ConstRandomAccessIterator>::difference_type
         count( ConstRandomAccessIterator first, ConstRandomAccessIterator last, const T &value )
     {
-        return amp_stl_algorithms::count_if(
-            first, last, 
-            [value] (const decltype(*first)& cur_val) restrict(amp) { return cur_val==value; }
+        return amp_stl_algorithms::count_if(first, last, [value] (const decltype(*first)& cur_val) restrict(amp) 
+        { 
+            return cur_val == value; 
+        }
         );
     }
 

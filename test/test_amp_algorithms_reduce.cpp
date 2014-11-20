@@ -104,7 +104,7 @@ TEST_F(amp_reduce_tests, reduce_float_max)
     ASSERT_EQ(cpu_result, amp_result);
 }
 
-TEST_F(amp_reduce_tests, amp_functor_view_float)
+TEST_F(amp_reduce_tests, functor_view_float)
 {
     float cpuStdDev, gpuStdDev;
 
@@ -113,7 +113,7 @@ TEST_F(amp_reduce_tests, amp_functor_view_float)
     ASSERT_TRUE(compare(gpuStdDev, cpuStdDev));
 }
 
-TEST_F(amp_reduce_tests, amp_functor_view_int)
+TEST_F(amp_reduce_tests, functor_view_int)
 {
     int cpuStdDev, gpuStdDev;
 
