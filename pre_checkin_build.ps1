@@ -128,7 +128,7 @@ foreach ($b in $builds)
 
     write-host "  $sln ( $conf | $plat )"
 }
-$builds_expected = $builds.Count * 2 ## Two projects get built for each build.
+$builds_expected = $builds.Count
 $builds_ok = 0
 $builds_run = 0
 

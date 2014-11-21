@@ -29,12 +29,6 @@ using namespace concurrency;
 using namespace amp_stl_algorithms;
 using namespace testtools;
 
-int main(int argc, char **argv) 
-{
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-}
-
 class stl_algorithms_tests : public stl_algorithms_testbase<13>, public ::testing::Test {};
 
 //----------------------------------------------------------------------------
@@ -347,7 +341,7 @@ TEST_F(stl_algorithms_tests, inner_product_pred)
 // minmax, max_element, min_element, minmax_element
 //----------------------------------------------------------------------------
 
-std::array<std::pair<int, int>, 6> arithmetic_operator_data = {
+std::array<std::pair<int, int>, 6> minmax_data = {
     std::pair<int, int>(1, 2),
     std::pair<int, int>(100, 100),
     std::pair<int, int>(150, 300),
@@ -365,7 +359,7 @@ TEST_F(stl_algorithms_tests, minmax)
         { 
             return amp_stl_algorithms::minmax(a, b); 
         },
-        arithmetic_operator_data);
+        minmax_data);
 }
 
 TEST_F(stl_algorithms_tests, minmax_pred)
@@ -376,7 +370,7 @@ TEST_F(stl_algorithms_tests, minmax_pred)
         { 
             return amp_stl_algorithms::minmax(a, b, amp_algorithms::greater_equal<int>()); 
         },
-        arithmetic_operator_data);
+        minmax_data);
 }
 
 //----------------------------------------------------------------------------

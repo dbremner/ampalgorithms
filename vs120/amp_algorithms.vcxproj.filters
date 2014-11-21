@@ -11,6 +11,10 @@
     <ClInclude Include="..\test\testtools.h">
       <Filter>Tests</Filter>
     </ClInclude>
+    <ClInclude Include="..\inc\amp_iterators.h" />
+    <ClInclude Include="..\inc\amp_stl_algorithms.h" />
+    <ClInclude Include="..\inc\xx_amp_stl_algorithms_impl.h" />
+    <ClInclude Include="..\inc\xx_amp_stl_algorithms_impl_inl.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Tests">
@@ -43,6 +47,39 @@
       <Filter>Tests</Filter>
     </ClCompile>
     <ClCompile Include="..\test\gtest_main.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_copy.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_fill.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_find.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_is_sorted.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_remove.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_replace.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_swap.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_transform.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_iterators.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\examples_stl_amp_algorithms.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
   </ItemGroup>

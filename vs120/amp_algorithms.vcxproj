@@ -22,13 +22,18 @@
     <ClInclude Include="..\inc\amp_algorithms.h" />
     <ClInclude Include="..\inc\amp_algorithms_direct3d.h" />
     <ClInclude Include="..\inc\amp_indexable_view.h" />
+    <ClInclude Include="..\inc\amp_iterators.h" />
+    <ClInclude Include="..\inc\amp_stl_algorithms.h" />
     <ClInclude Include="..\inc\xx_amp_algorithms_direct3d_impl.h" />
     <ClInclude Include="..\inc\xx_amp_algorithms_impl.h" />
     <ClInclude Include="..\inc\xx_amp_algorithms_impl_inl.h" />
+    <ClInclude Include="..\inc\xx_amp_stl_algorithms_impl.h" />
+    <ClInclude Include="..\inc\xx_amp_stl_algorithms_impl_inl.h" />
     <ClInclude Include="..\test\stdafx.h" />
     <ClInclude Include="..\test\testtools.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\test\examples_stl_amp_algorithms.cpp" />
     <ClCompile Include="..\test\gtest_main.cpp" />
     <ClCompile Include="..\test\stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -40,6 +45,16 @@
     <ClCompile Include="..\test\test_amp_algorithms_direct3d_scan.cpp" />
     <ClCompile Include="..\test\test_amp_algorithms_operators.cpp" />
     <ClCompile Include="..\test\test_amp_algorithms_reduce.cpp" />
+    <ClCompile Include="..\test\test_amp_stl_algorithms.cpp" />
+    <ClCompile Include="..\test\test_amp_stl_algorithms_copy.cpp" />
+    <ClCompile Include="..\test\test_amp_stl_algorithms_fill.cpp" />
+    <ClCompile Include="..\test\test_amp_stl_algorithms_find.cpp" />
+    <ClCompile Include="..\test\test_amp_stl_algorithms_is_sorted.cpp" />
+    <ClCompile Include="..\test\test_amp_stl_algorithms_remove.cpp" />
+    <ClCompile Include="..\test\test_amp_stl_algorithms_replace.cpp" />
+    <ClCompile Include="..\test\test_amp_stl_algorithms_swap.cpp" />
+    <ClCompile Include="..\test\test_amp_stl_algorithms_transform.cpp" />
+    <ClCompile Include="..\test\test_amp_stl_iterators.cpp" />
     <ClCompile Include="..\test\test_testtools.cpp" />
     <ClCompile Include="..\test\test_amp_algorithms_sort.cpp" />
     <ClCompile Include="..\test\test_amp_algorithms_scan.cpp" />
