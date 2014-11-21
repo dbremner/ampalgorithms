@@ -46,7 +46,7 @@ TEST_F(stl_algorithms_tests, fill)
 
 TEST_F(stl_algorithms_tests, fill_n)
 {
-    int size = int(input.size() / 2);
+    int size = static_cast<int>(input.size() / 2);
     std::fill_n(begin(input), size, 3);
     auto iter = amp_stl_algorithms::fill_n(begin(input_av), size, 3);
 
@@ -56,7 +56,7 @@ TEST_F(stl_algorithms_tests, fill_n)
 
 TEST_F(stl_algorithms_tests, fill_n_for_zero_elements)
 {
-    int size = int(input.size() / 2);
+    int size = static_cast<int>(input.size() / 2);
     std::fill_n(begin(input), size, 3);
     auto iter = amp_stl_algorithms::fill_n(begin(input_av), 0, 3);
 

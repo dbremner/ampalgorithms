@@ -94,7 +94,7 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_tile_by_key_with_inde
     std::array<unsigned, 16> input =     { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,   4, 12,  9,  8 };
     // Key 0 values, 2 bit key:            3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
     std::array<unsigned, 16> expected  = { 1,  2,  6,  3,    0, 13, 10, 11,    5, 10, 14, 15,   4, 12,  8,  9 };
-    array_view<unsigned> input_av(int(input.size()), input);
+    array_view<unsigned> input_av(static_cast<int>(input.size()), input);
 
     concurrency::tiled_extent<4> compute_domain = input_av.get_extent().tile<4>().pad();
 
@@ -122,7 +122,7 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_tile_by_key_with_inde
     std::array<unsigned, 16> input =     { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,   4, 12,  9,  8 };
     // rdx                                 3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
     std::array<unsigned, 16> expected  = { 0,  4, 12,  8,    1, 13,  5,  9,    2,  6, 10, 10,  14,  3, 11, 15 };
-    array_view<unsigned> input_av(int(input.size()), input);
+    array_view<unsigned> input_av(static_cast<int>(input.size()), input);
 
     concurrency::tiled_extent<32> compute_domain = input_av.get_extent().tile<32>().pad();
 
@@ -150,7 +150,7 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_tile_by_key_with_inde
     std::array<unsigned long, 32> input = { 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0 };
     // rdx                                 3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
     std::array<unsigned long, 32> expected = { 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3 };
-    array_view<unsigned long> input_av(int(input.size()), input);
+    array_view<unsigned long> input_av(static_cast<int>(input.size()), input);
 
     concurrency::tiled_extent<32> compute_domain = input_av.extent.tile<32>().pad();
 
@@ -184,7 +184,7 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_tile_by_key_with_inde
     std::array<unsigned long, 32> input = { 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0 };
     // rdx                                 3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
     std::array<unsigned long, 32> expected = { 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3 };
-    array_view<unsigned long> input_av(int(input.size()), input);
+    array_view<unsigned long> input_av(static_cast<int>(input.size()), input);
 
     concurrency::tiled_extent<32> compute_domain = input_av.extent.tile<32>().pad();
 
@@ -218,7 +218,7 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_tile_by_key_with_inde
     std::array<unsigned, 16> input = { 3, 2, 1, 6, 10, 11, 13, 0, 15, 10, 5, 14, 4, 12, 9, 8 };
     // rdx                                 3   2   1   2     2   3   1   0     3   2   1   2    0   0   1   0
     std::array<unsigned, 16> expected = { 0, 4, 12, 8, 1, 13, 5, 9, 2, 6, 10, 10, 14, 3, 11, 15 };
-    array_view<unsigned> input_av(int(input.size()), input);
+    array_view<unsigned> input_av(static_cast<int>(input.size()), input);
 
     concurrency::tiled_extent<256> compute_domain = input_av.extent.tile<256>().pad();
 
@@ -247,7 +247,7 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_tile_by_key_with_inde
     // Key 1 values, 2 bit key:            0   0   1   0    0   3   2   2    1   2   3   3    1   3   2   2
     std::array<unsigned, 16> expected = { 1, 2, 3, 6, 0, 10, 11, 13, 5, 10, 14, 15, 4, 8, 9, 12 };
 
-    array_view<unsigned> input_av(int(input.size()), input);
+    array_view<unsigned> input_av(static_cast<int>(input.size()), input);
 
     concurrency::tiled_extent<4> compute_domain = input_av.get_extent().tile<4>().pad();
     concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<4> tidx) restrict(amp)
@@ -307,9 +307,9 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_by_key_with_index_0_t
     //                                                                                             2 => 2 - 1  + 3 +  8 = 12
     //                                                                                             3 => 3 - 3  + 2 + 13 = 15
 
-    array_view<unsigned> input_av(int(input.size()), input);
+    array_view<unsigned> input_av(static_cast<int>(input.size()), input);
     std::array<unsigned, 16> output;
-    array_view<unsigned> output_av(int(output.size()), output);
+    array_view<unsigned> output_av(static_cast<int>(output.size()), output);
     amp_algorithms::fill(output_av, 404);
 
     amp_algorithms::_details::radix_sort_by_key<unsigned, 4, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
@@ -337,9 +337,9 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_by_key_with_index_0_t
                                                                   
     std::array<unsigned, 16> sorted_by_key_0 =               { 0,  4, 12,  8,  1, 13,  5,  9,    2,  6, 10, 10, 14,  3, 11, 15 };
                                                            
-    array_view<unsigned> input_av(int(input.size()), input);
+    array_view<unsigned> input_av(static_cast<int>(input.size()), input);
     std::array<unsigned, 16> output;
-    array_view<unsigned> output_av(int(output.size()), output);
+    array_view<unsigned> output_av(static_cast<int>(output.size()), output);
     amp_algorithms::fill(output_av, 0);
 
     amp_algorithms::_details::radix_sort_by_key<unsigned, 8, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
@@ -365,9 +365,9 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_by_key_with_index_0_t
     std::array<unsigned, 16> global_rdx_offsets =            { 0,  4,  8, 13,                          0,0,0,0,0,0,0,0,0,0,0,0 };
 
     std::array<unsigned, 16> sorted_by_key_0 =               { 0,  4, 12,  8,    1, 13,  5,  9,    2,  6, 10, 10,   14,  3, 11, 15 };
-    array_view<unsigned> input_av(int(input.size()), input);
+    array_view<unsigned> input_av(static_cast<int>(input.size()), input);
     std::array<unsigned, 16> output;
-    array_view<unsigned> output_av(int(output.size()), output); 
+    array_view<unsigned> output_av(static_cast<int>(output.size()), output); 
     amp_algorithms::fill(output_av, 0);
 
     amp_algorithms::_details::radix_sort_by_key<unsigned, 32, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
@@ -384,9 +384,9 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_by_key_with_index_1_t
 
     std::array<unsigned, 16> sorted_by_key_1 =               { 0,  1,  2,  3,   4,  5,  6,  8,    9, 10, 10, 11,   12, 13, 14, 15 };
 
-    array_view<unsigned> input_av(int(input.size()), input);
+    array_view<unsigned> input_av(static_cast<int>(input.size()), input);
     std::array<unsigned, 16> output;
-    array_view<unsigned> output_av(int(output.size()), output);
+    array_view<unsigned> output_av(static_cast<int>(output.size()), output);
     amp_algorithms::fill(output_av, 404);
 
     amp_algorithms::_details::radix_sort_by_key<unsigned, 4, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 1);
@@ -399,9 +399,9 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_by_key_with_index_1_t
 {
     std::array<unsigned, 16> input =                         { 0,  4, 12,  8,    1, 13,  5,  9,    2,  6, 10, 10,   14,  3, 11, 15 };
     std::array<unsigned, 16> sorted_by_key_1 =               { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,   12, 13, 14, 15 };
-    array_view<unsigned> input_av(int(input.size()), input);
+    array_view<unsigned> input_av(static_cast<int>(input.size()), input);
     std::array<unsigned, 16> output;
-    array_view<unsigned> output_av(int(output.size()), output);
+    array_view<unsigned> output_av(static_cast<int>(output.size()), output);
     amp_algorithms::fill(output_av, 0);
 
     amp_algorithms::_details::radix_sort_by_key<unsigned, 8, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 1);
@@ -414,9 +414,9 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_with_tile_4_data_16)
 {
     std::array<unsigned, 16> input =                         { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,    4, 12,  9,  8 };
     std::array<unsigned, 16> sorted =                        { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,   12, 13, 14, 15 };
-    array_view<unsigned> input_av(int(input.size()), input);
+    array_view<unsigned> input_av(static_cast<int>(input.size()), input);
     std::array<unsigned, 16> output;
-    array_view<unsigned> output_av(int(output.size()), output);
+    array_view<unsigned> output_av(static_cast<int>(output.size()), output);
     amp_algorithms::fill(output_av, 0);
             
     amp_algorithms::_details::radix_sort<unsigned, 4, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
@@ -429,9 +429,9 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_with_tile_8_data_16)
 {
     std::array<unsigned, 16> input =                         { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,    4, 12,  9,  8 };
     std::array<unsigned, 16> sorted =                        { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,   12, 13, 14, 15 };
-    array_view<unsigned> input_av(int(input.size()), input);
+    array_view<unsigned> input_av(static_cast<int>(input.size()), input);
     std::array<unsigned, 16> output;
-    array_view<unsigned> output_av(int(output.size()), output);
+    array_view<unsigned> output_av(static_cast<int>(output.size()), output);
     amp_algorithms::fill(output_av, 0);
             
     amp_algorithms::_details::radix_sort<unsigned, 8, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
@@ -444,9 +444,9 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_with_tile_32_data_16)
 {
     std::array<unsigned, 16> input =                         { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,    4, 12,  9,  8 };
     std::array<unsigned, 16> sorted =                        { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,   12, 13, 14, 15 };
-    array_view<unsigned> input_av(int(input.size()), input);
+    array_view<unsigned> input_av(static_cast<int>(input.size()), input);
     std::array<unsigned, 16> output;
-    array_view<unsigned> output_av(int(output.size()), output);
+    array_view<unsigned> output_av(static_cast<int>(output.size()), output);
     amp_algorithms::fill(output_av, 0);
             
     amp_algorithms::_details::radix_sort<unsigned, 32, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
@@ -463,11 +463,11 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_with_tile_4_data_1024
 #else
     std::iota(rbegin(input), rend(input), 0);
 #endif
-    concurrency::array_view<int, 1> input_av(int(input.size()), input);
+    concurrency::array_view<int, 1> input_av(static_cast<int>(input.size()), input);
     std::vector<int> expected(input.size());
     std::iota(begin(expected), end(expected), 0);
     std::vector<int> output(input.size(), 0);
-    array_view<int> output_av(int(output.size()), output);
+    array_view<int> output_av(static_cast<int>(output.size()), output);
 
     amp_algorithms::_details::radix_sort<int, 4, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
 
@@ -483,11 +483,11 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_with_tile_8_data_1024
 #else
     std::iota(rbegin(input), rend(input), 0);
 #endif
-    concurrency::array_view<int, 1> input_av(int(input.size()), input);
+    concurrency::array_view<int, 1> input_av(static_cast<int>(input.size()), input);
     std::vector<int> expected(input.size());
     std::iota(begin(expected), end(expected), 0);
     std::vector<int> output(input.size(), 0);
-    array_view<int> output_av(int(output.size()), output);
+    array_view<int> output_av(static_cast<int>(output.size()), output);
 
     amp_algorithms::_details::radix_sort<int, 8, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
 
@@ -503,11 +503,11 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_with_tile_16_data_102
 #else
     std::iota(rbegin(input), rend(input), 0);
 #endif
-    concurrency::array_view<int, 1> input_av(int(input.size()), input);
+    concurrency::array_view<int, 1> input_av(static_cast<int>(input.size()), input);
     std::vector<int> expected(input.size());
     std::iota(begin(expected), end(expected), 0);
     std::vector<int> output(input.size(), 0);
-    array_view<int> output_av(int(output.size()), output);
+    array_view<int> output_av(static_cast<int>(output.size()), output);
 
     amp_algorithms::_details::radix_sort<int, 16, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
 
@@ -523,11 +523,11 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_with_tile_32_data_102
 #else
     std::iota(rbegin(input), rend(input), 0);
 #endif
-    concurrency::array_view<int, 1> input_av(int(input.size()), input);
+    concurrency::array_view<int, 1> input_av(static_cast<int>(input.size()), input);
     std::vector<int> expected(input.size());
     std::iota(begin(expected), end(expected), 0);
     std::vector<int> output(input.size(), 0);
-    array_view<int> output_av(int(output.size()), output);
+    array_view<int> output_av(static_cast<int>(output.size()), output);
 
     amp_algorithms::_details::radix_sort<int, 32, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av);
 
@@ -541,9 +541,9 @@ TEST_F(amp_algorithms_radix_sort_tests, radix_sort_with_data_16)
     std::array<unsigned, 16> sorted_by_key_0 =               { 0,  4, 12,  8,    1, 13,  5,  9,    2,  6, 10, 10,   14,  3, 11, 15 };
     std::array<int, 16> sorted_by_key_1 =                    { 0,  1,  2,  3,    4,  5,  6,  8,    9, 10, 10, 11,   12, 13, 14, 15 };
 
-    concurrency::array_view<int, 1> input_vw(int(input.size()), input);
+    concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
     std::vector<int> output(input.size(), 404);
-    array_view<int> output_av(int(output.size()), output);
+    array_view<int> output_av(static_cast<int>(output.size()), output);
 
     radix_sort(input_vw, output_av);
 
@@ -559,11 +559,11 @@ TEST_F(amp_algorithms_radix_sort_tests, radix_sort_with_data_64)
 #else
     std::iota(rbegin(input), rend(input), 0);
 #endif
-    concurrency::array_view<int, 1> input_vw(int(input.size()), input);
+    concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
     std::vector<int> expected(input.size());
     std::iota(begin(expected), end(expected), 0);
     std::vector<int> output(input.size(), 404);
-    array_view<int> output_av(int(output.size()), output);
+    array_view<int> output_av(static_cast<int>(output.size()), output);
 
     radix_sort(input_vw, output_av);
 
@@ -579,11 +579,11 @@ TEST_F(amp_algorithms_radix_sort_tests, radix_sort_with_data_128)
 #else
     std::iota(rbegin(input), rend(input), 0);
 #endif
-    concurrency::array_view<int, 1> input_vw(int(input.size()), input);
+    concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
     std::vector<int> expected(input.size());
     std::iota(begin(expected), end(expected), 0);
     std::vector<int> output(input.size(), 404);
-    array_view<int> output_av(int(output.size()), output);
+    array_view<int> output_av(static_cast<int>(output.size()), output);
 
     radix_sort(input_vw, output_av);
 

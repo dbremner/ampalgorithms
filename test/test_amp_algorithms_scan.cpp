@@ -40,9 +40,9 @@ TEST_F(amp_algorithms_scan_tests, details_scan_tile_exclusive)
     std::array<unsigned, 16> zero_top =     {  3,  5,  1,  0,   10, 21, 13,  0,   15, 25,  5,  0,    4, 16,  9,  0 };
     std::array<unsigned, 16> expected =     {  0,  3,  5,  6,    0, 10, 21, 34,    0, 15, 25, 30,    0,  4, 16, 25 };
 
-    array_view<unsigned> input_av(int(input.size()), input);
+    array_view<unsigned> input_av(static_cast<int>(input.size()), input);
     std::array<unsigned, 16> output;
-    array_view<unsigned> output_av(int(output.size()), output);
+    array_view<unsigned> output_av(static_cast<int>(output.size()), output);
     amp_algorithms::fill(output_av, 0);
     concurrency::tiled_extent<tile_size> compute_domain = input_av.get_extent().tile<4>().pad();
 
@@ -69,10 +69,10 @@ TEST_F(amp_algorithms_scan_tests, details_segment_scan_width_2)
     std::array<unsigned, 16> expected = { 0, 3,   0, 1,    0, 10,    0, 13,    0, 15,    0,  5,     0,   4,    0,    9 };
 
     scan_sequential_exclusive(begin(input), end(input), begin(input));
-    array_view<unsigned> input_av(int(input.size()), input);
+    array_view<unsigned> input_av(static_cast<int>(input.size()), input);
     std::array<unsigned, 16> output;
 
-    for (int i = 0; i < int(output.size()); ++i)
+    for (int i = 0; i < static_cast<int>(output.size()); ++i)
     {
         output[i] = amp_algorithms::_details::segment_exclusive_scan(input_av, 2, i);
     }
@@ -87,10 +87,10 @@ TEST_F(amp_algorithms_scan_tests, details_segment_scan_width_8)
     std::array<unsigned, 16> expected = { 0, 3, 5, 6, 12, 22, 33, 46,    0, 15, 25, 30,  44,  48,  60,  69 };
 
     scan_sequential_exclusive(begin(input), end(input), begin(input));
-    array_view<unsigned> input_av(int(input.size()), input);
+    array_view<unsigned> input_av(static_cast<int>(input.size()), input);
     std::array<unsigned, 16> output;
 
-    for (int i = 0; i < int(output.size()); ++i)
+    for (int i = 0; i < static_cast<int>(output.size()); ++i)
     {
         output[i] = amp_algorithms::_details::segment_exclusive_scan(input_av, 8, i);
     }
@@ -103,9 +103,9 @@ TEST_F(amp_algorithms_scan_tests, details_scan_tile_exclusive_partial)
     std::array<unsigned, 7> input =    { 3, 2, 1, 6, 10, 11,  5 };
     std::array<unsigned, 7> expected = { 0, 3, 5, 6, 12, 22, 33 };
 
-    array_view<unsigned> input_av(int(input.size()), input);
+    array_view<unsigned> input_av(static_cast<int>(input.size()), input);
     std::array<unsigned, 7> output;
-    array_view<unsigned> output_av(int(output.size()), output);
+    array_view<unsigned> output_av(static_cast<int>(output.size()), output);
     amp_algorithms::fill(output_av, 0);
     concurrency::tiled_extent<16> compute_domain = input_av.get_extent().tile<16>().pad();
 
@@ -129,7 +129,7 @@ TEST_F(amp_algorithms_scan_tests, exclusive_multi_tile)
     std::vector<int> input(test_tile_size * 4);
     //generate_data(input);
     std::iota(begin(input), end(input), 1);
-    concurrency::array_view<int, 1> input_vw(int(input.size()), input);
+    concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
     std::vector<int> expected(input.size());
     scan_sequential_exclusive(begin(input), end(input), begin(expected));
 
@@ -142,7 +142,7 @@ TEST_F(amp_algorithms_scan_tests, exclusive_multi_tile_partial)
 {
     std::vector<int> input(test_tile_size * 4 + 4);
     generate_data(input);
-    concurrency::array_view<int, 1> input_vw(int(input.size()), input);
+    concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
     std::vector<int> expected(input.size());
     scan_sequential_exclusive(begin(input), end(input), begin(expected));
 
@@ -156,7 +156,7 @@ TEST_F(amp_algorithms_scan_tests, exclusive_recursive_scan)
 {
     std::vector<int> input(test_tile_size * (test_tile_size + 2));
     generate_data(input);
-    concurrency::array_view<int, 1> input_vw(int(input.size()), input);
+    concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
     std::vector<int> expected(input.size());
     scan_sequential_exclusive(begin(input), end(input), begin(expected));
 
@@ -170,7 +170,7 @@ TEST_F(amp_algorithms_scan_tests, exclusive_large_data)
 {
     std::vector<int> input(test_tile_size * (test_tile_size + 10));
     generate_data(input);
-    concurrency::array_view<int, 1> input_vw(int(input.size()), input);
+    concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
     std::vector<int> expected(input.size());
     scan_sequential_exclusive(begin(input), end(input), begin(expected));
 
@@ -185,7 +185,7 @@ TEST_F(amp_algorithms_scan_tests, inclusive_multi_tile)
     std::vector<int> input(test_tile_size * 4);
     //generate_data(input);
     std::iota(begin(input), end(input), 1);
-    concurrency::array_view<int, 1> input_vw(int(input.size()), input);
+    concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
     std::vector<int> expected(input.size());
     scan_sequential_inclusive(begin(input), end(input), begin(expected));
 
@@ -198,7 +198,7 @@ TEST_F(amp_algorithms_scan_tests, inclusive_multi_tile_partial)
 {
     std::vector<int> input(test_tile_size * 4 + 4, 1);
     generate_data(input);
-    concurrency::array_view<int, 1> input_vw(int(input.size()), input);
+    concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
     std::vector<int> expected(input.size());
     scan_sequential_inclusive(begin(input), end(input), begin(expected));
 
@@ -212,7 +212,7 @@ TEST_F(amp_algorithms_scan_tests, inclusive_recursive_scan)
 {
     std::vector<int> input(test_tile_size * (test_tile_size + 2));
     generate_data(input);
-    concurrency::array_view<int, 1> input_vw(int(input.size()), input);
+    concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
     std::vector<int> expected(input.size());
     scan_sequential_inclusive(begin(input), end(input), begin(expected));
 
@@ -226,7 +226,7 @@ TEST_F(amp_algorithms_scan_tests, inclusive_large_data)
 {
     std::vector<int> input(test_tile_size * (test_tile_size + 10), 1);
     generate_data(input);
-    concurrency::array_view<int, 1> input_vw(int(input.size()), input);
+    concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
     std::vector<int> result(input.size(), -1);
     std::vector<int> expected(input.size());
     scan_sequential_inclusive(begin(input), end(input), begin(expected));

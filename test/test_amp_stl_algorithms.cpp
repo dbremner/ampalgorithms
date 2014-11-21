@@ -236,8 +236,8 @@ protected:
     array_view<int> unequal_av;
 
     stl_algorithms_tests_2() :
-        equal_av(concurrency::extent<1>(int(input.size())), equal),
-        unequal_av(concurrency::extent<1>(int(output.size())), unequal)
+        equal_av(concurrency::extent<1>(static_cast<int>(input.size())), equal),
+        unequal_av(concurrency::extent<1>(static_cast<int>(output.size())), unequal)
     {
         std::copy(cbegin(input), cend(input), begin(equal));
         std::copy(cbegin(input), cend(input), begin(unequal));
@@ -410,7 +410,7 @@ TEST_P(reverse_tests, test)
     std::reverse(begin(expected), end(expected));
     std::vector<int> input(GetParam());
     std::iota(begin(input), end(input), 0);
-    array_view<int> input_av(int(input.size()), input);
+    array_view<int> input_av(static_cast<int>(input.size()), input);
 
     amp_stl_algorithms::reverse(begin(input_av), end(input_av));
 

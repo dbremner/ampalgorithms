@@ -93,7 +93,7 @@ namespace testtools
         srand(2012);    // Set random number seed so tests are reproducible.
         std::generate(begin(v), end(v), [=]{
             T v = (T)rand();
-            return ((int(v) % 4) == 0) ? -v : v;
+            return ((static_cast<int>(v) % 4) == 0) ? -v : v;
         });
     }
 
@@ -240,7 +240,7 @@ namespace testtools
             return true;
         }
         bool is_same = true;
-        for (int i = 0; (i < int(expected_size) && is_same); ++i)
+        for (int i = 0; (i < static_cast<int>(expected_size) && is_same); ++i)
         {
             EXPECT_EQ(expected[i], actual[i]);
             if (expected[i] != actual[i])
@@ -300,7 +300,7 @@ namespace testtools
     {
         size_t i = std::min<size_t>(_details::get_width(os), vec.extent[0]);
         std::vector<const T> buffer(i);
-        copy(vec.section(0, int(i)), std::begin(buffer));
+        copy(vec.section(0, static_cast<int>(i)), std::begin(buffer));
         return os << buffer;
     }
 
@@ -309,7 +309,7 @@ namespace testtools
     {
         size_t i = std::min<size_t>(_details::get_width(os), vec.extent[0]);
         std::vector<T> buffer(i);
-        copy(vec.section(0, int(i)), std::begin(buffer));
+        copy(vec.section(0, static_cast<int>(i)), std::begin(buffer));
         return os << buffer;
     }
 
@@ -402,8 +402,8 @@ protected:
     std::array<int, _Size> expected;
 
     stl_algorithms_testbase() :
-        input_av(concurrency::extent<1>(int(input.size())), input),
-        output_av(concurrency::extent<1>(int(output.size())), output)
+        input_av(concurrency::extent<1>(static_cast<int>(input.size())), input),
+        output_av(concurrency::extent<1>(static_cast<int>(output.size())), output)
     {
         const std::array<int, _Size> input_data = { { 1, 3, 6, 3, 2, 2, 7, 8, 2, 9, 2, 10, 2 } };
         int i = 0;
