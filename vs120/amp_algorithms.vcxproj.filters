@@ -84,5 +84,8 @@
     <ClCompile Include="..\test\examples_stl_amp_algorithms.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
+    <ClCompile Include="..\test\test_amp_algorithms_bitvector.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

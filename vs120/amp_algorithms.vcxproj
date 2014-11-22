@@ -42,6 +42,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\test\test_amp_algorithms.cpp" />
+    <ClCompile Include="..\test\test_amp_algorithms_bitvector.cpp" />
     <ClCompile Include="..\test\test_amp_algorithms_direct3d_scan.cpp" />
     <ClCompile Include="..\test\test_amp_algorithms_operators.cpp" />
     <ClCompile Include="..\test\test_amp_algorithms_reduce.cpp" />

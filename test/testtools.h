@@ -81,9 +81,13 @@ namespace testtools
         size = 1023 + 1029;
 #endif
         if (std::is_same<T, int>::value)
+        {
             size *= 13;
+        }
         else if (std::is_same<T, float>::value)
+        {
             size *= 5;
+        }
         return size;
     }
 

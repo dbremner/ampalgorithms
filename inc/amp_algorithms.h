@@ -209,14 +209,12 @@ namespace amp_algorithms
         enum { value = FALSE };
     };
 
-
     // TODO: Generalize this for other integer types.
     template <typename T>
     bool is_power_of_two(T value)
     {
         return count_bits(value) == 1;
     }
-
 
     //----------------------------------------------------------------------------
     // Comparison operations
@@ -429,6 +427,97 @@ namespace amp_algorithms
     }
     
 #pragma endregion
+
+    //----------------------------------------------------------------------------
+    // bitvector
+    //----------------------------------------------------------------------------
+
+    template <typename T>
+    class uniform_segments
+    {
+    private:
+        int m_step;
+
+    public:
+        uniform_segments(int step) : m_step(step) { }
+
+        bool operator()(const T &i) const
+        {
+            return (i % m_step == 0);
+        }
+    };
+
+    struct bitvector
+    {
+    private:
+        unsigned int m_data_size;
+
+    public:
+        std::vector<unsigned> data;
+
+#if _MSC_VER >= 1800
+        bitvector() = delete;
+        ~bitvector() = default;
+        bitvector(const bitvector&) = default;
+        //bitvector(bitvector&&) = default;
+        bitvector& operator=(const bitvector&) = default;
+        //bitvector& operator=(bitvector&&) = default;
+#endif
+        bitvector(const unsigned data_size) : m_data_size(data_size)
+        {
+            data = std::vector<unsigned>(bits_pad_to_uint(data_size), 0);
+        }
+
+        // Initialize bitvector with constant segment width.
+
+        void initialize(const int segment_width)
+        {
+            initialize(uniform_segments<int>(segment_width));
+        }
+
+        // Initialize bitvector with custom segment widths.
+
+        template <typename Func>
+        void initialize(Func pred)
+        {
+            unsigned flag_counter = 0;
+            for (unsigned idx = 0; idx < data.size() && flag_counter < m_data_size; ++idx)
+            {
+                unsigned bag_of_bits = data[idx];
+                for (unsigned offset = 0; offset < amp_algorithms::bit_count<unsigned>() && flag_counter < m_data_size; ++offset)
+                {
+                    if (pred(flag_counter))
+                    {
+                        bag_of_bits |= 1 << offset;
+                    }
+                    flag_counter++;
+                }
+                data[idx] = bag_of_bits;
+            }
+        }
+
+        bool is_bit_set(unsigned pos, amp_algorithms::scan_direction direction = amp_algorithms::scan_direction::forward)
+        {
+            // When we encounter flag going direction it means, 
+            // that it is the first element of this segment (last element to be scanned going direction)
+            // for simplification we increment 'pos' and always look for flags behind our current position.
+
+            if (direction == amp_algorithms::scan_direction::backward)
+            {
+                pos++;
+            }
+            unsigned idx = pos / bit_count<unsigned>();
+            unsigned offset = pos % bit_count<unsigned>();
+            unsigned bag_of_bits = data[idx];
+            return (1 << offset & bag_of_bits) > 0;
+        }
+
+    private:
+        unsigned bits_pad_to_uint(const unsigned bits) const
+        {
+            return (bits + amp_algorithms::bit_count<unsigned>() - 1) / amp_algorithms::bit_count<unsigned>();
+        }
+    };
 
     //----------------------------------------------------------------------------
     // fill

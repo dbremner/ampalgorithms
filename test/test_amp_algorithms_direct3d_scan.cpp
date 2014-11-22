@@ -28,8 +28,6 @@ using namespace concurrency;
 using namespace amp_algorithms::direct3d;
 using namespace testtools;
 
-struct bitvector;
-
 enum class scan_type
 {
     scan,
@@ -68,7 +66,7 @@ public:
         std::vector<T> in(row_count * column_count);
         generate_data(in);
         std::vector<T> out(row_count * column_count);
-        amp_algorithms::direct3d::bitvector flags(column_count);
+        amp_algorithms::bitvector flags(column_count);
 
         // Construct scan object
         amp_algorithms::direct3d::scan s(column_count, row_count);
@@ -183,7 +181,7 @@ public:
 
     template <typename T, typename BinaryFunction>
     void verify_scan_results(amp_algorithms::scan_direction direction, bool exclusive, BinaryFunction op, std::vector<T> &in, std::vector<T> &out,
-        unsigned int scan_size, unsigned int scan_pitch, unsigned int scan_count, amp_algorithms::direct3d::bitvector &flags)
+        unsigned int scan_size, unsigned int scan_pitch, unsigned int scan_count, amp_algorithms::bitvector &flags)
     {
         // For each sub-scan
         for (unsigned int current_scan_num = 0; current_scan_num < scan_count; ++current_scan_num)
