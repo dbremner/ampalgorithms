@@ -20,6 +20,9 @@
 
 #define NOMINMAX
 
+// TODO: Currently amp_algorithms::copy() causes these warnings, possibly due to a bug in the AMP library.
+#pragma  warning (disable : 4267)
+
 #include <algorithm>
 #include <array>
 #include <functional>
@@ -28,7 +31,7 @@
 #include <random>
 #include <vector>
 
-// These are not required includes, they already included by the AMP library headers .
+// These are not required includes, they already included by the AMP library headers.
 #include <amp.h>
 #include <assert.h>
 #include <wrl\client.h>

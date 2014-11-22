@@ -242,7 +242,7 @@ namespace amp_stl_algorithms
     RandomAccessIterator copy_n(ConstRandomAccessIterator first, Size count, RandomAccessIterator dest_first)
     {
         // copy() will handle the case where count == 0.
-        return amp_stl_algorithms::copy(first, first + int(count), dest_first);
+        return amp_stl_algorithms::copy(first, first + static_cast<int>(count), dest_first);
     }
 
     //----------------------------------------------------------------------------

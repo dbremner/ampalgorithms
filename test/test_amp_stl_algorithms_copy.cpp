@@ -73,9 +73,10 @@ TEST_F(stl_algorithms_tests, copy_n)
 {
     int size = static_cast<int>(input.size() / 2);
     std::copy_n(cbegin(input), size, begin(expected));
-    //auto iter = amp_stl_algorithms::copy_n(begin(input_av), size, begin(output_av));
 
-    //ASSERT_EQ(size, std::distance(begin(output_av), iter));
+    auto iter = amp_stl_algorithms::copy_n(begin(input_av), size, begin(output_av));
+
+    ASSERT_EQ(size, std::distance(begin(output_av), iter));
     ASSERT_TRUE(are_equal(expected, output_av));
 }
 
