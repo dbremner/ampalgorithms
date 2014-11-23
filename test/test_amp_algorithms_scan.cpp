@@ -64,11 +64,10 @@ TEST_F(amp_algorithms_scan_tests, details_scan_tile_exclusive)
 
 TEST_F(amp_algorithms_scan_tests, details_segment_scan_width_2)
 {
-    std::array<unsigned, 16> input =    { 3, 2,   1, 6,   10, 11,   13,  1,   15, 10,    5, 14,     4,  12,     9,   8 };
-    // exclusive scan                     0, 3,   5, 6,   12, 22,   33, 47,   62, 77,   87, 92,   106, 118,   127, 135
-    std::array<unsigned, 16> expected = { 0, 3,   0, 1,    0, 10,    0, 13,    0, 15,    0,  5,     0,   4,    0,    9 };
+    // Initial values                     3, 2,   1, 6,   10, 11,   13,  1,   15, 10,    5, 14,     4,  12,     9,   8
+    std::array<unsigned, 16> input =    { 0, 3,   5, 6,   12, 22,   33, 47,   62, 77,   87, 92,   106, 118,   127, 135 };
+    std::array<unsigned, 16> expected = { 0, 3,   0, 1,    0, 10,    0, 14,    0, 15,    0,  5,     0,  12,     0,   8 };
 
-    scan_sequential_exclusive(begin(input), end(input), begin(input));
     array_view<unsigned> input_av(static_cast<int>(input.size()), input);
     std::array<unsigned, 16> output;
 
@@ -82,11 +81,10 @@ TEST_F(amp_algorithms_scan_tests, details_segment_scan_width_2)
 
 TEST_F(amp_algorithms_scan_tests, details_segment_scan_width_8)
 {
-    std::array<unsigned, 16> input =    { 3, 2, 1, 6, 10, 11, 13,  1,   15, 10,  5, 14,   4,  12,   9,   8 };
-    // exclusive scan                     0, 3, 5, 6, 12, 22, 33, 46,   62, 77, 87, 92, 106, 118, 127, 135
-    std::array<unsigned, 16> expected = { 0, 3, 5, 6, 12, 22, 33, 46,    0, 15, 25, 30,  44,  48,  60,  69 };
+    // Initial values                     3, 2, 1, 6, 10, 11, 13,  1,   15, 10,  5, 14,   4,  12,   9,   8
+    std::array<unsigned, 16> input =    { 0, 3, 5, 6, 12, 22, 33, 47,   62, 77, 87, 92, 106, 118, 127, 135 };
+    std::array<unsigned, 16> expected = { 0, 3, 5, 6, 12, 22, 33, 47,    0, 15, 25, 30,  44,  56,  65,  73 };
 
-    scan_sequential_exclusive(begin(input), end(input), begin(input));
     array_view<unsigned> input_av(static_cast<int>(input.size()), input);
     std::array<unsigned, 16> output;
 
@@ -131,7 +129,7 @@ TEST_F(amp_algorithms_scan_tests, exclusive_multi_tile)
     std::iota(begin(input), end(input), 1);
     concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
     std::vector<int> expected(input.size());
-    scan_sequential_exclusive(begin(input), end(input), begin(expected));
+    scan_cpu_exclusive(cbegin(input), cend(input), begin(expected), std::plus<int>());
 
     scan<test_tile_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
@@ -144,7 +142,7 @@ TEST_F(amp_algorithms_scan_tests, exclusive_multi_tile_partial)
     generate_data(input);
     concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
     std::vector<int> expected(input.size());
-    scan_sequential_exclusive(begin(input), end(input), begin(expected));
+    scan_cpu_exclusive(cbegin(input), cend(input), begin(expected), std::plus<int>());
 
     scan<test_tile_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
@@ -158,7 +156,7 @@ TEST_F(amp_algorithms_scan_tests, exclusive_recursive_scan)
     generate_data(input);
     concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
     std::vector<int> expected(input.size());
-    scan_sequential_exclusive(begin(input), end(input), begin(expected));
+    scan_cpu_exclusive(cbegin(input), cend(input), begin(expected), std::plus<int>());
 
     scan<test_tile_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
@@ -172,7 +170,7 @@ TEST_F(amp_algorithms_scan_tests, exclusive_large_data)
     generate_data(input);
     concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
     std::vector<int> expected(input.size());
-    scan_sequential_exclusive(begin(input), end(input), begin(expected));
+    scan_cpu_exclusive(cbegin(input), cend(input), begin(expected), std::plus<int>());
 
     scan<test_tile_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
@@ -180,14 +178,14 @@ TEST_F(amp_algorithms_scan_tests, exclusive_large_data)
     ASSERT_TRUE(expected == input);
 }
 
-TEST_F(amp_algorithms_scan_tests, inclusive_multi_tile)
+TEST_F(amp_algorithms_scan_tests, inclusive_multi_tile_plus)
 {
     std::vector<int> input(test_tile_size * 4);
     //generate_data(input);
     std::iota(begin(input), end(input), 1);
     concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
     std::vector<int> expected(input.size());
-    scan_sequential_inclusive(begin(input), end(input), begin(expected));
+    scan_cpu_inclusive(cbegin(input), cend(input), begin(expected), std::plus<int>());
 
     scan<test_tile_size, scan_mode::inclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
@@ -200,7 +198,7 @@ TEST_F(amp_algorithms_scan_tests, inclusive_multi_tile_partial)
     generate_data(input);
     concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
     std::vector<int> expected(input.size());
-    scan_sequential_inclusive(begin(input), end(input), begin(expected));
+    scan_cpu_inclusive(cbegin(input), cend(input), begin(expected), std::plus<int>());
 
     scan<test_tile_size, scan_mode::inclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
@@ -214,7 +212,7 @@ TEST_F(amp_algorithms_scan_tests, inclusive_recursive_scan)
     generate_data(input);
     concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
     std::vector<int> expected(input.size());
-    scan_sequential_inclusive(begin(input), end(input), begin(expected));
+    scan_cpu_inclusive(cbegin(input), cend(input), begin(expected), std::plus<int>());
 
     scan<test_tile_size, scan_mode::inclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
@@ -229,7 +227,7 @@ TEST_F(amp_algorithms_scan_tests, inclusive_large_data)
     concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
     std::vector<int> result(input.size(), -1);
     std::vector<int> expected(input.size());
-    scan_sequential_inclusive(begin(input), end(input), begin(expected));
+    scan_cpu_inclusive(cbegin(input), cend(input), begin(expected), std::plus<int>());
 
     scan<test_tile_size, scan_mode::inclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 

@@ -112,32 +112,26 @@ namespace testtools
     //  CPU based scan implementation for comparing results from AMP implementations.
     //===============================================================================
 
-    template <typename InIt, typename OutIt>
-    inline void scan_sequential_exclusive(InIt first, InIt last, OutIt dest_first)
+    template <typename InIt, typename OutIt, typename BinaryOp>
+    inline void scan_cpu_exclusive(InIt first, InIt last, OutIt dest_first, BinaryOp op)
     {
         typedef InIt::value_type T;
-        int previous = T(0);
-        auto result = T(0);
-
-        std::transform((first), last, (dest_first), [=, &result, &previous](const T& v)
+        *dest_first = T(0);
+        for (int i = 1; i < std::distance(first, last); ++i)
         {
-            result = previous;
-            previous += v;
-            return result;
-        });
+            dest_first[i] = op(dest_first[i - 1], first[i - 1]);
+        }
     }
 
-    template <typename InIt, typename OutIt>
-    inline void scan_sequential_inclusive(InIt first, InIt last, OutIt dest_first)
+    template <typename InIt, typename OutIt, typename BinaryOp>
+    inline void scan_cpu_inclusive(InIt first, InIt last, OutIt dest_first, BinaryOp op)
     {
         typedef InIt::value_type T;
-        auto result = T(0);
-
-        std::transform(first, last, dest_first, [=, &result](const T& v)
+        *dest_first = *first;
+        for (int i = 1; i < std::distance(first, last); ++i)
         {
-            result += v;
-            return result;
-        });
+            dest_first[i] = op(dest_first[i - 1], first[i]);
+        }
     }
     
     //===============================================================================
@@ -238,6 +232,10 @@ namespace testtools
         {
             expected_size = std::distance(begin(expected), end(expected));
             EXPECT_EQ(expected_size, std::distance(begin(actual), end(actual)));
+            if (expected_size != std::distance(begin(actual), end(actual)))
+            {
+                return false;
+            }
         }
         if (expected_size == 0)
         {

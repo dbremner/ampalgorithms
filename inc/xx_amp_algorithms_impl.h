@@ -268,6 +268,7 @@ namespace amp_algorithms
         // TODO: There may be some better scan implementations that are described in the second reference. Investigate.
         // TODO: Scan only supports Rank of 1.
         // TODO: Scan does not support forwards/backwards.
+        // TODO: Scan really only works for addition, should the BinaryOp be removed.
 
         static const int scan_default_tile_size = 512;
 

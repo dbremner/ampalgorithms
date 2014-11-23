@@ -30,25 +30,49 @@ using namespace testtools;
 
 class testtools_tests : public testbase, public ::testing::Test {};
 
-TEST_F(testtools_tests, sequential_exclusive_scan)
+TEST_F(testtools_tests, cpu_exclusive_scan_plus)
 {
-    std::array<int, 16> input = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+    std::array<int, 16> input =    { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
     std::vector<int> result(input.size(), -1);
     std::array<int, 16> expected = { 0, 1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66, 78, 91, 105, 120 };
 
-    scan_sequential_exclusive(begin(input), end(input), result.begin());
+    scan_cpu_exclusive(begin(input), end(input), result.begin(), std::plus<int>());
 
     std::vector<int> exp(begin(expected), end(expected));
     ASSERT_TRUE(exp == result);
 }
 
-TEST_F(testtools_tests, sequential_inclusive_scan)
+TEST_F(testtools_tests, cpu_exclusive_scan_multiplies)
+{
+    std::array<int, 6> input = { 1, 2, 3, 4, 5, 6 };
+    std::vector<int> result(input.size(), -1);
+    std::array<int, 6> expected = {0, 0, 0, 0, 0, 0 };
+
+    scan_cpu_exclusive(begin(input), end(input), result.begin(), std::multiplies<int>());
+
+    std::vector<int> exp(begin(expected), end(expected));
+    ASSERT_TRUE(exp == result);
+}
+
+TEST_F(testtools_tests, cpu_inclusive_scan_plus)
 {
     std::array<int, 16> input = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
     std::vector<int> result(input.size(), -1);
     std::array<int, 16> expected = { 1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66, 78, 91, 105, 120, 136 };
 
-    scan_sequential_inclusive(begin(input), end(input), result.begin());
+    scan_cpu_inclusive(begin(input), end(input), result.begin(), std::plus<int>());
+
+    std::vector<int> exp(begin(expected), end(expected));
+    ASSERT_TRUE(exp == result);
+}
+
+TEST_F(testtools_tests, cpu_inclusive_scan_multiplies)
+{
+    std::array<int, 6> input =    { 1,  2,  3,   4,   5,   6 };
+    std::vector<int> result(input.size(), -1);
+    std::array<int, 6> expected = { 1,  2,  6,  24,  120, 720 };
+
+    scan_cpu_inclusive(begin(input), end(input), result.begin(), std::multiplies<int>());
 
     std::vector<int> exp(begin(expected), end(expected));
     ASSERT_TRUE(exp == result);

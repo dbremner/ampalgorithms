@@ -620,6 +620,10 @@ namespace amp_algorithms
         return reduce(_details::auto_select_target(), input_view, binary_op);
     }
 
+    //----------------------------------------------------------------------------
+    // scan
+    //----------------------------------------------------------------------------
+
     // This header needs these enums but they also have to be defined in the _impl header for use by the 
     // main STL header, which includes the _impl.
 #if !defined(AMP_ALGORITHMS_ENUMS)
