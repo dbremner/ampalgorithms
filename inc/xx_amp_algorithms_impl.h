@@ -140,35 +140,35 @@ namespace amp_algorithms
         template <unsigned int tile_size, typename functor, typename T>
         void reduce_tile(T* const mem, concurrency::tiled_index<tile_size> tid, const functor& op, int partial_data_length) restrict(amp)
         {
-            int local = tid.local[0];
+            const int lidx = tid.local[0];
 
             if (partial_data_length < tile_size)
             {
                 // unrolled for performance
-                if (partial_data_length > 512) { if (local < (partial_data_length - 512)) { mem[0] = op(mem[0], mem[512]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (partial_data_length > 256) { if (local < (partial_data_length - 256)) { mem[0] = op(mem[0], mem[256]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (partial_data_length > 128) { if (local < (partial_data_length - 128)) { mem[0] = op(mem[0], mem[128]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (partial_data_length > 64) { if (local < (partial_data_length - 64)) { mem[0] = op(mem[0], mem[64]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (partial_data_length > 32) { if (local < (partial_data_length - 32)) { mem[0] = op(mem[0], mem[32]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (partial_data_length > 16) { if (local < (partial_data_length - 16)) { mem[0] = op(mem[0], mem[16]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (partial_data_length > 8) { if (local < (partial_data_length - 8)) { mem[0] = op(mem[0], mem[8]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (partial_data_length > 4) { if (local < (partial_data_length - 4)) { mem[0] = op(mem[0], mem[4]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (partial_data_length > 2) { if (local < (partial_data_length - 2)) { mem[0] = op(mem[0], mem[2]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (partial_data_length > 1) { if (local < (partial_data_length - 1)) { mem[0] = op(mem[0], mem[1]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (partial_data_length > 512) { if (lidx < (partial_data_length - 512)) { mem[0] = op(mem[0], mem[512]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (partial_data_length > 256) { if (lidx < (partial_data_length - 256)) { mem[0] = op(mem[0], mem[256]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (partial_data_length > 128) { if (lidx < (partial_data_length - 128)) { mem[0] = op(mem[0], mem[128]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (partial_data_length > 64) { if (lidx < (partial_data_length - 64)) { mem[0] = op(mem[0], mem[64]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (partial_data_length > 32) { if (lidx < (partial_data_length - 32)) { mem[0] = op(mem[0], mem[32]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (partial_data_length > 16) { if (lidx < (partial_data_length - 16)) { mem[0] = op(mem[0], mem[16]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (partial_data_length > 8) { if (lidx < (partial_data_length - 8)) { mem[0] = op(mem[0], mem[8]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (partial_data_length > 4) { if (lidx < (partial_data_length - 4)) { mem[0] = op(mem[0], mem[4]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (partial_data_length > 2) { if (lidx < (partial_data_length - 2)) { mem[0] = op(mem[0], mem[2]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (partial_data_length > 1) { if (lidx < (partial_data_length - 1)) { mem[0] = op(mem[0], mem[1]); } tid.barrier.wait_with_tile_static_memory_fence(); }
             }
             else
             {
                 // unrolled for performance
-                if (tile_size >= 1024) { if (local < 512) { mem[0] = op(mem[0], mem[512]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (tile_size >= 512) { if (local < 256) { mem[0] = op(mem[0], mem[256]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (tile_size >= 256) { if (local < 128) { mem[0] = op(mem[0], mem[128]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (tile_size >= 128) { if (local < 64) { mem[0] = op(mem[0], mem[64]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (tile_size >= 64) { if (local < 32) { mem[0] = op(mem[0], mem[32]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (tile_size >= 32) { if (local < 16) { mem[0] = op(mem[0], mem[16]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (tile_size >= 16) { if (local < 8) { mem[0] = op(mem[0], mem[8]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (tile_size >= 8) { if (local < 4) { mem[0] = op(mem[0], mem[4]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (tile_size >= 4) { if (local < 2) { mem[0] = op(mem[0], mem[2]); } tid.barrier.wait_with_tile_static_memory_fence(); }
-                if (tile_size >= 2) { if (local < 1) { mem[0] = op(mem[0], mem[1]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (tile_size >= 1024) { if (lidx < 512) { mem[0] = op(mem[0], mem[512]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (tile_size >= 512) { if (lidx < 256) { mem[0] = op(mem[0], mem[256]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (tile_size >= 256) { if (lidx < 128) { mem[0] = op(mem[0], mem[128]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (tile_size >= 128) { if (lidx < 64) { mem[0] = op(mem[0], mem[64]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (tile_size >= 64) { if (lidx < 32) { mem[0] = op(mem[0], mem[32]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (tile_size >= 32) { if (lidx < 16) { mem[0] = op(mem[0], mem[16]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (tile_size >= 16) { if (lidx < 8) { mem[0] = op(mem[0], mem[8]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (tile_size >= 8) { if (lidx < 4) { mem[0] = op(mem[0], mem[4]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (tile_size >= 4) { if (lidx < 2) { mem[0] = op(mem[0], mem[2]); } tid.barrier.wait_with_tile_static_memory_fence(); }
+                if (tile_size >= 2) { if (lidx < 1) { mem[0] = op(mem[0], mem[1]); } tid.barrier.wait_with_tile_static_memory_fence(); }
             }
         }
 
@@ -186,34 +186,25 @@ namespace amp_algorithms
             typedef typename std::result_of<BinaryFunction(const typename indexable_view_traits<InputIndexableView>::value_type&, const typename indexable_view_traits<InputIndexableView>::value_type&)>::type result_type;
 
             // runtime sizes
-            int n = input_view.extent.size();
-            unsigned int tile_count = (n + tile_size - 1) / tile_size;
-            tile_count = std::min(tile_count, max_tiles);
-
-            // simultaneous live threads
+            const int n = input_view.extent.size();
+            const unsigned int tile_count = std::min(max_tiles, (n + tile_size - 1) / tile_size);
             const unsigned int thread_count = tile_count * tile_size;
 
             // global buffer (return type)
             concurrency::array_view<result_type> global_buffer_view(concurrency::array<result_type>(tile_count, concurrency::accelerator(concurrency::accelerator::cpu_accelerator).default_view, accl_view));
 
-            // configuration
-            concurrency::extent<1> extent(thread_count);
-
             _details::parallel_for_each(
                 accl_view,
-                extent.tile<tile_size>(),
-                [=](concurrency::tiled_index<tile_size> tid) restrict(amp)
+                concurrency::extent<1>(thread_count).tile<tile_size>(),
+                [=](concurrency::tiled_index<tile_size> tidx) restrict(amp)
             {
                 // shared tile buffer
                 tile_static result_type local_buffer[tile_size];
 
-                int idx = tid.global[0];
+                int idx = tidx.global[0];
 
                 // this thread's shared memory pointer
-                result_type& smem = local_buffer[tid.local[0]];
-
-                // this variable is used to test if we are on the edge of data within tile
-                int partial_data_length = tile_partial_data_size(input_view, tid);
+                result_type& smem = local_buffer[tidx.local[0]];
 
                 // initialize local buffer
                 smem = input_view[concurrency::index<1>(idx)];
@@ -225,32 +216,31 @@ namespace amp_algorithms
                 {
                     // reduction of smem and X[idx] with results stored in smem
                     smem = binary_op(smem, input_view[concurrency::index<1>(idx)]);
-
                     // next chunk
                     idx += thread_count;
                 }
 
-                // synchronize
-                tid.barrier.wait_with_tile_static_memory_fence();
+                tidx.barrier.wait_with_tile_static_memory_fence();
 
+                // this variable is used to test if we are on the edge of data within tile
+                int partial_data_length = tile_partial_data_size(input_view, tidx);
                 // reduce all values in this tile
-                _details::reduce_tile(&smem, tid, binary_op, partial_data_length);
+                _details::reduce_tile(&smem, tidx, binary_op, partial_data_length);
 
-                // only 1 thread per tile does the inter tile communication
-                if (tid.local[0] == 0)
+                if (tidx.local[0] == 0)
                 {
-                    // write to global buffer in this tiles
-                    global_buffer_view[tid.tile[0]] = smem;
+                    global_buffer_view[tidx.tile[0]] = smem;
                 }
             });
 
             // 2nd pass reduction
-            result_type *pGlobalBufferViewData = global_buffer_view.data();
+
+            const result_type *pGlobalBufferViewData = global_buffer_view.data();
             result_type retVal = pGlobalBufferViewData[0];
-            for (unsigned int i = 1; i < tile_count; ++i) {
+            for (unsigned int i = 1; i < tile_count; ++i) 
+            {
                 retVal = binary_op(retVal, pGlobalBufferViewData[i]);
             }
-
             return retVal;
         }
 
@@ -388,7 +378,7 @@ namespace amp_algorithms
         }
 
         //----------------------------------------------------------------------------
-        // segmented scan - C++ AMP implementation
+        // segmented scan implementation
         //----------------------------------------------------------------------------
         //
         // References:
