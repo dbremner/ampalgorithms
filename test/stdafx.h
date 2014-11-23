@@ -20,8 +20,11 @@
 
 #define NOMINMAX
 
-// TODO: Currently amp_algorithms::copy() causes these warnings, possibly due to a bug in the AMP library.
-#pragma  warning (disable : 4267)
+// TODO: Currently calls to amp_algorithms::copy() causes these warnings.
+
+#define _SCL_SECURE_NO_WARNINGS         // (4996) function call with parameters that may be unsafe...
+#pragma  warning (disable : 4267)       // Conversion from 'size_t' to 'int', possible loss of data
+#pragma  warning (disable : 4244)       // 'argument' : conversion from '__int64' to 'int', possible loss of data
 
 #include <algorithm>
 #include <array>

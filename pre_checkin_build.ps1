@@ -145,11 +145,11 @@ foreach  ($b in $builds)
         if (-not (test-path $p)) { mkdir $p >> $null }
     }
 
+    $builds_run ++
     write-host ("`n== Build {0:D2}\{1:D2} {2,-36} ============================" -f $builds_run, $builds_expected, "$sln $plat/$conf") -fore yellow
     $build_cmd = "$msbuild_exe $sln $msbuild_options /p:platformtoolset=v${ver}0 /p:VisualStudioVersion=${ver}.0 /p:platform=$plat /p:configuration=$conf /fileloggerparameters:logfile='$sln_log'"
     Invoke-Expression $build_cmd |
         foreach-object { if ( $_ -match "BUILD SUCCEEDED" ) { $builds_ok++; write-host $_ -fore green } else { write-host $_ } }
-    $builds_run += 2
 }
 
 $stopwatch.Stop();
@@ -180,7 +180,7 @@ else
 
     foreach ($ver in $vsvers)
     {
-        $test_exes = @("amp_algorithms", "amp_stl_algorithms" )
+        $test_exes = @( "amp_algorithms" )
         $tests_failed = 0
         $tests_passed = 0
         write-host "Running tests for Visual Studio ${ver}.0 ( $plat | $conf ) build..." -fore yellow
