@@ -36,7 +36,6 @@ namespace amp_algorithms
 
     namespace direct3d
     {
-        // TODO: It would be nice if both scan implementations used the same interface/API.
         class scan
         {
         public:

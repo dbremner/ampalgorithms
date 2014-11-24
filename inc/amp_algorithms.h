@@ -33,93 +33,34 @@
 
 namespace amp_algorithms
 {
+    //----------------------------------------------------------------------------
+    // Function base classes
+    //----------------------------------------------------------------------------
+
+    template <typename _Arg1, typename _Arg2, typename _Result>
+    struct binary_function
+    {
+        typedef _Arg1 first_argument_type;
+        typedef _Arg2 second_argument_type;
+        typedef _Result result_type;
+    };
+
+    template <typename _Arg, typename _Result>
+    struct unary_function
+    {
+        typedef _Arg argument_type;
+        typedef _Result result_type;
+    };
+
 #pragma region Arithmetic, comparison, logical and bitwise operators
-
-    //----------------------------------------------------------------------------
-    // Bitwise operations
-    //----------------------------------------------------------------------------
-
-    template <typename T>
-    class bit_and
-    {
-    public:
-        T operator()(const T &a, const T &b) const restrict(cpu, amp)
-        {
-            return (a & b);
-        }
-    };
-
-    template <typename T>
-    class bit_or
-    {
-    public:
-        T operator()(const T &a, const T &b) const restrict(cpu, amp)
-        {
-            return (a | b);
-        }
-    };
-
-    template <typename T>
-    class bit_xor
-    {
-    public:
-        T operator()(const T &a, const T &b) const restrict(cpu, amp)
-        {
-            return (a ^ b);
-        }
-    };
-
-    template <typename T>
-    class bit_not
-    {
-    public:
-        T operator()(const T &a) const restrict(cpu, amp)
-        {
-            return (~a);
-        }
-    };
-
-    namespace _details
-    {
-        static const unsigned int bit08 = 0x80;
-        static const unsigned int bit16 = 0x8000;
-        static const unsigned int bit32 = 0x80000000;
-
-        template<unsigned int N, int MaxBit>
-        struct is_bit_set
-        {
-            enum { value = (N & MaxBit) ? 1 : 0 };
-        };
-    };
-
-    template<unsigned int N, unsigned int MaxBit>
-    struct static_count_bits
-    {
-        enum { value = (_details::is_bit_set<N, MaxBit>::value + static_count_bits<N, (MaxBit >> 1)>::value) };
-    };
-
-    template<unsigned int N>
-    struct static_count_bits < N, 0 >
-    {
-        enum { value = FALSE };
-    };
-
-    template <typename T>
-    int count_bits(T value)
-    {
-        value = value - ((value >> 1) & 0x55555555);
-        value = (value & 0x33333333) + ((value >> 2) & 0x33333333);
-        return (((value + (value >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
-    }
 
     //----------------------------------------------------------------------------
     // Arithmetic operations
     //----------------------------------------------------------------------------
 
     template <typename T>
-    class plus
+    struct plus : public binary_function<T, T, T>
     {
-    public:
         T operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
             return (a + b);
@@ -127,9 +68,8 @@ namespace amp_algorithms
     };
 
     template <typename T>
-    class minus
+    struct minus : public binary_function<T, T, T>
     {
-    public:
         T operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
             return (a - b);
@@ -137,9 +77,8 @@ namespace amp_algorithms
     };
 
     template <typename T>
-    class multiplies
+    struct multiplies : public binary_function<T, T, T>
     {
-    public:
         T operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
             return (a * b);
@@ -147,9 +86,8 @@ namespace amp_algorithms
     };
 
     template <typename T>
-    class divides
+    struct divides : public binary_function<T, T, T>
     {
-    public:
         T operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
             return (a / b);
@@ -157,7 +95,7 @@ namespace amp_algorithms
     };
 
     template <typename T>
-    class modulus
+    struct modulus : public binary_function<T, T, T>
     {
     public:
         T operator()(const T &a, const T &b) const restrict(cpu, amp)
@@ -167,7 +105,7 @@ namespace amp_algorithms
     };
 
     template <typename T>
-    class negate
+    struct negate : public unary_function<T, T>
     {
     public:
         T operator()(const T &a) const restrict(cpu, amp)
@@ -176,20 +114,24 @@ namespace amp_algorithms
         }
     };
 
+    //----------------------------------------------------------------------------
+    // Additional arithmetic operations with no STL equivalents
+    //----------------------------------------------------------------------------
+
     template<int N, unsigned int P = 0>
-    struct log2
+    struct static_log2
     {
-        enum { value = log2<N / 2, P + 1>::value };
+        enum { value = static_log2<N / 2, P + 1>::value };
     };
 
     template <unsigned int P>
-    struct log2<0, P>
+    struct static_log2<0, P>
     {
         enum { value = P };
     };
 
     template <unsigned int P>
-    struct log2<1, P>
+    struct static_log2<1, P>
     {
         enum { value = P };
     };
@@ -197,16 +139,7 @@ namespace amp_algorithms
     template<unsigned int N>
     struct static_is_power_of_two
     {
-        enum { value = ((static_count_bits<N, _details::bit32>::value == 1) ? TRUE : FALSE) };
-    };
-
-    // While 1 is technically 2^0, for the purposes of calculating 
-    // tile size it isn't useful.
-
-    template <>
-    struct static_is_power_of_two<1>
-    {
-        enum { value = FALSE };
+        enum { value = ((static_count_bits<N, bit32>::value == 1) ? TRUE : FALSE) };
     };
 
     // TODO: Generalize this for other integer types.
@@ -221,9 +154,8 @@ namespace amp_algorithms
     //----------------------------------------------------------------------------
 
     template <typename T>
-    class equal_to
+    struct equal_to : public binary_function<T, T, T>
     {
-    public:
         bool operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
             return (a == b);
@@ -231,9 +163,8 @@ namespace amp_algorithms
     };
 
     template <typename T>
-    class not_equal_to
+    struct not_equal_to : public binary_function<T, T, T>
     {
-    public:
         bool operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
             return (a != b);
@@ -241,9 +172,8 @@ namespace amp_algorithms
     };
 
     template <typename T>
-    class greater
+    struct greater : public binary_function<T, T, T>
     {
-    public:
         bool operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
             return (a > b);
@@ -251,9 +181,8 @@ namespace amp_algorithms
     };
 
     template <typename T>
-    class less
+    struct less : public binary_function<T, T, T>
     {
-    public:
         bool operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
             return (a < b);
@@ -261,9 +190,8 @@ namespace amp_algorithms
     };
 
     template <typename T>
-    class greater_equal
+    struct greater_equal : public binary_function<T, T, T>
     {
-    public:
         bool operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
             return (a >= b);
@@ -271,9 +199,8 @@ namespace amp_algorithms
     };
 
     template <typename T>
-    class less_equal
+    struct less_equal : public binary_function<T, T, T>
     {
-    public:
         bool operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
             return (a <= b);
@@ -285,9 +212,8 @@ namespace amp_algorithms
 #endif
 
     template <typename T>
-    class max
+    struct max : public binary_function<T, T, T>
     {
-    public:
         T operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
             return ((a < b) ? b : a);
@@ -299,9 +225,8 @@ namespace amp_algorithms
 #endif
 
     template <typename T>
-    class min
+    struct min : public binary_function<T, T, T>
     {
-    public:
         T operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
             return ((a < b) ? a : b);
@@ -313,9 +238,8 @@ namespace amp_algorithms
     //----------------------------------------------------------------------------
 
     template<class T>
-    class logical_not
+    struct logical_not : unary_function<T, T>
     {
-    public:
         bool operator()(const T& a) const restrict(cpu, amp)
         {
             return (!a);
@@ -323,9 +247,8 @@ namespace amp_algorithms
     };
 
     template<class T>
-    class logical_and
+    struct logical_and : public binary_function<T, T, T>
     {
-    public:
         bool operator()(const T& a, const T& b) const restrict(cpu, amp)
         {
             return (a && b);
@@ -333,16 +256,139 @@ namespace amp_algorithms
     };
 
     template<class T>
-    class logical_or
+    struct logical_or : public binary_function<T, T, T>
     {
-    public:
         bool operator()(const T& a, const T& b) const restrict(cpu, amp)
         {
             return (a || b);
         }
     };
 
-    // TODO_NOT_IMPLEMENTED: Implement not1() and not2() if appropriate.
+    template <typename Predicate> 
+    class unary_negate
+    {
+    protected:
+        Predicate m_pred;
+
+    public:
+        typedef typename Predicate::argument_type argument_type;
+        typedef bool result_type;
+
+        explicit unary_negate(const Predicate& pred) : m_pred(pred) {}
+
+        bool operator() (const typename Predicate::argument_type& a) const restrict(cpu, amp)
+        { 
+            return !m_pred(a); 
+        }
+    };
+
+    template <typename Predicate>
+    amp_algorithms::unary_negate<Predicate> not1(const Predicate& pred) restrict(cpu, amp)
+    {
+        return amp_algorithms::unary_negate<Predicate>(pred);
+    }
+
+    template <typename Predicate> 
+    class binary_negate
+    {
+    protected:
+        Predicate m_pred;
+
+    public:
+        typedef typename Predicate::first_argument_type first_argument_type;
+        typedef typename Predicate::second_argument_type second_argument_type;
+        typedef bool result_type;
+
+        explicit binary_negate(const Predicate& pred) : m_pred(pred) {}
+
+        bool operator() (const typename Predicate::first_argument_type& a, const typename Predicate::second_argument_type& b) const restrict(cpu, amp)
+        { 
+            return !m_pred(a, b); 
+        }
+    };
+
+    template <class Predicate> 
+    amp_algorithms::binary_negate<Predicate> not2(const Predicate& pred) restrict(cpu, amp)
+    {
+        return amp_algorithms::binary_negate<Predicate>(pred);
+    }
+
+    //----------------------------------------------------------------------------
+    // Bitwise operations
+    //----------------------------------------------------------------------------
+
+    template <typename T>
+    struct bit_and : public binary_function<T, T, T>
+    {
+        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return (a & b);
+        }
+    };
+
+    template <typename T>
+    struct bit_or : public binary_function<T, T, T>
+    {
+        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return (a | b);
+        }
+    };
+
+    template <typename T>
+    struct bit_xor : public binary_function<T, T, T>
+    {
+        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return (a ^ b);
+        }
+    };
+
+    template <typename T>
+    struct bit_not : unary_function<T, T>
+    {
+        T operator()(const T &a) const restrict(cpu, amp)
+        {
+            return (~a);
+        }
+    };
+
+    //----------------------------------------------------------------------------
+    // Additional bitwise operations with no STL equivalent
+    //----------------------------------------------------------------------------
+
+    static const unsigned int bit08 = 0x80;
+    static const unsigned int bit16 = 0x8000;
+    static const unsigned int bit32 = 0x80000000;
+
+    namespace _details
+    {
+        template<unsigned int N, int MaxBit>
+        struct is_bit_set
+        {
+            enum { value = (N & MaxBit) ? 1 : 0 };
+        };
+    };
+
+    template<unsigned int N, unsigned int MaxBit = bit32>
+    struct static_count_bits
+    {
+        enum { value = (_details::is_bit_set<N, MaxBit>::value + static_count_bits<N, (MaxBit >> 1)>::value) };
+    };
+
+    template<unsigned int N>
+    struct static_count_bits<N, 0>
+    {
+        enum { value = FALSE };
+    };
+
+    template <typename T>
+    int count_bits(T value)
+    {
+        value = value - ((value >> 1) & 0x55555555);
+        value = (value & 0x33333333) + ((value >> 2) & 0x33333333);
+        return (((value + (value >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
+    }
 
 #pragma endregion
 

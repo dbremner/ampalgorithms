@@ -30,16 +30,18 @@ using namespace testtools;
 
 class amp_operator_tests : public testbase, public ::testing::Test {};
 
+//----------------------------------------------------------------------------
+// Arithmetic operations
+//----------------------------------------------------------------------------
+
 std::array<std::pair<int, int>, 6> arithmetic_operator_data = {
     std::pair<int, int>(1, 2),
     std::pair<int, int>(100, 100),
     std::pair<int, int>(150, 300),
-    std::pair<int, int>(1000, -50),
+    std::pair<int, int>(11, -50),
     std::pair<int, int>(11, 12),
     std::pair<int, int>(-12, 33)
 };
-
-std::array<int, 3> negate_operator_data = { 2, 0, -2 };
 
 TEST_F(amp_operator_tests, plus)
 {
@@ -66,10 +68,45 @@ TEST_F(amp_operator_tests, modulus)
     compare_binary_operator(std::modulus<int>(), amp_algorithms::modulus<int>(), arithmetic_operator_data);
 }
 
+std::array<int, 3> negate_operator_data = { 2, 0, -2 };
+
 TEST_F(amp_operator_tests, negate)
 {
     compare_unary_operator(std::negate<int>(), amp_algorithms::negate<int>(), negate_operator_data);
 }
+
+//----------------------------------------------------------------------------
+// Additional arithmetic operations with no STL equivalents
+//----------------------------------------------------------------------------
+
+TEST_F(amp_operator_tests, static_log2)
+{
+    ASSERT_EQ(0, static_log2<1>::value);
+    ASSERT_EQ(2, static_log2<4>::value);
+    ASSERT_EQ(8, static_log2<256>::value);
+}
+
+TEST_F(amp_operator_tests, static_is_power_of_two)
+{
+    ASSERT_FALSE(static_is_power_of_two<0>::value);
+    ASSERT_TRUE(static_is_power_of_two<1>::value);
+    ASSERT_TRUE(static_is_power_of_two<4>::value);
+    ASSERT_FALSE(static_is_power_of_two<5>::value);
+    ASSERT_TRUE(static_is_power_of_two<256>::value);
+}
+
+TEST_F(amp_operator_tests, is_power_of_two)
+{
+    ASSERT_FALSE(is_power_of_two(0));
+    ASSERT_TRUE(is_power_of_two(1));
+    ASSERT_TRUE(is_power_of_two(4));
+    ASSERT_FALSE(is_power_of_two(5));
+    ASSERT_TRUE(is_power_of_two(256));
+}
+
+//----------------------------------------------------------------------------
+// Comparison operations
+//----------------------------------------------------------------------------
 
 TEST_F(amp_operator_tests, equal_to)
 {
@@ -121,6 +158,10 @@ std::array<std::pair<unsigned, unsigned>, 8> logical_operator_data = {
     std::pair<unsigned, unsigned>(0x00, 0x00)
 };
 
+//----------------------------------------------------------------------------
+// Bitwise operations
+//----------------------------------------------------------------------------
+
 std::array<int, 4> bit_not_operator_data = { 0xF0, 0xFF, 0x00, 0x0A };
 
 TEST_F(amp_operator_tests, bit_and)
@@ -143,6 +184,33 @@ TEST_F(amp_operator_tests, bit_not)
     compare_unary_operator(std::bit_not<int>(), amp_algorithms::bit_not<int>(), bit_not_operator_data);
 }
 
+//----------------------------------------------------------------------------
+// Additional bitwise operations with no STL equivalent
+//----------------------------------------------------------------------------
+
+TEST_F(amp_operator_tests, static_count_bits)
+{
+    ASSERT_EQ( 4, static_count_bits<0x0F>::value);
+    ASSERT_EQ( 8, static_count_bits<0xFF>::value);
+    ASSERT_EQ(16, static_count_bits<0xFFFF>::value);
+    ASSERT_EQ( 8, (static_count_bits<0xFFFF, amp_algorithms::bit08>::value));
+    ASSERT_EQ( 2, static_count_bits<0x0A>::value);
+    ASSERT_EQ( 0, static_count_bits<0x00>::value);
+}
+
+TEST_F(amp_operator_tests, count_bits)
+{
+    ASSERT_EQ( 4, count_bits(0x0F));
+    ASSERT_EQ( 8, count_bits(0xFF));
+    ASSERT_EQ(16, count_bits(0xFFFF));
+    ASSERT_EQ(2,  count_bits(0x0A));
+    ASSERT_EQ( 0, count_bits(0x00));
+}
+
+//----------------------------------------------------------------------------
+// Logical operations
+//----------------------------------------------------------------------------
+
 TEST_F(amp_operator_tests, logical_not)
 {
     compare_unary_operator(std::logical_not<int>(), amp_algorithms::logical_not<int>(), bit_not_operator_data);
@@ -152,7 +220,27 @@ TEST_F(amp_operator_tests, logical_and)
 {
     compare_binary_operator(std::logical_and<int>(), amp_algorithms::logical_and<int>(), logical_operator_data);
 }
+
 TEST_F(amp_operator_tests, logical_or)
 {
     compare_binary_operator(std::logical_or<int>(), amp_algorithms::logical_or<int>(), logical_operator_data);
+}
+
+template<typename T>
+class is_odd
+{
+public:
+    typedef T argument_type;
+
+    bool operator()(const T& a) const restrict(cpu, amp) { return (a % 2) != 0; }
+};
+
+TEST_F(amp_operator_tests, not1)
+{
+    compare_unary_operator(std::not1(is_odd<int>()), amp_algorithms::not1(is_odd<int>()), negate_operator_data);
+}
+
+TEST_F(amp_operator_tests, not2)
+{
+    compare_binary_operator(std::not2(equal_to<int>()), amp_algorithms::not2(equal_to<int>()), arithmetic_operator_data);
 }

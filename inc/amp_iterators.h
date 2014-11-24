@@ -87,7 +87,6 @@ namespace amp_stl_algorithms
                 m_base_view = iter.m_base_view;
                 m_position = iter.m_position;
             }
-
             return *this;
         }
 
