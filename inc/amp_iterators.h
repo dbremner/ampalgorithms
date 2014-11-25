@@ -295,6 +295,15 @@ namespace amp_stl_algorithms
         return array_view_iterator<value_type>(arr, arr.get_extent().size());
     }
 
-    // TODO: Add cbegin() and cend()
+    //----------------------------------------------------------------------------
+    // cbegin and cend iterators for array views
+    //----------------------------------------------------------------------------
+
+    // TODO_NOT_IMPLEMENTED: cbegin and cend
+
+    //----------------------------------------------------------------------------
+    // Zip iterator
+    //----------------------------------------------------------------------------
+
 
 } // amp_stl_algorithms
