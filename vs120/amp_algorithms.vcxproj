@@ -200,7 +200,7 @@
       <TreatWarningAsError>$(WARNINGS_AS_ERRORS)</TreatWarningAsError>
       <WarningLevel>Level3</WarningLevel>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;_CONSOLE;%(PreprocessorDefinitions); $(USE_REF);_NDEBUG</PreprocessorDefinitions>
@@ -230,7 +230,7 @@
       <TreatWarningAsError>$(WARNINGS_AS_ERRORS)</TreatWarningAsError>
       <WarningLevel>Level3</WarningLevel>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions); $(USE_REF)</PreprocessorDefinitions>

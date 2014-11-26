@@ -20,26 +20,25 @@
 #---------------------------------------------------------------------------
 
 cmake_minimum_required (VERSION 2.6)
-
 project (amp_algorithms)
 
 #----------------------------------------------------------------------------
-# Flags
+# C++ flags
 #----------------------------------------------------------------------------
 
 set(CMAKE_CXX_FLAGS
-  "/DWIN32 /D_WINDOWS /D_CONSOLE /EHsc /W3 /WX"
-  CACHE STRING "Compiler flags" FORCE
+    "$(CMAKE_CXX_FLAGS) /D_CONSOLE /DWIN32 /D_WINDOWS /EHsc /nologo /W3 /WX /Zc:inline"
+    CACHE STRING "Common compiler flags" FORCE
 )
 
 set(CMAKE_CXX_FLAGS_DEBUG
-  "/DWIN32 /D_WINDOWS /EHsc /WX"
-  CACHE STRING "Debug compiler flags" FORCE
+    "$(CMAKE_CXX_FLAGS_DEBUG) /D_DEBUG /MTd /EHsc /WX /Od /fp:precise"
+    CACHE STRING "Debug compiler flags" FORCE
 )
 
 set(CMAKE_CXX_FLAGS_RELEASE
-  "/DWIN32 /D_WINDOWS /EHsc /WX"
-  CACHE STRING "Release compiler flags" FORCE
+    "$(CMAKE_CXX_FLAGS_RELEASE) /EHsc /MT /Oi /Ox /WX /fp:fast"
+    CACHE STRING "Release compiler flags" FORCE
 )
 
 #----------------------------------------------------------------------------
@@ -64,6 +63,9 @@ target_link_libraries(amp_algorithms gtest)
 # Tests
 #----------------------------------------------------------------------------
 
-add_test(amp_algorithms_tests_padded_read amp_algorithms)
-add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND}
-                  DEPENDS amp_algorithms.exe)
+#add_test(amp_algorithms_tests_padded_read amp_algorithms)
+add_custom_target(all_tests ALL DEPENDS amp_algorithms)
+add_custom_command(TARGET all_tests
+    COMMENT "Run tests..."
+    POST_BUILD COMMAND ctest -C $<CONFIGURATION> --output-on-failure
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
