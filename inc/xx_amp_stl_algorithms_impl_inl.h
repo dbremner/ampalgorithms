@@ -963,7 +963,6 @@ namespace amp_stl_algorithms
         b = tmp;
     }
 
-    // TODO: Are there other overloads of swap() that should be implemented.
     template<typename T, int N>
     void swap( T (&a)[N], T (&b)[N]) restrict(cpu, amp)
     {
