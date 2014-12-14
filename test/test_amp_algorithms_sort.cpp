@@ -19,6 +19,8 @@
 * This file contains unit tests.
 *---------------------------------------------------------------------------*/
 
+// TODO: Rename this file to test_amp_algorithms_radix_sort
+
 #include "stdafx.h"
 
 #include <amp_algorithms.h>
@@ -31,8 +33,25 @@ static const int test_tile_size = 256;
 
 class amp_algorithms_radix_sort_tests : public testbase, public ::testing::Test {};
 
-TEST_F(amp_algorithms_radix_sort_tests, details_radix_key_value_width_2_tests)
-{
+    enum parameter
+    {
+        index = 0,
+        value = 1,
+        expected = 2
+    };
+
+const std::tuple<unsigned, int, int> details_radix_key_value_width_2_data[] = {
+        std::make_tuple(0, 3, 3),   // 000010 => ----10
+        std::make_tuple(0, 1, 1),   // 000001 => ----01
+        std::make_tuple(1, 3, 0),   // 000011 => --00--
+        std::make_tuple(1, 13, 3),  // 001101 => --11--
+        std::make_tuple(2, 45, 2),  // 101101 => 10----
+    };
+            
+class details_radix_key_value_width_2_tests : public ::testing::TestWithParam < std::tuple<unsigned, int, int> > {};
+
+TEST_P(details_radix_key_value_width_2_tests, test)
+    {
     //  0 0000  0  0        8 1000  2  0
     //  1 0001  0  1        9 1001  2  1
     //  2 0010  0  2       10 1010  2  2
@@ -42,52 +61,31 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_key_value_width_2_tests)
     //  6 0110  1  2       14 1110  3  2
     //  7 0111  1  3       15 1111  3  3
 
-    enum parameter
-    {
-        index = 0,
-        value = 1,
-        expected = 2
-    };
-
-    std::array<std::tuple<unsigned, int, int>, 5> theories =
-    {
-        std::make_tuple(0, 3, 3),   // 000010 => ----10
-        std::make_tuple(0, 1, 1),   // 000001 => ----01
-        std::make_tuple(1, 3, 0),   // 000011 => --00--
-        std::make_tuple(1, 13, 3),  // 001101 => --11--
-        std::make_tuple(2, 45, 2),  // 101101 => 10----
-    };
-            
-    for (auto t : theories)
-    {
+    auto t = GetParam();
         int result = amp_algorithms::_details::radix_key_value<int, 2>(std::get<parameter::value>(t), std::get<parameter::index>(t));
         ASSERT_EQ(std::get<parameter::expected>(t), result);
-    }
+
 }
 
-TEST_F(amp_algorithms_radix_sort_tests, details_radix_key_value_width_4_tests)
-{
-    enum parameter
-    {
-        index = 0,
-        value = 1,
-        expected = 2
-    };
+INSTANTIATE_TEST_CASE_P(amp_algorithms_radix_sort_tests, details_radix_key_value_width_2_tests, ::testing::ValuesIn(details_radix_key_value_width_2_data));
 
-    std::array<std::tuple<unsigned, int, int>, 5> theories =
-    {
+const std::tuple<unsigned, int, int> details_radix_key_value_width_4_data[] = {
         std::make_tuple(0, 0x09,  9),   // 00001010
         std::make_tuple(1, 0x03,  0),   // 00001011
         std::make_tuple(1, 0x10,  1),   // 00010000
         std::make_tuple(1, 0xAD, 10),   // 10101101
     };
 
-    for (auto t : theories)
+class details_radix_key_value_width_4_tests : public ::testing::TestWithParam < std::tuple<unsigned, int, int> > {};
+
+TEST_P(details_radix_key_value_width_4_tests, test)
     {
+    std::tuple<unsigned, int, int> t = GetParam();
         int result = amp_algorithms::_details::radix_key_value<int, 4>(std::get<parameter::value>(t), std::get<parameter::index>(t));
         ASSERT_EQ(std::get<parameter::expected>(t), result);
     }
-}
+
+INSTANTIATE_TEST_CASE_P(amp_algorithms_radix_sort_tests, details_radix_key_value_width_4_tests, ::testing::ValuesIn(details_radix_key_value_width_4_data));
 
 TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_tile_by_key_with_index_0_tile_4_bin_width_2_data_16)
 {
