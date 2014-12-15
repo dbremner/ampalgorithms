@@ -409,6 +409,60 @@ namespace amp_algorithms
             return (value >> (key_idx * key_bit_width)) & mask;
         }
 
+        // Conversion functions to support other types.
+
+        // TODO: In principle we could support double/long here but only on hardware that supports it.
+
+        template<typename T>
+        inline unsigned convert_to_uint(const T& value) restrict(amp, cpu)
+        {
+            static_assert(false, "Radix sort is not supported for this type.");
+        }
+
+        template<>
+        inline unsigned convert_to_uint(const float& value) restrict(amp, cpu)
+        {
+            const unsigned mask = -static_cast<int>(reinterpret_cast<const unsigned&>(value) >> 31) | 0x80000000;
+            return reinterpret_cast<const unsigned&>(value) ^ mask;
+        }
+
+        template<>
+        inline unsigned convert_to_uint(const unsigned& value) restrict(amp, cpu)
+        {
+            return value;
+        }
+
+        template<>
+        inline unsigned convert_to_uint(const int& value) restrict(amp, cpu)
+        {
+            return reinterpret_cast<const unsigned&>(value);
+        }
+
+        template<typename T>
+        inline T convert_from_uint(const unsigned& value) restrict(amp, cpu)
+        {
+            static_assert(false, "Radix sort is not supported for this type.");
+        }
+
+        template<>
+        inline float convert_from_uint(const unsigned& value) restrict(amp, cpu)
+        {
+            unsigned v = value ^ (((value >> 31) - 1) | 0x80000000);
+            return reinterpret_cast<float&>(v);
+        }
+
+        template<>
+        inline unsigned convert_from_uint(const unsigned& value) restrict(amp, cpu)
+        {
+            return value;
+        }
+
+        template<>
+        inline int convert_from_uint(const unsigned& value) restrict(amp, cpu)
+        {
+            return reinterpret_cast<const unsigned&>(value);
+        }
+
         template <typename T>
         inline void initialize_bins(T* const bin_data, const int bin_count) restrict(amp)
         {
@@ -494,17 +548,17 @@ namespace amp_algorithms
                 const int gidx = tidx.global[0];
                 const int tlx = tidx.tile[0];
                 const int idx = tidx.local[0];
-                tile_static T tile_data[tile_size];
+                tile_static unsigned tile_data[tile_size];
                 tile_static int per_thread_rdx_histograms[tile_size][bin_count];
 
                 // Initialize histogram bins and copy data into tiles.
                 initialize_bins(per_thread_rdx_histograms[idx], bin_count);
-                tile_data[idx] = padded_read(input_view, gidx);
+                tile_data[idx] = convert_to_uint<T>(padded_read(input_view, gidx));
 
                 // Increment radix bins for each element on each tile.
                 if (gidx < input_view.extent[0])
                 {
-                    per_thread_rdx_histograms[idx][_details::radix_key_value<T, key_bit_width>(tile_data[idx], key_idx)]++;
+                    per_thread_rdx_histograms[idx][_details::radix_key_value<unsigned, key_bit_width>(tile_data[idx], key_idx)]++;
                 }
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
@@ -532,7 +586,7 @@ namespace amp_algorithms
                     tile_histograms[(idx * tile_count) + tlx] = per_thread_rdx_histograms[0][idx];
                 }
                 tidx.barrier.wait_with_tile_static_memory_fence();
-                _details::scan_tile_exclusive<tile_size>(per_thread_rdx_histograms[0], tidx, amp_algorithms::plus<T>(), tile_size);
+                _details::scan_tile_exclusive<tile_size>(per_thread_rdx_histograms[0], tidx, amp_algorithms::plus<unsigned>(), tile_size);
 
                 if (idx < bin_count)
                 {
@@ -553,7 +607,7 @@ namespace amp_algorithms
                 scan_data[idx] = (idx < bin_count) ? global_rdx_offsets[idx] : 0;
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
-                _details::scan_tile_exclusive<tile_size>(scan_data, tidx, amp_algorithms::plus<T>(), tile_size);
+                _details::scan_tile_exclusive<tile_size>(scan_data, tidx, amp_algorithms::plus<unsigned>(), tile_size);
 
                 if (gidx < bin_count)
                 {
@@ -578,14 +632,15 @@ namespace amp_algorithms
                 //output_view[gidx] = (gidx < bin_count) ? global_rdx_offsets[gidx] : 0;                                                                // Dump global offsets, global_rdx_offsets
 
                 // Sort elements within each tile.
-                tile_static T tile_data[tile_size];
-                tile_data[idx] = input_view[gidx];
+                tile_static unsigned tile_data[tile_size];
+                tile_data[idx] = convert_to_uint<T>(padded_read(input_view, gidx));
+
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
                 const int keys_per_tile = (key_bit_width / tile_key_bit_width);
                 for (int k = (keys_per_tile * key_idx); k < (keys_per_tile * (key_idx + 1)); ++k)
                 {
-                    _details::radix_sort_tile_by_key<T, tile_size, tile_key_bit_width>(tile_data, input_view.extent.size(), tidx, k);
+                    _details::radix_sort_tile_by_key<unsigned, tile_size, tile_key_bit_width>(tile_data, input_view.extent.size(), tidx, k);
                 }
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
@@ -593,7 +648,7 @@ namespace amp_algorithms
 
                 // Move tile sorted elements to global destination.
 
-                const int rdx = _details::radix_key_value<T, key_bit_width>(tile_data[idx], key_idx);
+                const int rdx = _details::radix_key_value<unsigned, key_bit_width>(tile_data[idx], key_idx);
                 const int dest_gidx = 
                     idx - 
                     per_tile_rdx_offsets[tlx][rdx] + 
@@ -602,7 +657,7 @@ namespace amp_algorithms
 
                 //output_view[gidx] = dest_gidx;                                                            // Dump destination indices, dest_gidx
 
-                output_view[dest_gidx] = tile_data[idx];
+                output_view[dest_gidx] = convert_from_uint<T>(tile_data[idx]);
             });
         }
 
