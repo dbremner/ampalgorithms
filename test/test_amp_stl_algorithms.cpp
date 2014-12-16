@@ -338,7 +338,7 @@ TEST_F(stl_algorithms_tests, inner_product_pred)
 }
 
 //----------------------------------------------------------------------------
-// minmax, max_element, min_element, minmax_element
+// minmax, min_element, max_element, minmax_element
 //----------------------------------------------------------------------------
 
 std::array<std::pair<int, int>, 6> minmax_data = {
@@ -371,6 +371,56 @@ TEST_F(stl_algorithms_tests, minmax_pred)
             return amp_stl_algorithms::minmax(a, b, amp_algorithms::greater_equal<int>()); 
         },
         minmax_data);
+}
+
+TEST_F(stl_algorithms_tests, min_element)
+{
+    int expected = *std::min_element(begin(input), end(input));
+
+    int r = *amp_stl_algorithms::min_element(begin(input_av), end(input_av));
+
+    ASSERT_EQ(expected, r);
+}
+
+TEST_F(stl_algorithms_tests, min_element_pred)
+{
+    int expected = *std::min_element(begin(input), end(input), amp_algorithms::less<int>());
+
+    int r = *amp_stl_algorithms::min_element(begin(input_av), end(input_av), amp_algorithms::less<int>());
+
+    ASSERT_EQ(expected, r);
+}
+
+TEST_F(stl_algorithms_tests, min_element_empty)
+{
+    auto iter = amp_stl_algorithms::min_element(begin(input_av), begin(input_av));
+
+    ASSERT_EQ(begin(input_av), iter);
+}
+
+TEST_F(stl_algorithms_tests, max_element)
+{
+    int expected = *std::max_element(begin(input), end(input));
+
+    int r = *amp_stl_algorithms::max_element(begin(input_av), end(input_av));
+
+    ASSERT_EQ(expected, r);
+}
+
+TEST_F(stl_algorithms_tests, max_element_pred)
+{
+    int expected = *std::max_element(begin(input), end(input), amp_algorithms::greater<int>());
+
+    int r = *amp_stl_algorithms::max_element(begin(input_av), end(input_av), amp_algorithms::greater<int>());
+
+    ASSERT_EQ(expected, r);
+}
+
+TEST_F(stl_algorithms_tests, max_element_empty)
+{
+    auto iter = amp_stl_algorithms::max_element(begin(input_av), begin(input_av));
+
+    ASSERT_EQ(begin(input_av), iter);
 }
 
 //----------------------------------------------------------------------------

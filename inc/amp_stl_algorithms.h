@@ -512,7 +512,7 @@ namespace amp_stl_algorithms
         Compare comp ); 
 
     //----------------------------------------------------------------------------
-    // minmax, max_element, min_element, minmax_element
+    // minmax, min_element, max_element, minmax_element
     //----------------------------------------------------------------------------
 
     template <typename T>
@@ -547,21 +547,17 @@ namespace amp_stl_algorithms
     // template<typename T, typename Compare>
     // std::pair<T,T> minmax( std::initializer_list ilist, Compare comp ); 
 
-    // TODO_NOT_IMPLEMENTED: max_element
-    template<typename ConstRandomAccessIterator> 
-    ConstRandomAccessIterator max_element( ConstRandomAccessIterator first, ConstRandomAccessIterator last );
+    template<typename ConstRandomAccessIterator>
+    ConstRandomAccessIterator min_element(ConstRandomAccessIterator first, ConstRandomAccessIterator last);
 
-    // NOT IMPLEMENTED
     template<typename ConstRandomAccessIterator, typename Compare>
-    ConstRandomAccessIterator max_element( ConstRandomAccessIterator first, ConstRandomAccessIterator last, Compare comp ); 
+    ConstRandomAccessIterator min_element(ConstRandomAccessIterator first, ConstRandomAccessIterator last, Compare comp);
 
-    // TODO_NOT_IMPLEMENTED: min_element
-    template<typename ConstRandomAccessIterator> 
-    ConstRandomAccessIterator min_element( ConstRandomAccessIterator first, ConstRandomAccessIterator last );
+    template<typename ConstRandomAccessIterator>
+    ConstRandomAccessIterator max_element(ConstRandomAccessIterator first, ConstRandomAccessIterator last);
 
-    // NOT IMPLEMENTED 
     template<typename ConstRandomAccessIterator, typename Compare>
-    ConstRandomAccessIterator min_element( ConstRandomAccessIterator first, ConstRandomAccessIterator last, Compare comp ); 
+    ConstRandomAccessIterator max_element(ConstRandomAccessIterator first, ConstRandomAccessIterator last, Compare comp); 
 
     // TODO_NOT_IMPLEMENTED: minmax_element
     template<typename ConstRandomAccessIterator> 

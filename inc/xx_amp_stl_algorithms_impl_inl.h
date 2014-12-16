@@ -622,6 +622,72 @@ namespace amp_stl_algorithms
     // max_element, min_element, minmax_element
     //----------------------------------------------------------------------------
 
+    template<typename ConstRandomAccessIterator>
+    ConstRandomAccessIterator min_element(ConstRandomAccessIterator first, ConstRandomAccessIterator last)
+    {
+        typedef typename std::remove_const < typename std::iterator_traits<ConstRandomAccessIterator>::value_type>::type T;
+        return amp_stl_algorithms::max_element(first, last, amp_algorithms::greater<T>());
+    }
+
+    template<typename ConstRandomAccessIterator, typename Compare>
+    ConstRandomAccessIterator min_element(ConstRandomAccessIterator first, ConstRandomAccessIterator last, Compare comp)
+    {
+        typedef typename std::remove_const < typename std::iterator_traits<ConstRandomAccessIterator>::value_type>::type T;
+        return amp_stl_algorithms::max_element(first, last, amp_algorithms::not2(comp));
+    }
+
+    template<typename ConstRandomAccessIterator, typename Compare>
+    ConstRandomAccessIterator max_element(ConstRandomAccessIterator first, ConstRandomAccessIterator last, Compare comp)
+    {
+        typedef typename std::remove_const < typename std::iterator_traits<ConstRandomAccessIterator>::value_type>::type T;
+        typedef std::iterator_traits<ConstRandomAccessIterator>::difference_type difference_type;
+
+        difference_type element_count = std::distance(first, last);
+        if (element_count <= 0)
+        {
+            return first;
+        }
+        auto input_view = _details::create_section(first, element_count);
+
+        // Approach 1: Compare values in input_view in global memory but return the index of the largest element.
+        
+        //auto map = concurrency::array<int, 1>(element_count);
+        //auto map_vw = map.section(0, element_count);
+        //amp_stl_algorithms::iota(begin(map_vw), end(map_vw), 0);
+
+        //auto r = amp_stl_algorithms::reduce(begin(map_vw), end(map_vw), 0, [=](int a, int b) restrict(amp, cpu)
+        //{
+        //    return comp(input_view[a], input_view[b]) ? b : a;
+        //});
+        //return first + r;
+
+        // Approach 2: Create an array of index, value pair<>. This may be faster as it allows reduce() to use tile memory.
+
+        typedef amp_stl_algorithms::pair<int, T> pair_type;
+        auto map = concurrency::array<pair_type, 1>(element_count);
+        auto map_vw = map.section(0, element_count);
+
+        concurrency::parallel_for_each(map_vw.extent, [=](concurrency::index<1> idx) restrict(amp, cpu) 
+        {
+            map_vw[idx] = pair_type(idx[0], input_view[idx]);
+        });
+
+        pair_type r1 = amp_stl_algorithms::reduce(begin(map_vw), end(map_vw), pair_type(0, T()), [=](pair_type a, pair_type b) restrict(amp, cpu)
+        {
+            return comp(a.second, b.second) ? b : a;
+        });
+        return first + r1.first;
+
+        // TODO: Approach 3: Remove the first p_f_e by adding support for map_reduce to the library.
+    }
+
+    template<typename ConstRandomAccessIterator>
+    ConstRandomAccessIterator max_element(ConstRandomAccessIterator first, ConstRandomAccessIterator last)
+    {
+        typedef typename std::remove_const < typename std::iterator_traits<ConstRandomAccessIterator>::value_type>::type T;
+        return amp_stl_algorithms::max_element(first, last, amp_algorithms::less<T>());
+    }
+
     //----------------------------------------------------------------------------
     // mismatch
     //----------------------------------------------------------------------------
@@ -659,7 +725,8 @@ namespace amp_stl_algorithms
     template<typename ConstRandomAccessIterator, typename T>
     T reduce( ConstRandomAccessIterator first, ConstRandomAccessIterator last, T initial_value )
     {
-        return amp_stl_algorithms::reduce(first, last, initial_value, amp_algorithms::plus<std::remove_const<typename std::iterator_traits<ConstRandomAccessIterator>::value_type>::type>());
+        typedef typename std::remove_const < typename std::iterator_traits<ConstRandomAccessIterator>::value_type>::type T;
+        return amp_stl_algorithms::reduce(first, last, initial_value, amp_algorithms::plus<T>());
     }
 
     //----------------------------------------------------------------------------
