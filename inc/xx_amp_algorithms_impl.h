@@ -657,7 +657,7 @@ namespace amp_algorithms
 
                 //output_view[gidx] = dest_gidx;                                                            // Dump destination indices, dest_gidx
 
-                output_view[dest_gidx] = convert_from_uint<T>(tile_data[idx]);
+                padded_write(output_view, dest_gidx, convert_from_uint<T>(tile_data[idx]));
             });
         }
 
