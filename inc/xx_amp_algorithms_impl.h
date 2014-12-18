@@ -578,8 +578,8 @@ namespace amp_algorithms
                     concurrency::atomic_fetch_add(&global_rdx_offsets[idx], per_thread_rdx_histograms[0][idx]);
                 }
 
-                //output_view[gidx] = (idx < bin_count) ? per_thread_rdx_histograms[0][idx] : 0;            // Dump per-tile histograms, per_tile_rdx_histograms
-
+                //output_view[gidx] = (idx < bin_count) ? per_thread_rdx_histograms[0][idx] : 0;                                            // Dump per-tile histograms, per_tile_rdx_histograms
+                
                 // Exclusive scan the tile histogram to calculate the per-tile offsets.
                 if (idx < bin_count)
                 {
@@ -599,8 +599,8 @@ namespace amp_algorithms
                 const int gidx = tidx.global[0];
                 const int idx = tidx.local[0];
 
-                //output_view[gidx] = (gidx < bin_count) ? global_rdx_offsets[gidx] : 0;                    // Dump per-tile histograms, global_histogram
-                //output_view[gidx] = (gidx < bin_count * tile_count) ? tile_histograms[gidx] : 0;          // Dump per-tile histograms, per_tile_rdx_histograms_tp,
+                //output_view[gidx] = (gidx < bin_count) ? global_rdx_offsets[gidx] : 0;                                                    // Dump per-tile histograms, global_histogram
+                //output_view[gidx] = (gidx < bin_count * tile_count) ? tile_histograms[gidx] : 0;                                          // Dump per-tile histograms, per_tile_rdx_histograms_tp,
 
                 // Calculate global radix offsets from the global radix histogram. All tiles do this but only the first one records the result.
                 tile_static int scan_data[tile_size];
@@ -626,10 +626,10 @@ namespace amp_algorithms
 
                 // Check inputs from previous steps are correct:
                 //
-                //if (idx < bin_count) { output_view[gidx] = tile_histograms[(idx * tile_count) + tlx]; }                                               // Dump tile offsets, tile_rdx_offsets
-                //if (idx < bin_count) { output_view[gidx] = per_tile_rdx_offsets[tlx][idx]; }                                                          // Dump per tile offsets, per_tile_rdx_offsets
-                //if (idx < bin_count * tile_count) { output_view[gidx] = segment_exclusive_scan(tile_histograms_vw, tile_count, gidx); }               // Dump tile offsets, tile_histogram_segscan
-                //output_view[gidx] = (gidx < bin_count) ? global_rdx_offsets[gidx] : 0;                                                                // Dump global offsets, global_rdx_offsets
+                // BAD if (idx < bin_count) { output_view[gidx] = tile_histograms[(idx * tile_count) + tlx]; }                                   // Dump tile offsets, tile_rdx_offsets
+                //if (idx < bin_count) { output_view[gidx] = per_tile_rdx_offsets[tlx][idx]; }                                              // Dump per tile offsets, per_tile_rdx_offsets
+                //if (idx < bin_count * tile_count) { output_view[gidx] = segment_exclusive_scan(tile_histograms_vw, tile_count, gidx); }   // Dump tile offsets, tile_histogram_segscan
+                //output_view[gidx] = (gidx < bin_count) ? global_rdx_offsets[gidx] : 0;                                                    // Dump global offsets, global_rdx_offsets
 
                 // Sort elements within each tile.
                 tile_static unsigned tile_data[tile_size];
@@ -644,7 +644,7 @@ namespace amp_algorithms
                 }
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
-                //output_view[gidx] = tile_data[idx];                                                       // Dump sorted per-tile data, sorted_per_tile
+                //output_view[gidx] = tile_data[idx];                                                                                       // Dump sorted per-tile data, sorted_by_key_0
 
                 // Move tile sorted elements to global destination.
 
@@ -655,7 +655,7 @@ namespace amp_algorithms
                     segment_exclusive_scan(tile_histograms_vw, tile_count, (rdx * tile_count) + tlx) +
                     global_rdx_offsets[rdx];
 
-                //output_view[gidx] = dest_gidx;                                                            // Dump destination indices, dest_gidx
+                //output_view[gidx] = dest_gidx;                                                                                            // Dump destination indices, dest_gidx
 
                 padded_write(output_view, dest_gidx, convert_from_uint<T>(tile_data[idx]));
             });

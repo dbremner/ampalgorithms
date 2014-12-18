@@ -31,6 +31,8 @@ using namespace testtools;
 
 static const int test_tile_size = 256;
 
+// TODO: Lots of test overlap here. Should be able to parameterize some tests or remove them entirely.
+
 class amp_algorithms_radix_sort_tests : public testbase, public ::testing::Test {};
 
 //----------------------------------------------------------------------------
@@ -396,6 +398,36 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_by_key_with_index_0_t
                                                            
     array_view<unsigned> input_av(static_cast<int>(input.size()), input);
     std::array<unsigned, 16> output;
+    array_view<unsigned> output_av(static_cast<int>(output.size()), output);
+    amp_algorithms::fill(output_av, 0);
+
+    amp_algorithms::_details::radix_sort_by_key<unsigned, 8, 2>(amp_algorithms::_details::auto_select_target(), input_av, output_av, 0);
+
+    output_av.synchronize();
+    ASSERT_TRUE(are_equal(sorted_by_key_0, output_av));
+}
+
+TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_by_key_with_index_0_tile_8_data_14)
+{
+    // gidx                                                    0   1   2   3   4   5   6   7     8   9  10  11  12  13
+    std::array<unsigned, 14> input =                         { 3,  2,  1,  6, 10, 11, 13,  0,   15, 10,  5, 14,  4, 12}; //,  9,  8 };
+    // rdx =                                                   3,  2,  1,  2,  2,  3,  1,  0,    3,  2,  1,  2,  0,  0
+
+    std::array<unsigned, 14> per_tile_rdx_histograms =       { 1,  2,  3,  2,        0,0,0,0,    2,  1,  2,  1,        0,0 };
+    std::array<unsigned, 14> per_tile_rdx_offsets =          { 0,  1,  3,  6,        0,0,0,0,    0,  2,  3,  5,        0,0 };
+                          
+    std::array<unsigned, 14> per_tile_rdx_histograms_tp =    { 1,  2,    2,  1,    3,  2,    2,  1,            0,0,0,0,0,0 };
+    std::array<unsigned, 14> tile_histogram_segscan =        { 0,  1,    0,  2,    0,  3,    0,  2,            0,0,0,0,0,0 };
+    std::array<unsigned, 14> tile_rdx_offsets =              { 0,  0,  0,  0,        0,0,0,0,    1,  2,  3,  2,        0,0 };
+                          
+    std::array<unsigned, 14> global_histogram =              { 3,  3,  5,  3,                          0,0,0,0,0,0,0,0,0,0 };
+    std::array<unsigned, 14> global_rdx_offsets =            { 0,  3,  6, 11,                          0,0,0,0,0,0,0,0,0,0 };
+    std::array<unsigned, 14> dest_gidx =                     { 4,  8,  9, 13,    0,  5, 10, 14,    6, 11, 12, 15,    1,  2 }; 
+                                                                 
+    std::array<unsigned, 14> sorted_by_key_0 =               { 0,  4, 12,  1, 13,  5,    2,  6, 10, 10, 14,  3, 11, 15 };
+                                                           
+    array_view<unsigned> input_av(static_cast<int>(input.size()), input);
+    std::array<unsigned, 14> output;
     array_view<unsigned> output_av(static_cast<int>(output.size()), output);
     amp_algorithms::fill(output_av, 0);
 
