@@ -57,7 +57,7 @@
     <ClCompile Include="..\test\test_amp_stl_algorithms_transform.cpp" />
     <ClCompile Include="..\test\test_amp_stl_iterators.cpp" />
     <ClCompile Include="..\test\test_testtools.cpp" />
-    <ClCompile Include="..\test\test_amp_algorithms_sort.cpp" />
+    <ClCompile Include="..\test\test_amp_algorithms_radix_sort.cpp" />
     <ClCompile Include="..\test\test_amp_algorithms_scan.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals" />

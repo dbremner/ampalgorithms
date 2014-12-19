@@ -383,6 +383,38 @@ namespace testtools
     }
 }; // namespace test_tools
 
+//===============================================================================
+//  Acceptance test definitions
+//===============================================================================
+
+template <typename T, int N, int P = 0>
+class TestDefinition {
+public:
+    typedef T value_type;
+    static const int size = N;
+    static const int parameter = P;
+};
+
+template <typename T, int TS, int N, int P = 0>
+class TiledTestDefinition : public TestDefinition < T, N, P >
+{
+public:
+    static const int tile_size = TS;
+};
+
+template <typename T, int N, int P = 0>
+const int TestDefinition<T, N, P>::size;
+
+template <typename T, int N, int P = 0>
+const int TestDefinition<T, N, P>::parameter;
+
+template <typename T, int TS, int N, int P = 0>
+const int TiledTestDefinition<T, TS, N, P>::tile_size;
+
+//===============================================================================
+//  Test base class
+//===============================================================================
+
 class testbase
 {
 protected:
