@@ -121,3 +121,44 @@ TEST_F(amp_reduce_tests, functor_view_int)
 
     ASSERT_TRUE(compare(gpuStdDev, cpuStdDev));
 }
+
+//----------------------------------------------------------------------------
+// Public API Acceptance Tests
+//----------------------------------------------------------------------------
+
+typedef ::testing::Types<
+    TestDefinition<int,        83>,     // Less than one tile.
+    TestDefinition<unsigned,   83>,
+    TestDefinition<float,      83>,
+    TestDefinition<int,       256>,     // Exactly one tile.
+    TestDefinition<unsigned,  256>,
+    TestDefinition<float,     256>,
+    TestDefinition<int,      1024>,     // Several whole tiles.
+    TestDefinition<unsigned, 1024>,
+    TestDefinition<float,    1024>,
+    TestDefinition<int,      1283>,     // Partial tile.
+    TestDefinition<unsigned, 1283>,
+    TestDefinition<float,    1283>,
+    TestDefinition<int,      7919>      // Lots of tiles and a partial.
+> reduce_acceptance_data;
+
+template <typename T>
+class amp_reduce_acceptance_tests : public ::testing::Test { };
+TYPED_TEST_CASE_P(amp_reduce_acceptance_tests);
+
+TYPED_TEST_P(amp_reduce_acceptance_tests, test)
+{
+    typedef TypeParam::value_type T;
+    const int size = TypeParam::size;
+
+    std::vector<T> input(size);
+    generate_data(input);
+    array_view<const T> input_vw(size, input);
+
+    T r = amp_algorithms::reduce(input_vw, amp_algorithms::plus<T>());
+
+    ASSERT_EQ(std::accumulate(cbegin(input), cend(input), T(), std::plus<T>()), r);
+}
+
+REGISTER_TYPED_TEST_CASE_P(amp_reduce_acceptance_tests, test);
+INSTANTIATE_TYPED_TEST_CASE_P(amp_reduce_tests, amp_reduce_acceptance_tests, reduce_acceptance_data);

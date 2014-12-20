@@ -96,8 +96,8 @@ namespace testtools
     {
         srand(2012);    // Set random number seed so tests are reproducible.
         std::generate(begin(v), end(v), [=]{
-            T v = (T)rand();
-            return ((static_cast<int>(v) % 4) == 0) ? -v : v;
+            int v = rand();
+            return static_cast<T>( ((v % 4) == 0) ? -v : v );
         });
     }
 
@@ -134,6 +134,19 @@ namespace testtools
         }
     }
     
+    template <int mode, typename InIt, typename OutIt, typename BinaryOp>
+    inline void scan_cpu(InIt first, InIt last, OutIt dest_first, BinaryOp op)
+    {
+        if (mode == static_cast<int>(scan_mode::inclusive))
+        {
+            scan_cpu_inclusive(first, last, dest_first, op);
+        }
+        else
+        {
+            scan_cpu_exclusive(first, last, dest_first, op);
+        }
+    }
+
     //===============================================================================
     //  Comparison.
     //===============================================================================
@@ -422,6 +435,11 @@ protected:
     {
         testtools::set_default_accelerator(L"stl_algorithms_tests");
         accelerator().default_view.wait();
+    }
+
+    ~testbase()
+    {
+        accelerator().default_view.flush();
     }
 };
 
