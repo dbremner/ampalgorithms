@@ -401,7 +401,9 @@ namespace amp_algorithms
         //
         // "Designing Efficient Sorting Algorithms for Manycore GPUs" http://www.nvidia.com/docs/io/67073/nvr-2008-001.pdf
         // "Histogram Calculation in CUDA" http://docs.nvidia.com/cuda/samples/3_Imaging/histogram/doc/histogram.pdf
-        
+        //
+        // TODO: In principle we could support double/long here but only on hardware that supports it.
+
         template<typename T, int key_bit_width>
         inline int radix_key_value(const T value, const unsigned key_idx) restrict(amp, cpu)
         {
@@ -410,8 +412,6 @@ namespace amp_algorithms
         }
 
         // Conversion functions to support other types.
-
-        // TODO: In principle we could support double/long here but only on hardware that supports it.
 
         template<typename T>
         inline unsigned convert_to_uint(const T& value) restrict(amp, cpu)
@@ -626,7 +626,7 @@ namespace amp_algorithms
 
                 // Check inputs from previous steps are correct:
                 //
-                // BAD if (idx < bin_count) { output_view[gidx] = tile_histograms[(idx * tile_count) + tlx]; }                                   // Dump tile offsets, tile_rdx_offsets
+                //if (idx < bin_count) { output_view[gidx] = tile_histograms[(idx * tile_count) + tlx]; }                                   // Dump tile offsets, tile_rdx_offsets
                 //if (idx < bin_count) { output_view[gidx] = per_tile_rdx_offsets[tlx][idx]; }                                              // Dump per tile offsets, per_tile_rdx_offsets
                 //if (idx < bin_count * tile_count) { output_view[gidx] = segment_exclusive_scan(tile_histograms_vw, tile_count, gidx); }   // Dump tile offsets, tile_histogram_segscan
                 //output_view[gidx] = (gidx < bin_count) ? global_rdx_offsets[gidx] : 0;                                                    // Dump global offsets, global_rdx_offsets
@@ -644,7 +644,7 @@ namespace amp_algorithms
                 }
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
-                //output_view[gidx] = tile_data[idx];                                                                                       // Dump sorted per-tile data, sorted_by_key_0
+                //output_view[gidx] = tile_data[idx];                                                                                       // Dump sorted per-tile data, sorted_per_tile
 
                 // Move tile sorted elements to global destination.
 

@@ -542,7 +542,7 @@ namespace amp_algorithms
             }
         }
 
-        bool is_bit_set(unsigned pos, amp_algorithms::scan_direction direction = amp_algorithms::scan_direction::forward)
+        bool is_bit_set(unsigned pos, const amp_algorithms::scan_direction direction = amp_algorithms::scan_direction::forward) const
         {
             // When we encounter flag going direction it means, 
             // that it is the first element of this segment (last element to be scanned going direction)
@@ -559,7 +559,7 @@ namespace amp_algorithms
         }
 
     private:
-        unsigned bits_pad_to_uint(const unsigned bits) const
+        unsigned bits_pad_to_uint(const unsigned& bits) const
         {
             return (bits + amp_algorithms::bit_count<unsigned>() - 1) / amp_algorithms::bit_count<unsigned>();
         }
