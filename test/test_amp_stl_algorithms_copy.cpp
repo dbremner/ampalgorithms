@@ -39,7 +39,6 @@ const std::array<int, 13> copy_data[] = {
 
 class stl_algorithms_tests : public stl_algorithms_testbase<13>, public ::testing::Test {};
 
-
 //----------------------------------------------------------------------------
 // copy, copy_if, copy_n
 //----------------------------------------------------------------------------

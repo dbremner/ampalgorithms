@@ -397,6 +397,18 @@ namespace testtools
 }; // namespace test_tools
 
 //===============================================================================
+//  Operator test definitions
+//===============================================================================
+
+template <typename StlType, typename AmpType>
+class OperatorTestDefinition
+{
+public:
+    typedef StlType stl_type;
+    typedef AmpType amp_type;
+};
+
+//===============================================================================
 //  Acceptance test definitions
 //===============================================================================
 

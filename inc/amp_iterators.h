@@ -305,5 +305,4 @@ namespace amp_stl_algorithms
     // Zip iterator
     //----------------------------------------------------------------------------
 
-
 } // amp_stl_algorithms
