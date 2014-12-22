@@ -33,6 +33,7 @@
     <ClInclude Include="..\test\testtools.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_pair.cpp" />
     <ClCompile Include="..\test\examples_stl_amp_algorithms.cpp" />
     <ClCompile Include="..\test\gtest_main.cpp" />
     <ClCompile Include="..\test\stdafx.cpp">

@@ -35,7 +35,7 @@ namespace amp_stl_algorithms
     // pair<T1, T2>
     //----------------------------------------------------------------------------
 
-    template<class T1, class T2>
+    template<typename T1, typename T2>
     class pair
     {
     public:
@@ -53,160 +53,97 @@ namespace amp_stl_algorithms
             : first(val1), second(val2)
         { }
 
-        template<class Other1, class Other2>
-        pair(const pair<Other1, Other2>& _Right) restrict(amp, cpu)
-            : first(_Right.first), second(_Right.second)
+        template<typename T1, typename T2>
+        pair(const pair<T1, T2>& Right) restrict(amp, cpu)
+            : first(Right.first), second(Right.second)
         { }
 
-        template<class Other1, class Other2>
-        pair(Other1&& val1, Other2&& val2) restrict(amp, cpu)
+        template<typename T1, typename T2>
+        pair(T1&& val1, T2&& val2) restrict(amp, cpu)
             : first(val1), second(val2)
         { }
 
         // Support interop with std::pair.
 
-        pair(const std::pair<T1, T2>& val) restrict(amp, cpu)
+        template<typename U1, typename U2>
+        pair(const std::pair<U1, U2>& val) restrict(cpu)
             : first(val.first), second(val.second)
         { }
 
-        pair& operator=(const std::pair<T1, T2>& val) restrict(cpu)
+        template<typename U1, typename U2>
+        pair& operator=(const std::pair<U1, U2>& val) restrict(cpu)
         {
             first = val.first;
             second = val.second;
             return *this;
         }
 
-        operator std::pair<T1, T2>() restrict(cpu)
+        template<typename U1, typename U2>
+        operator std::pair<U1, U2>() restrict(cpu)
         {
-            return std::pair<T1, T2>(first, second);
+            return std::pair<U1, U2>(first, second);
         }
     };
 
-    template<class T1, class T2>
-    inline bool operator==(const pair<T1, T2>& _Left, const pair<T1, T2>& _Right) restrict(amp, cpu)
+    template<typename T1, typename T2, typename U1, typename U2>
+    inline bool operator==(const std::pair<T1, T2>& left, const pair<U1, U2>& right) restrict(cpu)
     {
-        return (_Left.first == _Right.first && _Left.second == _Right.second);
+        return (left.first == right.first && left.second == right.second);
     }
 
-    template<class T1, class T2>
-    inline bool operator!=(const pair<T1, T2>& _Left, const pair<T1, T2>& _Right) restrict(amp, cpu)
+    template<typename T1, typename T2, typename U1, typename U2>
+    inline bool operator==(const pair<T1, T2>& left, const std::pair<U1, U2>& right) restrict(cpu)
     {
-        return (!(_Left == _Right));
+        return (left.first == right.first && left.second == right.second);
     }
 
-    template<class T1, class T2>
-    inline bool operator<(const pair<T1, T2>& _Left, const pair<T1, T2>& _Right) restrict(amp, cpu)
+    template<typename T1, typename T2, typename U1, typename U2>
+    inline bool operator==(const pair<T1, T2>& left, const pair<U1, U2>& right) restrict(amp, cpu)
     {
-        return (_Left.first < _Right.first || (!(_Right.first < _Left.first) && _Left.second < _Right.second));
+        return (left.first == right.first && left.second == right.second);
     }
 
-    template<class T1, class T2>
-    inline bool operator>(const pair<T1, T2>& _Left, const pair<T1, T2>& _Right) restrict(amp, cpu)
+    template<typename T1, typename T2>
+    inline bool operator!=(const pair<T1, T2>& left, const pair<T1, T2>& right) restrict(amp, cpu)
     {
-        return (_Right < _Left);
+        return (!(left == right));
     }
 
-    template<class T1, class T2>
-    inline bool operator<=(const pair<T1, T2>& _Left, const pair<T1, T2>& _Right) restrict(amp, cpu)
+    template<typename T1, typename T2, typename U1, typename U2>
+    inline bool operator!=(const pair<T1, T2>& left, const std::pair<U1, U2>& right) restrict(amp, cpu)
     {
-        return (!(_Right < _Left));
+        return (!(left == right));
     }
 
-    template<class T1, class T2> 
-    inline bool operator>=(const pair<T1, T2>& _Left, const pair<T1, T2>& _Right) restrict(amp, cpu)
+    template<typename T1, typename T2>
+    inline bool operator<(const pair<T1, T2>& left, const pair<T1, T2>& right) restrict(amp, cpu)
     {
-            return (!(_Left < _Right));
+        return (left.first < right.first || (!(right.first < left.first) && left.second < right.second));
     }
 
-    //----------------------------------------------------------------------------
-    //  tuple<... T>
-    //----------------------------------------------------------------------------
-
-    // http://mitchnull.blogspot.com/2012/06/c11-tuple-implementation-details-part-1.html
-    // TODO_NOT_IMPLEMENTED: Tuple<...T>
-    /*
-    template <typename... T>
-    class tuple;
-
-    namespace _details
+    template<typename T1, typename T2>
+    inline bool operator>(const pair<T1, T2>& left, const pair<T1, T2>& right) restrict(amp, cpu)
     {
-
+        return (right < left);
     }
 
-    template <typename... T>
-    class tuple {
-    public:
-        tuple();
+    template<typename T1, typename T2>
+    inline bool operator<=(const pair<T1, T2>& left, const pair<T1, T2>& right) restrict(amp, cpu)
+    {
+        return (!(right < left));
+    }
 
-        explicit tuple(const T&...);
+    template<typename T1, typename T2> 
+    inline bool operator>=(const pair<T1, T2>& left, const pair<T1, T2>& right) restrict(amp, cpu)
+    {
+            return (!(left < right));
+    }
 
-        template <typename... U>
-        explicit tuple(U&&...);
-
-        tuple(const tuple&);
-
-        tuple(tuple&&);
-
-        template <typename... U>
-        tuple(const tuple<U...>&);
-
-        template <typename... U>
-        tuple(tuple<U...>&&);
-
-        tuple& operator=(const tuple&);
-      
-        tuple& operator=(tuple&&);
-
-        template <typename... U>
-        tuple& operator=(const tuple<U...>&);
-
-        template <typename... U>
-        tuple& operator=(tuple<U...>&&);
-
-        void swap(tuple&);
-    };
-
-    template <typename... T> typename tuple_size<tuple<T...>>;
-
-    template <size_t I, typename... T> typename tuple_element<I, tuple<T...>>;
-
-    // element access:
-
-    template <size_t I, typename... T>
-    typename tuple_element<I, tuple<T...>>::type&
-        get(tuple<T...>&);
-
-    template <size_t I, typename... T>
-    typename tuple_element<I, tuple<T...>>::type const&
-        get(const tuple<T...>&);
-
-    template <size_t I, typename... T>
-    typename tuple_element<I, tuple<T...>>::type&&
-        get(tuple<T...>&&);
-
-    // relational operators:
-
-    template<typename... T, typename... U>
-    bool operator==(const tuple<T...>&, const tuple<U...>&);
-
-    template<typename... T, typename... U>
-    bool operator<(const tuple<T...>&, const tuple<U...>&);
-
-    template<typename... T, typename... U>
-    bool operator!=(const tuple<T...>&, const tuple<U...>&);
-
-    template<typename... T, typename... U>
-    bool operator>(const tuple<T...>&, const tuple<U...>&);
-
-    template<typename... T, typename... U>
-    bool operator<=(const tuple<T...>&, const tuple<U...>&);
-
-    template<typename... T, typename... U>
-    bool operator>=(const tuple<T...>&, const tuple<U...>&);
-
-    template <typename... Types>
-    void swap(tuple<Types...>& x, tuple<Types...>& y);
-    */
+    template < typename T1, typename T2>
+    inline pair < T1, T2> make_pair(T1 val1, T2 val2) restrict(amp, cpu)
+    { 
+        return pair<T1, T2>(val1, val2); 
+    }
 
     //----------------------------------------------------------------------------
     // adjacent_difference

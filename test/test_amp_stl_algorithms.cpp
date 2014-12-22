@@ -30,60 +30,6 @@ using namespace amp_stl_algorithms;
 using namespace testtools;
 
 class stl_algorithms_tests : public stl_algorithms_testbase<13>, public ::testing::Test {};
-
-//----------------------------------------------------------------------------
-// pair<T1, T2>
-//----------------------------------------------------------------------------
-
-TEST(stl_pair_tests, stl_pair_property_accessors)
-{
-    amp_stl_algorithms::pair<int, int> input(1, 2);
-    array_view<amp_stl_algorithms::pair<int, int>> input_av(1, &input); 
- 
-    concurrency::parallel_for_each(input_av.extent, [=](concurrency::index<1> idx) restrict(amp)
-    {
-        amp_stl_algorithms::swap(input_av[idx].first, input_av[idx].second);
-    });
-
-    ASSERT_EQ(2, input_av[0].first);
-    ASSERT_EQ(1, input_av[0].second);
-}
-
-TEST(stl_pair_tests, stl_pair_copy)
-{
-    amp_stl_algorithms::pair<int, int> input(1, 2);
-    auto input_av = array_view<amp_stl_algorithms::pair<int, int>>(1, &input);
-
-    concurrency::parallel_for_each(input_av.extent, [=](concurrency::index<1> idx) restrict(amp)
-    {
-        amp_stl_algorithms::pair<int, int> x(3, 4);
-        input_av[0] = x;
-    });
-
-    ASSERT_EQ(3, input_av[0].first);
-    ASSERT_EQ(4, input_av[0].second);
-}
-
-TEST(stl_pair_tests, stl_pair_conversion_from_std_pair)
-{
-    std::pair<int, int> y(1, 2);
-
-    amp_stl_algorithms::pair<int, int> x = y;
-
-    ASSERT_EQ(1, x.first);
-    ASSERT_EQ(2, x.second);
-}
-
-TEST(stl_pair_tests, stl_pair_conversion_to_std_pair)
-{
-    amp_stl_algorithms::pair<int, int> y(1, 2);
-
-    std::pair<int, int> x = y;
-
-    ASSERT_EQ(1, x.first);
-    ASSERT_EQ(2, x.second);
-}
-
 //----------------------------------------------------------------------------
 // adjacent_difference
 //----------------------------------------------------------------------------
@@ -342,35 +288,34 @@ TEST_F(stl_algorithms_tests, inner_product_pred)
 //----------------------------------------------------------------------------
 
 std::array<std::pair<int, int>, 6> minmax_data = {
-    std::pair<int, int>(1, 2),
-    std::pair<int, int>(100, 100),
-    std::pair<int, int>(150, 300),
-    std::pair<int, int>(1000, -50),
-    std::pair<int, int>(11, 12),
-    std::pair<int, int>(-12, 33)
+    std::make_pair(1, 2),
+    std::make_pair(100, 100),
+    std::make_pair(150, 300),
+    std::make_pair(1000, -50),
+    std::make_pair(11, 12),
+    std::make_pair(-12, 33)
 };
 
-// TODO: Should be able to make these tests a bit tidier with better casting support for pair<T, T>
 TEST_F(stl_algorithms_tests, minmax)
 {
     compare_binary_operator(
-        [=](int a, int b)->std::pair<const int, const int> { return std::minmax(a, b); },
-        [=](int a, int b)->std::pair<const int, const int> 
+        [=](int a, int b) { return std::minmax(a, b); },
+        [=](int a, int b)
         { 
             return amp_stl_algorithms::minmax(a, b); 
         },
-        minmax_data);
+        cbegin(minmax_data), cend(minmax_data));
 }
 
 TEST_F(stl_algorithms_tests, minmax_pred)
 {
     compare_binary_operator(
-        [=](int& a, int& b)->std::pair<const int, const int> { return std::minmax(a, b, std::greater_equal<int>()); },
-        [=](int& a, int& b)->std::pair<const int, const int>
+        [=](int& a, int& b) { return std::minmax(a, b, std::greater_equal<int>()); },
+        [=](int& a, int& b)
         { 
             return amp_stl_algorithms::minmax(a, b, amp_algorithms::greater_equal<int>()); 
         },
-        minmax_data);
+        cbegin(minmax_data), cend(minmax_data));
 }
 
 TEST_F(stl_algorithms_tests, min_element)

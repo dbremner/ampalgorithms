@@ -81,18 +81,16 @@ typedef ::testing::Types <
     OperatorTestDefinition<std::negate<int>, amp_algorithms::negate<int>>,
     OperatorTestDefinition<std::logical_not<int>, amp_algorithms::logical_not<int>>,
     OperatorTestDefinition<std::bit_not<int>, amp_algorithms::bit_not<int>>
-
 > unary_operator_types;
 
 std::array<int, 3> arithmetic_unary_operator_data = { 2, 0, -2 };
 
-std::array<std::pair<int, int>, 6> arithmetic_binary_operator_data = {
-    std::pair<int, int>(1, 2),
-    std::pair<int, int>(0, 2),
-    std::pair<int, int>(100, 100),
-    std::pair<int, int>(11, -50),
-    std::pair<int, int>(11, 12),
-    std::pair<int, int>(-12, 33)
+std::array<std::pair<int, int>, 5> arithmetic_binary_operator_data = {
+    std::make_pair(0, 222),
+    std::make_pair(101, 101),
+    std::make_pair(50, -50),
+    std::make_pair(-12, -235),
+    std::make_pair(0, 0)
 };
 
 template <typename T>
@@ -101,7 +99,8 @@ TYPED_TEST_CASE_P(arithmetic_binary_operator_tests);
 
 TYPED_TEST_P(arithmetic_binary_operator_tests, binary_operator_test)
 {
-    compare_binary_operator(TypeParam::stl_type(), TypeParam::amp_type(), arithmetic_binary_operator_data);
+    compare_binary_operator(TypeParam::stl_type(), TypeParam::amp_type(), cbegin(arithmetic_binary_operator_data), cend(arithmetic_binary_operator_data));
+    
 }
 
 REGISTER_TYPED_TEST_CASE_P(arithmetic_binary_operator_tests, binary_operator_test);
@@ -138,7 +137,7 @@ TEST_F(amp_operator_tests, not1)
 
 TEST_F(amp_operator_tests, not2)
 {
-    compare_binary_operator(not_equal_to<int>(), amp_algorithms::not2(equal_to<int>()), arithmetic_binary_operator_data);
+    compare_binary_operator(not_equal_to<int>(), amp_algorithms::not2(equal_to<int>()), cbegin(arithmetic_binary_operator_data), cend(arithmetic_binary_operator_data));
 }
 
 //----------------------------------------------------------------------------

@@ -195,32 +195,49 @@ namespace testtools
         // This function is constructed in a way that requires T
         // only to define operator< to check for equality
 
-        if (v1 < v2)
-        {
-            return false;
-        }
-        if (v2 < v1)
+        if ((v1 < v2) || (v2 < v1))
         {
             return false;
         }
         return true;
     }
 
-    template<typename StlFunc, typename AmpFunc, typename Data>
-    void compare_binary_operator(StlFunc stl_func, AmpFunc amp_func, Data tests)
+    template<typename T>
+    struct is_division : std::false_type
+    {};
+
+    template<>
+    struct is_division < std::divides<int> > : std::true_type
+    {};
+
+    template<>
+    struct is_division < std::modulus<int> > : std::true_type
+    {};
+
+    template<typename StlFunc, typename T>
+    bool is_divide_by_zero(const T& val)
     {
-        for (auto p : tests)
-        {
-           EXPECT_EQ(stl_func(p.first, p.second), amp_func(p.first, p.second));
-        }
+        return (is_division<StlFunc>() && std::is_arithmetic<T>() && (val == T()));
     }
 
-    template<typename StlFunc, typename AmpFunc, typename Data>
-    void compare_unary_operator(StlFunc stl_func, AmpFunc amp_func, Data tests)
+    template<typename StlFunc, typename AmpFunc, typename TIter>
+    void compare_binary_operator(StlFunc stl_func, AmpFunc amp_func, TIter first, TIter last)
     {
-        for (auto p : tests)
+        std::for_each(first, last, [=](TIter::value_type p) 
         {
-            EXPECT_EQ(stl_func(p), amp_func(p));
+            if (!is_divide_by_zero<StlFunc>(p.second))
+                EXPECT_EQ(stl_func(p.first, p.second), amp_func(p.first, p.second));
+            if (!is_divide_by_zero<StlFunc>(p.first))
+                EXPECT_EQ(stl_func(p.second, p.first), amp_func(p.second, p.first));
+        });
+    }
+
+    template<typename StlFunc, typename AmpFunc, typename T>
+    void compare_unary_operator(StlFunc stl_func, AmpFunc amp_func, T test_values)
+    {
+        for (auto v : test_values)
+        {
+            EXPECT_EQ(stl_func(v), amp_func(v));
         }
     }
 

@@ -87,5 +87,8 @@
     <ClCompile Include="..\test\test_amp_algorithms_radix_sort.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_pair.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
