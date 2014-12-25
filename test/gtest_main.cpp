@@ -22,20 +22,21 @@
 #include "stdafx.h"
 #include "testtools.h"
 
-using namespace concurrency;
+using namespace ::std;
+using namespace ::concurrency;
 
 bool configure_tests(int argc, char **argv);
 void usage();
 
 int main(int argc, char **argv)
 {
-    std::cout << std::endl << "C++ AMP Algorithms Library (";
+    wcout << endl << "C++ AMP Algorithms Library (";
 #if defined(_DEBUG)
-    std::cout << "DEBUG";
+    wcout << "DEBUG";
 #else
-    std::cout << "RELEASE";
+    wcout << "RELEASE";
 #endif
-    std::cout << " build)" << std::endl << std::endl;
+    wcout << " build)" << endl << endl;
 
     ::testing::InitGoogleTest(&argc, argv);
 
@@ -60,7 +61,7 @@ bool configure_tests(int argc, char **argv)
     bool is_verbose = false;
     for (int i = 1; i < argc; ++i)
     {
-        std::string arg = std::string(argv[i]);
+        string arg = string(argv[i]);
 
         if (arg == "-h")
         {
@@ -82,27 +83,41 @@ bool configure_tests(int argc, char **argv)
         {
             try
             {
-                arg = std::string(argv[++i]);
+                arg = string(argv[++i]);
                 if (arg == "ref")
                 {
                     testtools::set_default_accelerator(accelerator::direct3d_ref);
                     continue;
                 }
-                size_t d = std::stoi(argv[i]) - 1;
+                if (arg == "warp")
+                {
+                    testtools::set_default_accelerator(accelerator::direct3d_warp);
+                    continue;
+                }
+                if (arg == "gpu")
+                {
+                    if (accelerator().is_emulated)
+                    {
+                        wcout << "No GPU hardware accelerator available." << endl;
+                        return false;
+                    }
+                    continue;
+                }
+                size_t d = stoi(argv[i]) - 1;
                 if ((d >= 0) && (d < accls.size()))
                 {
                     testtools::set_default_accelerator(accls[d].device_path);
                     continue;
                 }
             }
-            catch (std::invalid_argument)
+            catch (invalid_argument)
             {
             }
-            catch (std::out_of_range)
+            catch (out_of_range)
             {
             }
         }
-        std::cout << "Invalid argument '" << arg << "'." << std::endl;
+        cout << "Invalid argument '" << arg << "'." << endl;
         usage();
         return false;
     }
@@ -116,14 +131,15 @@ bool configure_tests(int argc, char **argv)
 
 void usage()
 {
-    std::wcout << std::endl
-        << "Usage: amp_algorithms.exe ... googletest options ... amp_algorithms options ..." << std::endl << std::endl;
+    wcout << endl
+        << "Usage: amp_algorithms.exe ... googletest options ... amp_algorithms options ..." << endl << endl;
 
-    std::wcout 
-        << "  -d [d]          Run tests on a selected device. Where d is the integer device number as listed in the test output. " << std::endl
-        << "  --device [d]    Setting d to ref will select the reference accelerator. " << std::endl
-        << "  -q              Minimal output showing only the build configuration and test output." << std::endl
-        << "  --quiet         " << std::endl
-        << "  -v              Verbose output showing properties for all C++ AMP devices. The device being used for running tests" << std::endl
-        << "  --verbose       is denoted with a `*`." << std::endl << std::endl;
+    wcout 
+        << "  -d [d]          Run tests on a selected device. Where d is the integer device number as listed in the test output. " << endl
+        << "  --device [d]    Setting d to ref will select the reference accelerator. " << endl
+        << "  -h              This message" << endl 
+        << "  -q              Minimal output showing only the build configuration and test output." << endl
+        << "  --quiet         " << endl
+        << "  -v              Verbose output showing properties for all C++ AMP devices. The device being used for running tests" << endl
+        << "  --verbose       is denoted with a `*`." << endl << endl;
 }

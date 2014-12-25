@@ -55,25 +55,37 @@ if (-not (test-path "$env:VSINSTALLDIR"))
 }
 
 $stopwatch = New-Object System.Diagnostics.Stopwatch
+
 $msbuild_exe = "$env:FrameworkDir$env:FrameworkVersion\msbuild.exe"
 $msbuild_options = "/p:WARNINGS_AS_ERRORS=true /nologo /target:build /verbosity:m /filelogger /consoleloggerparameters:verbosity=m"
 
-## Process arguments and configure builds
+$test_exe = "amp_algorithms.exe"
+$test_options = "--gtest_shuffle --gtest_filter=*:-*radix_sort*:*_direct3d_* --verbose "
 
-$run_options = "--gtest_color=yes --gtest_shuffle --gtest_filter=*:-*radix_sort*:*_direct3d_* --verbose "
-if ($args -contains "/ref")
-{
-    $run_options += "--device ref"
-    write-host "`nUnit tests will use REF accelerator." -fore yellow
-}
+$vsvers = @( "12" )
+$configs = @( "Debug", "Release" )
+$platforms = @( "x64", "Win32" )
+$test_devices = @( "gpu" )
+
+## Build output paths
 
 $build_dir = split-path -parent $MyInvocation.MyCommand.Definition
 $build_int = "$build_dir/Intermediate"
 $build_bin = "$build_dir/Bin"
 
-$vsvers = @( "12" )
-$configs = @( "Debug", "Release" )
-$platforms = @( "x64", "Win32" )
+## Process arguments and configure builds
+
+if ($args -contains "/ref")
+{
+    $test_devices = @( "ref" )
+    write-host "`nUnit tests will use REF accelerator." -fore yellow
+}
+
+if ($args -contains "/all")
+{
+    $test_devices = @( "ref", "warp", "gpu" )
+    write-host "`nUnit tests will use REF accelerator." -fore yellow
+}
 
 if ($args -contains "/test")
 {
@@ -172,21 +184,29 @@ else
     $stopwatch.Reset();
     $stopwatch.Start();
 
-    if ($args -contains "/ref")
-    {
-        write-host "Running tests with REF accelerator, this may take several minutes..." -fore yellow
-    }
-
     foreach ($ver in $vsvers)
     {
-        $test_exes = @( "amp_algorithms" )
-        write-host "Running tests for Visual Studio ${ver}.0 ( $plat | $conf ) build..." -fore yellow
-
-        foreach  ($t in $test_exes)
+        if ($test_devices.Count -eq 1)
         {
-            Invoke-Expression "$build_bin/v${ver}0/$plat/$conf/$t.exe $run_options" 
+            $dev = $test_devices[0]
+            write-host "Running tests for Visual Studio ${ver}.0 ( $plat | $conf ) build on device" $dev.ToUpper() "..." -fore yellow
+            Invoke-Expression "$build_bin/v${ver}0/$plat/$conf/$test_exe --gtest_color=yes $test_options --device $dev"
+            continue
+        }
+        foreach ($dev in $test_devices)
+        {
+            write-host "Running tests for Visual Studio ${ver}.0 ( $plat | $conf ) build on device" $dev.ToUpper() "..." -fore yellow
+
+            Invoke-Expression "$build_bin/v${ver}0/$plat/$conf/$test_exe --gtest_color=no $test_options --device $dev" > $build_int\test_output_$dev.log            
+            $line_count = 0
+            $color = "green"
+            Get-Content $build_int\test_output_$dev.log |
+              %{ if ( $_ -match @('^\[==========\]')) { $line_count++ } ; $_ } |
+              %{ if ( $_ -match @('^\[  FAILED  \]')) { $color = "red"; } ; $_ } |
+              %{ if ( $line_count -gt 1 ) { write-host "  $_" -fore $color } }
         }
     }
+
     $stopwatch.Stop();
     $elapsed = $stopwatch.Elapsed  
     $TestsElapsedTime = [System.String]::Format("{0:00}m {1:00}s", $elapsed.Minutes, $elapsed.Seconds);
