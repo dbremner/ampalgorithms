@@ -299,10 +299,10 @@ std::array<std::pair<int, int>, 6> minmax_data = {
 TEST_F(stl_algorithms_tests, minmax)
 {
     compare_binary_operator(
-        [=](int a, int b) { return std::minmax(a, b); },
+        [=](int a, int b) { return static_cast<std::pair<int, int>>(std::minmax(a, b)); },
         [=](int a, int b)
         { 
-            return amp_stl_algorithms::minmax(a, b); 
+            return amp_stl_algorithms::minmax(a, b);
         },
         cbegin(minmax_data), cend(minmax_data));
 }

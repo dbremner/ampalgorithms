@@ -51,7 +51,7 @@ struct saxpy_functor
 
 TEST(examples, stl_example_saxpy)
 {
-    auto size = testtools::test_array_size<int>();
+    int size = 7919;
 
     {
         const float a = 2.0f;
@@ -81,7 +81,7 @@ TEST(examples, stl_example_saxpy)
 
 TEST(examples, hello_world)
 {
-    auto size = testtools::test_array_size<int>();
+    int size = 7919;
 
     {
         concurrency::array<float> data(size);

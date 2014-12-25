@@ -453,13 +453,13 @@ namespace amp_stl_algorithms
     //----------------------------------------------------------------------------
 
     template <typename T>
-    inline amp_stl_algorithms::pair<const T, const T> minmax(const T a, const T b) restrict( cpu)
+    inline amp_stl_algorithms::pair<const T, const T> minmax(const T& a, const T& b) restrict(cpu, amp)
     {
         return minmax(a, b, amp_algorithms::less<T>());
     }
 
     template <typename T, typename Compare>
-    inline amp_stl_algorithms::pair<const T, const T> minmax(const T a, const T b, Compare comp) restrict(cpu)
+    inline amp_stl_algorithms::pair<const T, const T> minmax(const T& a, const T& b, Compare comp) restrict(cpu, amp)
     {
         return comp(a, b) ? amp_stl_algorithms::pair<const T, const T>(a, b) : amp_stl_algorithms::pair<const T, const T>(b, a);
     }

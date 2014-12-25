@@ -46,50 +46,92 @@ class extent { };
 class index { };
 class array { };
 
-//  Set USE_REF to use the REF accelerator for all tests. This is useful if tests fail on a particular machine as
-//  failure may be due to a driver bug.
-
 namespace testtools
 {
-    inline void set_default_accelerator(std::wstring test_name)
+    //===============================================================================
+    //  Helper functions to display and set the C++ AMP accelerator.
+    //===============================================================================
+
+    inline void to_upper(std::wstring& str)
     {
-#if (defined(USE_REF) || defined(_DEBUG))
+        std::transform(cbegin(str), cend(str), begin(str), [=](wchar_t c) { return std::toupper(c); });
+    }
+
+    inline std::vector<accelerator> get_accelerators(bool show_all = false)
+    {
+        std::vector<accelerator> accls = accelerator::get_all();
+        if (!show_all)
+        {
+            accls.erase(std::remove_if(accls.begin(), accls.end(), [](accelerator& a)
+            {
+                return(a.device_path == accelerator::cpu_accelerator);
+            }), accls.end());
+        }
+        std::sort(begin(accls), end(accls), [=](accelerator a, accelerator b)->bool 
+        {
+            std::wstring dev_a(a.device_path);
+            to_upper(dev_a);
+            std::wstring dev_b(b.device_path);
+            to_upper(dev_b);
+            return dev_a < dev_b;
+        });
+        return accls;
+    }
+
+    inline void display_accelerators(const std::vector<accelerator>& accls, bool show_details = false, bool show_all = false)
+    {
+        if (accls.empty())
+        {
+            std::wcout << "No accelerators found that are compatible with C++ AMP" << std::endl << std::endl;
+            return;
+        }
+
+        const std::wstring default_dev_path = accelerator().device_path;
+
+        std::wcout << "Found " << accls.size()
+            << " accelerator device(s) that are compatible with C++ AMP:" << std::endl << std::endl;
+        int n = 0;
+        std::for_each(accls.cbegin(), accls.cend(), [=, &n](const accelerator& a)
+        {
+            bool is_default = (a.device_path.compare(default_dev_path) == 0);
+            float mem_gb =  float(a.dedicated_memory) / (1024.0f * 1024.0f);
+            std::wcout << (is_default ? " *" : "  ") << ++n << ": " << a.description;
+            if (a.dedicated_memory > 0)
+            {
+                std::wcout << " ( " << std::fixed << std::setprecision(1) << mem_gb << " GB )";
+            }
+            std::wcout << std::endl << "       device_path                       = " << a.device_path;
+                
+            if (show_details)
+            {
+                std::wcout << std::endl << "       dedicated_memory                  = " << std::fixed << std::setprecision(1) << mem_gb << " GB"
+                           << std::endl << "       has_display                       = " << (a.has_display ? "true" : "false")
+                           << std::endl << "       is_debug                          = " << (a.is_debug ? "true" : "false")
+                           << std::endl << "       is_emulated                       = " << (a.is_emulated ? "true" : "false")
+                           << std::endl << "       supports_double_precision         = " << (a.supports_double_precision ? "true" : "false")
+                           << std::endl << "       supports_limited_double_precision = " << (a.supports_limited_double_precision ? "true" : "false") << std::endl;
+            }
+            std::wcout << std::endl;
+        });
+        std::wcout << std::endl;
+        return;
+    }
+
+    inline void set_default_accelerator(std::wstring device_path)
+    {
         std::wstring dev_path = accelerator().device_path;
-        bool set_ok = accelerator::set_default(accelerator::direct3d_ref) || 
-            (dev_path == accelerator::direct3d_ref);
+        bool set_ok = accelerator::set_default(device_path) || (dev_path == device_path);
 
         if (!set_ok)
         {
-            std::wstringstream str;
-            str << "Unable to set default accelerator to REF. Using " << dev_path << "." << std::endl;
+            std::wcout << "Unable to set default accelerator to " << device_path << " . Using " << dev_path << "." << std::endl;
         }
-#endif
         accelerator().get_default_view().flush();
     }
 
     //===============================================================================
     //  Helper functions to generate test data of random numbers.
     //===============================================================================
-
-    template<typename T>
-    inline int test_array_size()
-    {
-        int size;
-#if _DEBUG
-        size = 1023;
-#else
-        size = 1023 + 1029;
-#endif
-        if (std::is_same<T, int>::value)
-        {
-            size *= 13;
-        }
-        else if (std::is_same<T, float>::value)
-        {
-            size *= 5;
-        }
-        return size;
-    }
 
     template <typename T>
     inline void generate_data(std::vector<T> &v)
@@ -226,9 +268,13 @@ namespace testtools
         std::for_each(first, last, [=](TIter::value_type p) 
         {
             if (!is_divide_by_zero<StlFunc>(p.second))
+            {
                 EXPECT_EQ(stl_func(p.first, p.second), amp_func(p.first, p.second));
+            }
             if (!is_divide_by_zero<StlFunc>(p.first))
+            {
                 EXPECT_EQ(stl_func(p.second, p.first), amp_func(p.second, p.first));
+            }
         });
     }
 
@@ -462,7 +508,6 @@ class testbase
 protected:
     testbase()
     {
-        testtools::set_default_accelerator(L"stl_algorithms_tests");
         accelerator().default_view.wait();
     }
 

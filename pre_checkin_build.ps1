@@ -55,20 +55,19 @@ if (-not (test-path "$env:VSINSTALLDIR"))
 }
 
 $stopwatch = New-Object System.Diagnostics.Stopwatch
-$vstest_exe = "$env:VSINSTALLDIR\Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe"
 $msbuild_exe = "$env:FrameworkDir$env:FrameworkVersion\msbuild.exe"
 $msbuild_options = "/p:WARNINGS_AS_ERRORS=true /nologo /target:build /verbosity:m /filelogger /consoleloggerparameters:verbosity=m"
 
 ## Process arguments and configure builds
 
+$run_options = "--gtest_color=yes --gtest_shuffle --gtest_filter=*:-*radix_sort*:*_direct3d_* --verbose "
 if ($args -contains "/ref")
 {
-    $msbuild_options = $msbuild_options + " /p:USE_REF=USE_REF"
-    write-host "`nBuilding with USE_REF defined, unit tests will use REF accelerator." -fore yellow
+    $run_options += "--device ref"
+    write-host "`nUnit tests will use REF accelerator." -fore yellow
 }
 
 $build_dir = split-path -parent $MyInvocation.MyCommand.Definition
-$test_dir = "$build_dir/TestResults"
 $build_int = "$build_dir/Intermediate"
 $build_bin = "$build_dir/Bin"
 
@@ -104,7 +103,7 @@ $stopwatch.Start()
 
 write-host "== Clean         ===============================================================" -fore yellow
 
-foreach ($p in @( $build_bin, $build_int, $test_dir ))
+foreach ($p in @( $build_bin, $build_int ))
 {
     if (test-path $p)
     { 
@@ -118,7 +117,7 @@ if ($args -contains "/clean") { exit }
 ## Build all targets...
 
 write-host "`n== Build         ===============================================================" -fore yellow
-write-host "Running the following builds:" -fore yellow
+write-host "Building the following configurations:" -fore yellow
 foreach ($b in $builds)
 {
     $ver = $b.Item1
@@ -181,27 +180,11 @@ else
     foreach ($ver in $vsvers)
     {
         $test_exes = @( "amp_algorithms" )
-        $tests_failed = 0
-        $tests_passed = 0
         write-host "Running tests for Visual Studio ${ver}.0 ( $plat | $conf ) build..." -fore yellow
 
         foreach  ($t in $test_exes)
         {
-            ."$build_bin/v${ver}0/$plat/$conf/$t.exe" --gtest_color=no --gtest_shuffle 2>&1 |
-            %{ if ( $_ -match @('^\[       OK \]')) { $tests_passed++ } ; $_ } |
-            %{ if ( $_ -match @('^\[  FAILED  \].*ms\)$')) { $tests_failed++; } ; $_ } |
-            where { $_ -match @('^\[  FAILED  \].*ms\)$') } | 
-            %{ write-host "  $_" -fore red }
-        }
-
-        $tests_count = $tests_passed + $tests_failed
-        if ($tests_failed -gt 0) 
-        {
-            write-host "`n$tests_failed / $tests_count Tests FAILED!" -fore red
-        }
-        else
-        {
-            write-host "`nAll $tests_count tests complete, no failures." -fore green
+            Invoke-Expression "$build_bin/v${ver}0/$plat/$conf/$t.exe $run_options" 
         }
     }
     $stopwatch.Stop();

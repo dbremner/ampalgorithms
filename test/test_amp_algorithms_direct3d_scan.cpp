@@ -57,10 +57,8 @@ public:
     void test_scan_internal(int column_count, BinaryFunction op,
         amp_algorithms::scan_direction direction, bool inplace, scan_type test_type = scan_type::scan, unsigned int row_count = 1)
     {
-//#ifdef _DEBUG
         column_count = std::min(200, column_count);
         row_count = std::min(200u, row_count);
-//#endif
         accelerator().default_view.wait();
 
         std::vector<T> in(row_count * column_count);
