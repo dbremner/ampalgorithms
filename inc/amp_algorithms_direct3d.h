@@ -19,7 +19,7 @@
 * This file contains the C++ AMP DirectX algorithms
 *---------------------------------------------------------------------------*/
 
-// TODO: Here the functions are defined here. In the STL implementation they are defined in the main header file 
+// TODO: Here the functions are defined here. In the STL implementation they are defined in the main header file
 // and just declared in the public one. Is this by design?
 #pragma once
 
@@ -62,10 +62,10 @@ namespace amp_algorithms
 
             // Performs exclusive scan in specified direction
             template <typename T, typename BinaryFunction>
-            void scan_exclusive(const concurrency::array<T> &input_array, concurrency::array<T> &output_array, scan_direction direction, const BinaryFunction &binary_op)
+            void scan_exclusive(const concurrency::array<T> &input_array, concurrency::array<T> &output_array, scan_direction direction, BinaryFunction&& binary_op)
             {
                 // Scan is special case of multiscan where scan_size == scan_pitch and scan_count = 1
-                scan_internal(input_array, output_array, direction, binary_op, input_array.extent.size(), input_array.extent.size(), 1);
+                scan_internal(input_array, output_array, direction, std::forward<BinaryFunction>(binary_op), input_array.extent.size(), input_array.extent.size(), 1);
             }
 
             // Performs forward exclusive scan (overload with direction already specified)
@@ -79,19 +79,19 @@ namespace amp_algorithms
             template <typename T>
             void scan_exclusive(const concurrency::array<T> &input_array, concurrency::array<T> &output_array)
             {
-                scan_exclusive(input_array, output_array, scan_direction::forward, amp_algorithms::plus<T>());
+                scan_exclusive(input_array, output_array, scan_direction::forward, amp_algorithms::plus<>());
             }
 
             // Performs exclusive multi scan in specified direction
             template <typename T, typename BinaryFunction>
-            void multi_scan_exclusive(const concurrency::array<T, 2> &input_array, concurrency::array<T, 2> &output_array, scan_direction direction, const BinaryFunction &binary_op)
+            void multi_scan_exclusive(const concurrency::array<T, 2> &input_array, concurrency::array<T, 2> &output_array, scan_direction direction, BinaryFunction&& binary_op)
             {
-                scan_internal(input_array, output_array, direction, binary_op, input_array.extent[1], input_array.extent[1], input_array.extent[0]);
+                scan_internal(input_array, output_array, direction, std::forward<BinaryFunction>(binary_op), input_array.extent[1], input_array.extent[1], input_array.extent[0]);
             }
 
             // Performs exclusive segmented scan in specified direction
             template <typename T, typename BinaryFunction>
-            void segmented_scan_exclusive(const concurrency::array<T> &input_array, concurrency::array<T> &output_array, const concurrency::array<unsigned int> &flags_array, scan_direction direction, const BinaryFunction &binary_op)
+            void segmented_scan_exclusive(const concurrency::array<T> &input_array, concurrency::array<T> &output_array, const concurrency::array<unsigned int> &flags_array, scan_direction direction, BinaryFunction&&)
             {
                 static_assert(_details::_dx_scan_type_helper<T>::is_type_supported, "Unsupported type for scan");
                 static_assert(_details::_dx_scan_op_helper<BinaryFunction>::is_op_supported, "Unsupported binary function for scan");
@@ -148,7 +148,7 @@ namespace amp_algorithms
 
             // Common subset of scan setup for multiscan and scan
             template <typename T, unsigned int Rank, typename BinaryFunction>
-            void scan_internal(const concurrency::array<T, Rank> &input_array, concurrency::array<T, Rank> &output_array, scan_direction direction, const BinaryFunction &binary_op, unsigned int scan_size, unsigned int scan_pitch, unsigned int scan_count)
+            void scan_internal(const concurrency::array<T, Rank> &input_array, concurrency::array<T, Rank> &output_array, scan_direction direction, BinaryFunction&&, unsigned int scan_size, unsigned int scan_pitch, unsigned int scan_count)
             {
                 static_assert(_details::_dx_scan_type_helper<T>::is_type_supported, "Unsupported type for scan");
                 static_assert(_details::_dx_scan_op_helper<BinaryFunction>::is_op_supported, "Currently only fixed set of binary functions is allowed, we are working to remove this limitation");
@@ -196,7 +196,7 @@ namespace amp_algorithms
                 }
             }
 
-            // Scan data members 
+            // Scan data members
             Microsoft::WRL::ComPtr<ID3DX11Scan> m_scan; // capable of scan and multiscan
             Microsoft::WRL::ComPtr<ID3DX11SegmentedScan> m_segmented_scan;
 

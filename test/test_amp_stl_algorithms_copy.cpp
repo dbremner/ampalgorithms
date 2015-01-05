@@ -39,6 +39,7 @@ const std::array<int, 13> copy_data[] = {
 
 class stl_algorithms_tests : public stl_algorithms_testbase<13>, public ::testing::Test {};
 
+
 //----------------------------------------------------------------------------
 // copy, copy_if, copy_n
 //----------------------------------------------------------------------------
@@ -60,7 +61,9 @@ TEST_P(copy_if_tests, test)
     auto expected_iter = std::copy_if(begin(input), end(input), begin(expected), greater_than<int>());
     auto expected_size = std::distance(begin(expected), expected_iter);
 
-    auto iter = amp_stl_algorithms::copy_if(begin(input_av), end(input_av), begin(output_av), greater_than<int>());
+    std::sort(begin(expected), expected_iter);
+    auto iter = amp_stl_algorithms::copy_if(cbegin(input_av), cend(input_av), begin(output_av), greater_than<int>());
+    std::sort(begin(output_av), iter);
 
     ASSERT_EQ(expected_size, std::distance(begin(output_av), iter));
     ASSERT_TRUE(are_equal(expected, output_av, expected_size));
@@ -70,20 +73,46 @@ INSTANTIATE_TEST_CASE_P(stl_algorithms_tests, copy_if_tests, ::testing::ValuesIn
 
 TEST_F(stl_algorithms_tests, copy_n)
 {
-    int size = static_cast<int>(input.size() / 2);
-    std::copy_n(cbegin(input), size, begin(expected));
+    int sz = static_cast<int>(input.size() / 2);
+    std::copy_n(cbegin(input), sz, begin(expected));
 
-    auto iter = amp_stl_algorithms::copy_n(begin(input_av), size, begin(output_av));
+    auto iter = amp_stl_algorithms::copy_n(begin(input_av), sz, begin(output_av));
 
-    ASSERT_EQ(size, std::distance(begin(output_av), iter));
+    ASSERT_EQ(sz, std::distance(begin(output_av), iter));
     ASSERT_TRUE(are_equal(expected, output_av));
 }
+
+//----------------------------------------------------------------------------
+// reverse_copy
+//----------------------------------------------------------------------------
+
+class reverse_copy_tests : public ::testing::TestWithParam<std::size_t> {};
+
+TEST_P(reverse_copy_tests, test)
+{
+    int size = GetParam();
+    std::vector<int> vec(size);
+    std::iota(begin(vec), end(vec), 0);
+    array_view<int> av(vec);
+
+    std::vector<int> result(size, 0);
+    concurrency::array_view<int> result_av(result);
+    std::vector<int> expected_result(size, 0);
+    auto expected_end = std::reverse_copy(std::cbegin(vec), std::cend(vec), std::begin(expected_result));
+
+    auto result_end = amp_stl_algorithms::reverse_copy(amp_stl_algorithms::cbegin(av), amp_stl_algorithms::cend(av), amp_stl_algorithms::begin(result_av));
+
+    ASSERT_TRUE(are_equal(expected_result, result_av));
+    ASSERT_EQ(std::distance(std::begin(expected_result), expected_end), std::distance(amp_stl_algorithms::begin(result_av), result_end));
+}
+
+INSTANTIATE_TEST_CASE_P(stl_algorithms_tests, reverse_copy_tests, ::testing::Values(1u, 1023u, 1024u));
 
 //----------------------------------------------------------------------------
 // rotate_copy
 //----------------------------------------------------------------------------
 
-class rotate_copy_tests : public ::testing::TestWithParam < std::pair<int, int> > {};
+class rotate_copy_tests : public ::testing::TestWithParam<std::pair<int, int>> {};
 
 TEST_P(rotate_copy_tests, test)
 {

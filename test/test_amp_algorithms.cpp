@@ -1,19 +1,19 @@
 /*----------------------------------------------------------------------------
 * Copyright © Microsoft Corp.
 *
-* Licensed under the Apache License, Version 2.0 (the "License"); you may not 
-* use this file except in compliance with the License.  You may obtain a copy 
-* of the License at http://www.apache.org/licenses/LICENSE-2.0  
-* 
-* THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED 
-* WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE, 
-* MERCHANTABLITY OR NON-INFRINGEMENT. 
+* Licensed under the Apache License, Version 2.0 (the "License"); you may not
+* use this file except in compliance with the License.  You may obtain a copy
+* of the License at http://www.apache.org/licenses/LICENSE-2.0
 *
-* See the Apache Version 2.0 License for specific language governing 
+* THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+* WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+* MERCHANTABLITY OR NON-INFRINGEMENT.
+*
+* See the Apache Version 2.0 License for specific language governing
 * permissions and limitations under the License.
 *---------------------------------------------------------------------------
-* 
+*
 * C++ AMP standard algorithm library.
 *
 * This file contains unit tests.
@@ -52,12 +52,10 @@ TEST_F(amp_algorithms_tests, generate_int)
     array_view<int,1> av(1024, vec);
     av.discard_data();
 
-    amp_algorithms::generate(av, [] () restrict(amp) {
-        return 7;
-    });
+    amp_algorithms::generate(av, []() restrict(amp) { return 7; });
     av.synchronize();
 
-    for (auto e : vec)
+    for (auto&& e : vec)
     {
         EXPECT_EQ(7, e);
     }
@@ -65,15 +63,15 @@ TEST_F(amp_algorithms_tests, generate_int)
 
 TEST_F(amp_algorithms_tests, transform_unary)
 {
-    const int height = 16;
-    const int width = 16;
-    const int size = height * width;
+    constexpr int height = 16;
+    constexpr int width = 16;
+    constexpr int sz = height * width;
 
-    std::vector<int> vec_in(size);
+    std::vector<int> vec_in(sz);
     std::fill(begin(vec_in), end(vec_in), 7);
     array_view<const int, 2> av_in(height, width, vec_in);
 
-    std::vector<int> vec_out(size);
+    std::vector<int> vec_out(sz);
     array_view<int,2> av_out(height, width, vec_out);
 
     // Test "transform" by doubling the input elements
@@ -91,20 +89,20 @@ TEST_F(amp_algorithms_tests, transform_unary)
 
 TEST_F(amp_algorithms_tests, transform_binary)
 {
-    const int depth = 16;
-    const int height = 16;
-    const int width = 16;
-    const int size = depth * height * width;
+    constexpr int depth = 16;
+    constexpr int height = 16;
+    constexpr int width = 16;
+    constexpr int sz = depth * height * width;
 
-    std::vector<int> vec_in1(size);
+    std::vector<int> vec_in1(sz);
     std::fill(begin(vec_in1), end(vec_in1), 343);
     array_view<const int, 3> av_in1(depth, height, width, vec_in1);
 
-    std::vector<int> vec_in2(size);
+    std::vector<int> vec_in2(sz);
     std::fill(begin(vec_in2), end(vec_in2), 323);
     array_view<const int, 3> av_in2(depth, height, width, vec_in2);
 
-    std::vector<int> vec_out(size);
+    std::vector<int> vec_out(sz);
     array_view<int, 3> av_out(depth, height, width, vec_out);
 
     // Test "transform" by adding the two input elements

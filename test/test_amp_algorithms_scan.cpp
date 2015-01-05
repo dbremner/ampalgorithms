@@ -27,13 +27,13 @@
 using namespace amp_algorithms;
 using namespace testtools;
 
-static const int test_tile_size = 256;
+static constexpr int test_tile_size = amp_stl_algorithms::_details::Execution_parameters::tile_size();
 
 class amp_algorithms_scan_tests : public testbase, public ::testing::Test {};
 
 TEST_F(amp_algorithms_scan_tests, details_scan_tile_exclusive)
 {
-    static const int tile_size = 4;
+    static constexpr int tile_size = 4;
 
     std::array<unsigned, 16> input =        {  3,  2,  1,  6,   10, 11, 13,  1,   15, 10,  5, 14,    4, 12,  9,  8 };
     std::array<unsigned, 16> reduce =       {  3,  5,  1, 12,   10, 21, 13, 35,   15, 25,  5, 44,    4, 16,  9, 33 };
@@ -43,23 +43,23 @@ TEST_F(amp_algorithms_scan_tests, details_scan_tile_exclusive)
     array_view<unsigned> input_av(static_cast<int>(input.size()), input);
     std::array<unsigned, 16> output;
     array_view<unsigned> output_av(static_cast<int>(output.size()), output);
-    amp_algorithms::fill(output_av, 0);
-    concurrency::tiled_extent<tile_size> compute_domain = input_av.get_extent().tile<4>().pad();
+    amp_algorithms::fill(output_av, 0u);
+    concurrency::tiled_extent<tile_size> compute_domain = input_av.get_extent().tile<tile_size>().pad();
 
-    concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<tile_size> tidx) restrict(amp)
+    concurrency::parallel_for_each(compute_domain, [=](auto&& tidx) restrict(amp)
     {
         const int gidx = tidx.global[0];
         const int idx = tidx.local[0];
-        tile_static int tile_data[tile_size];
+        tile_static int tile_data[tidx.tile_dim0];
         tile_data[idx] = input_av[gidx];
 
-        amp_algorithms::_details::scan_tile_exclusive<tile_size>(tile_data, tidx, amp_algorithms::plus<int>(), tile_size);
+        amp_algorithms::_details::scan_tile_exclusive<tidx.tile_dim0>(tile_data, tidx, amp_algorithms::plus<>());
 
         tidx.barrier.wait();
         output_av[gidx] = tile_data[idx];
     });
 
-    ASSERT_TRUE(are_equal(expected, output_av));
+    ASSERT_TRUE(std::equal(std::cbegin(expected), std::cend(expected), amp_stl_algorithms::cbegin(output_av)));
 }
 
 TEST_F(amp_algorithms_scan_tests, details_segment_scan_width_2)
@@ -76,7 +76,7 @@ TEST_F(amp_algorithms_scan_tests, details_segment_scan_width_2)
         output[i] = amp_algorithms::_details::segment_exclusive_scan(input_av, 2, i);
     }
 
-    ASSERT_TRUE(are_equal(expected, output));
+    ASSERT_TRUE(std::equal(std::cbegin(expected), std::cend(expected), std::cbegin(output)));
 }
 
 TEST_F(amp_algorithms_scan_tests, details_segment_scan_width_8)
@@ -93,7 +93,7 @@ TEST_F(amp_algorithms_scan_tests, details_segment_scan_width_8)
         output[i] = amp_algorithms::_details::segment_exclusive_scan(input_av, 8, i);
     }
 
-    ASSERT_TRUE(are_equal(expected, output));
+    ASSERT_TRUE(std::equal(std::cbegin(expected), std::cend(expected), std::cbegin(output)));
 }
 
 TEST_F(amp_algorithms_scan_tests, details_scan_tile_exclusive_partial)
@@ -104,7 +104,7 @@ TEST_F(amp_algorithms_scan_tests, details_scan_tile_exclusive_partial)
     array_view<unsigned> input_av(static_cast<int>(input.size()), input);
     std::array<unsigned, 7> output;
     array_view<unsigned> output_av(static_cast<int>(output.size()), output);
-    amp_algorithms::fill(output_av, 0);
+    amp_algorithms::fill(output_av, 0u);
     concurrency::tiled_extent<16> compute_domain = input_av.get_extent().tile<16>().pad();
 
     concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<16> tidx) restrict(amp)
@@ -114,112 +114,118 @@ TEST_F(amp_algorithms_scan_tests, details_scan_tile_exclusive_partial)
         tile_static int tile_data[16];
         tile_data[idx] = input_av[gidx];
 
-        amp_algorithms::_details::scan_tile_exclusive<16>(tile_data, tidx, amp_algorithms::plus<int>(), 7);
+        amp_algorithms::_details::scan_tile_exclusive<16>(tile_data, tidx, amp_algorithms::plus<>());
 
         output_av[gidx] = tile_data[idx];
     });
 
-    ASSERT_TRUE(are_equal(expected, output_av));
+    ASSERT_TRUE(std::equal(std::cbegin(expected), std::cend(expected), amp_stl_algorithms::cbegin(output_av)));
 }
 
 TEST_F(amp_algorithms_scan_tests, exclusive_multi_tile)
 {
     std::vector<int> input(test_tile_size * 4);
-    //generate_data(input);
-    std::iota(begin(input), end(input), 1);
-    concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
+	std::iota(begin(input), end(input), 1);
+    concurrency::array_view<int> input_vw(input);
     std::vector<int> expected(input.size());
-    scan_cpu_exclusive(cbegin(input), cend(input), begin(expected), std::plus<int>());
 
-    scan<test_tile_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
+	scan_cpu_exclusive(cbegin(input), cend(input), begin(expected), std::plus<int>());
+	amp_stl_algorithms::inplace_exclusive_scan(amp_stl_algorithms::begin(input_vw), amp_stl_algorithms::end(input_vw), 0, amp_algorithms::plus<>());
 
-    ASSERT_TRUE(are_equal(expected, input_vw));
+    ASSERT_TRUE(std::equal(std::cbegin(expected), std::cend(expected), amp_stl_algorithms::cbegin(input_vw)));
 }
 
 TEST_F(amp_algorithms_scan_tests, exclusive_multi_tile_partial)
 {
-    std::vector<int> input(test_tile_size * 4 + 4);
+    std::vector<int> input(test_tile_size * 4 + amp_stl_algorithms::predecessor(test_tile_size));
     generate_data(input);
-    concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
+    concurrency::array_view<int> input_vw(input);
     std::vector<int> expected(input.size());
-    scan_cpu_exclusive(cbegin(input), cend(input), begin(expected), std::plus<int>());
 
-    scan<test_tile_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
+	scan_cpu_exclusive(cbegin(input), cend(input), begin(expected), std::plus<int>());
+	amp_stl_algorithms::inplace_exclusive_scan(amp_stl_algorithms::begin(input_vw), amp_stl_algorithms::end(input_vw), 0, amp_algorithms::plus<>());
 
-    input_vw.synchronize();
-    ASSERT_TRUE(expected == input);
+    ASSERT_TRUE(std::equal(std::cbegin(expected), std::cend(expected), amp_stl_algorithms::cbegin(input_vw)));
 }
 
 TEST_F(amp_algorithms_scan_tests, exclusive_recursive_scan)
 {
-    std::vector<int> input(test_tile_size * (test_tile_size + 2));
+	static constexpr int max_tiles = 65535; // Temporary hack, DX limitation.
+    std::vector<int> input(amp_stl_algorithms::successor(max_tiles) * test_tile_size);
     generate_data(input);
-    concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
+    concurrency::array_view<int> input_vw(input);
     std::vector<int> expected(input.size());
+
+	scan_cpu_exclusive(cbegin(input), cend(input), begin(expected), std::plus<int>());
+    amp_stl_algorithms::inplace_exclusive_scan(amp_stl_algorithms::begin(input_vw), amp_stl_algorithms::end(input_vw), 0, amp_algorithms::plus<>());
+
+    ASSERT_TRUE(std::equal(std::cbegin(expected), std::cend(expected), amp_stl_algorithms::cbegin(input_vw)));
+}
+
+TEST_F(amp_algorithms_scan_tests, exclusive_large_data)
+{
+	static constexpr int max_tiles = 65535; // Temporary hack, DX limitation.
+    std::vector<int> input(amp_stl_algorithms::twice(max_tiles) * test_tile_size);
+    generate_data(input);
+    concurrency::array_view<int> input_vw(input);
+    std::vector<int> expected(input.size());
+
     scan_cpu_exclusive(cbegin(input), cend(input), begin(expected), std::plus<int>());
+	amp_stl_algorithms::inplace_exclusive_scan(amp_stl_algorithms::begin(input_vw), amp_stl_algorithms::end(input_vw), 0, amp_algorithms::plus<>());
 
-    scan<test_tile_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
+	ASSERT_TRUE(std::equal(std::cbegin(expected), std::cend(expected), amp_stl_algorithms::cbegin(input_vw)));
+}
 
-    input_vw.synchronize();
-    ASSERT_TRUE(expected == input);
+TEST_F(amp_algorithms_scan_tests, inclusive_multi_tile_plus)
+{
+    std::vector<int> input(test_tile_size * 4);
+    std::iota(begin(input), end(input), 1);
+    concurrency::array_view<int> input_vw(input);
+    std::vector<int> expected(input.size());
+
+	scan_cpu_inclusive(cbegin(input), cend(input), begin(expected), std::plus<int>());
+    amp_stl_algorithms::inplace_inclusive_scan(amp_stl_algorithms::begin(input_vw), amp_stl_algorithms::end(input_vw), 0, amp_algorithms::plus<>());
+
+    ASSERT_TRUE(std::equal(std::cbegin(expected), std::cend(expected), amp_stl_algorithms::cbegin(input_vw)));
+}
+
+TEST_F(amp_algorithms_scan_tests, inclusive_multi_tile_partial)
+{
+	std::vector<int> input(test_tile_size * 4 + amp_stl_algorithms::predecessor(test_tile_size));
+    generate_data(input);
+	concurrency::array_view<int> input_vw(input);
+	std::vector<int> expected(input.size());
+
+	scan_cpu_inclusive(cbegin(input), cend(input), begin(expected), std::plus<int>());
+	amp_stl_algorithms::inplace_inclusive_scan(amp_stl_algorithms::begin(input_vw), amp_stl_algorithms::end(input_vw), 0, amp_algorithms::plus<>());
+
+	ASSERT_TRUE(std::equal(std::cbegin(expected), std::cend(expected), amp_stl_algorithms::cbegin(input_vw)));
 }
 
 TEST_F(amp_algorithms_scan_tests, inclusive_recursive_scan)
 {
-    std::vector<int> input(test_tile_size * (test_tile_size + 2));
-    generate_data(input);
-    concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
-    std::vector<int> expected(input.size());
-    scan_cpu_inclusive(cbegin(input), cend(input), begin(expected), std::plus<int>());
+	static constexpr int max_tiles = 65535; // Temporary hack, DX limitation.
+	std::vector<int> input(amp_stl_algorithms::successor(max_tiles) * test_tile_size);
+	generate_data(input);
+	concurrency::array_view<int> input_vw(input);
+	std::vector<int> expected(input.size());
 
-    scan<test_tile_size, scan_mode::inclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
+	scan_cpu_inclusive(cbegin(input), cend(input), begin(expected), std::plus<int>());
+	amp_stl_algorithms::inplace_inclusive_scan(amp_stl_algorithms::begin(input_vw), amp_stl_algorithms::end(input_vw), 0, amp_algorithms::plus<>());
 
-    input_vw.synchronize();
-    ASSERT_TRUE(expected == input);
+	ASSERT_TRUE(std::equal(std::cbegin(expected), std::cend(expected), amp_stl_algorithms::cbegin(input_vw)));
 }
 
-//----------------------------------------------------------------------------
-// Public API Acceptance Tests
-//----------------------------------------------------------------------------
-
-typedef ::testing::Types<
-    TestDefinition<int,        83, int(scan_mode::inclusive)>,     // Less than one tile.
-    TestDefinition<unsigned,   83, int(scan_mode::exclusive)>,
-    TestDefinition<float,      83, int(scan_mode::inclusive)>,
-    TestDefinition<int,       256, int(scan_mode::inclusive)>,     // Exactly one tile.
-    TestDefinition<unsigned,  256, int(scan_mode::exclusive)>,
-    TestDefinition<float,     256, int(scan_mode::inclusive)>,
-    TestDefinition<int,      1024, int(scan_mode::inclusive)>,     // Several whole tiles.
-    TestDefinition<unsigned, 1024, int(scan_mode::exclusive)>,
-    TestDefinition<float,    1024, int(scan_mode::inclusive)>,
-    TestDefinition<int,      1283, int(scan_mode::inclusive)>,     // Partial tile.
-    TestDefinition<unsigned, 1283, int(scan_mode::exclusive)>,
-    TestDefinition<float,    1283, int(scan_mode::inclusive)>,
-    TestDefinition<int,      7919, int(scan_mode::inclusive)>,     // Lots of tiles and a partial.
-    TestDefinition<int,      7919, int(scan_mode::exclusive)>
-> scan_acceptance_data;
-
-template <typename T>
-class amp_scan_acceptance_tests : public ::testing::Test { };
-TYPED_TEST_CASE_P(amp_scan_acceptance_tests);
-
-TYPED_TEST_P(amp_scan_acceptance_tests, test)
+TEST_F(amp_algorithms_scan_tests, inclusive_large_data)
 {
-    typedef TypeParam::value_type T;
-    const int size = TypeParam::size;
-    static const scan_mode mode = scan_mode(TypeParam::parameter);
+	static constexpr int max_tiles = 65535; // Temporary hack, DX limitation.
+	std::vector<int> input(amp_stl_algorithms::twice(max_tiles) * test_tile_size);
+	generate_data(input);
+	concurrency::array_view<int> input_vw(input);
+	std::vector<int> expected(input.size());
 
-    std::vector<T> input(size);
-    generate_data(input);
-    concurrency::array_view<T, 1> input_vw(static_cast<int>(input.size()), input);
-    std::vector<T> expected(input.size());
-    scan_cpu<(int)mode>(cbegin(input), cend(input), begin(expected), std::plus<T>());
+	scan_cpu_inclusive(cbegin(input), cend(input), begin(expected), std::plus<int>());
+	amp_stl_algorithms::inplace_inclusive_scan(amp_stl_algorithms::begin(input_vw), amp_stl_algorithms::end(input_vw), 0, amp_algorithms::plus<>());
 
-    scan<test_tile_size, mode>(input_vw, input_vw, amp_algorithms::plus<T>());
-
-    input_vw.synchronize();
-    ASSERT_TRUE(expected == input);
+	ASSERT_TRUE(std::equal(std::cbegin(expected), std::cend(expected), amp_stl_algorithms::cbegin(input_vw)));
 }
-
-REGISTER_TYPED_TEST_CASE_P(amp_scan_acceptance_tests, test);
-INSTANTIATE_TYPED_TEST_CASE_P(amp_scan_tests, amp_scan_acceptance_tests, scan_acceptance_data);

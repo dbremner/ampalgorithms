@@ -46,9 +46,9 @@ TEST_F(stl_algorithms_tests, fill)
 
 TEST_F(stl_algorithms_tests, fill_n)
 {
-    int size = static_cast<int>(input.size() / 2);
-    std::fill_n(begin(input), size, 3);
-    auto iter = amp_stl_algorithms::fill_n(begin(input_av), size, 3);
+    int sz = static_cast<int>(input.size() / 2);
+    std::fill_n(begin(input), sz, 3);
+    auto iter = amp_stl_algorithms::fill_n(begin(input_av), sz, 3);
 
     ASSERT_EQ(expected.size() / 2, std::distance(begin(output_av), iter));
     ASSERT_TRUE(are_equal(expected, output_av));
@@ -56,8 +56,8 @@ TEST_F(stl_algorithms_tests, fill_n)
 
 TEST_F(stl_algorithms_tests, fill_n_for_zero_elements)
 {
-    int size = static_cast<int>(input.size() / 2);
-    std::fill_n(begin(input), size, 3);
+    int sz = static_cast<int>(input.size() / 2);
+    std::fill_n(begin(input), sz, 3);
     auto iter = amp_stl_algorithms::fill_n(begin(input_av), 0, 3);
 
     ASSERT_EQ(0, std::distance(begin(output_av), iter));

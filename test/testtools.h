@@ -46,86 +46,24 @@ class extent { };
 class index { };
 class array { };
 
+//  Set USE_REF to use the REF accelerator for all tests. This is useful if tests fail on a particular machine as
+//  failure may be due to a driver bug.
+
 namespace testtools
 {
-    //===============================================================================
-    //  Helper functions to display and set the C++ AMP accelerator.
-    //===============================================================================
-
-    inline void to_upper(std::wstring& str)
+    inline void set_default_accelerator(std::wstring test_name)
     {
-        std::transform(cbegin(str), cend(str), begin(str), [=](wchar_t c) { return std::toupper(c); });
-    }
-
-    inline std::vector<accelerator> get_accelerators(bool show_all = false)
-    {
-        std::vector<accelerator> accls = accelerator::get_all();
-        if (!show_all)
-        {
-            accls.erase(std::remove_if(accls.begin(), accls.end(), [](accelerator& a)
-            {
-                return(a.device_path == accelerator::cpu_accelerator);
-            }), accls.end());
-        }
-        std::sort(begin(accls), end(accls), [=](accelerator a, accelerator b)->bool 
-        {
-            std::wstring dev_a(a.device_path);
-            to_upper(dev_a);
-            std::wstring dev_b(b.device_path);
-            to_upper(dev_b);
-            return dev_a < dev_b;
-        });
-        return accls;
-    }
-
-    inline void display_accelerators(const std::vector<accelerator>& accls, bool show_details = false, bool show_all = false)
-    {
-        if (accls.empty())
-        {
-            std::wcout << "No accelerators found that are compatible with C++ AMP" << std::endl << std::endl;
-            return;
-        }
-
-        const std::wstring default_dev_path = accelerator().device_path;
-
-        std::wcout << "Found " << accls.size()
-            << " accelerator device(s) that are compatible with C++ AMP:" << std::endl << std::endl;
-        int n = 0;
-        std::for_each(accls.cbegin(), accls.cend(), [=, &n](const accelerator& a)
-        {
-            bool is_default = (a.device_path.compare(default_dev_path) == 0);
-            float mem_gb =  float(a.dedicated_memory) / (1024.0f * 1024.0f);
-            std::wcout << (is_default ? " *" : "  ") << ++n << ": " << a.description;
-            if (a.dedicated_memory > 0)
-            {
-                std::wcout << " ( " << std::fixed << std::setprecision(1) << mem_gb << " GB )";
-            }
-            std::wcout << std::endl << "       device_path                       = " << a.device_path;
-                
-            if (show_details)
-            {
-                std::wcout << std::endl << "       dedicated_memory                  = " << std::fixed << std::setprecision(1) << mem_gb << " GB"
-                           << std::endl << "       has_display                       = " << (a.has_display ? "true" : "false")
-                           << std::endl << "       is_debug                          = " << (a.is_debug ? "true" : "false")
-                           << std::endl << "       is_emulated                       = " << (a.is_emulated ? "true" : "false")
-                           << std::endl << "       supports_double_precision         = " << (a.supports_double_precision ? "true" : "false")
-                           << std::endl << "       supports_limited_double_precision = " << (a.supports_limited_double_precision ? "true" : "false") << std::endl;
-            }
-            std::wcout << std::endl;
-        });
-        std::wcout << std::endl;
-        return;
-    }
-
-    inline void set_default_accelerator(std::wstring device_path)
-    {
+#if (defined(USE_REF) || defined(_DEBUG))
         std::wstring dev_path = accelerator().device_path;
-        bool set_ok = accelerator::set_default(device_path) || (dev_path == device_path);
+        bool set_ok = accelerator::set_default(accelerator::direct3d_ref) || 
+            (dev_path == accelerator::direct3d_ref);
 
         if (!set_ok)
         {
-            std::wcout << "Unable to set default accelerator to " << device_path << " . Using " << dev_path << "." << std::endl;
+            std::wstringstream str;
+            str << "Unable to set default accelerator to REF. Using " << dev_path << "." << std::endl;
         }
+#endif
         accelerator().get_default_view().flush();
     }
 
@@ -133,13 +71,33 @@ namespace testtools
     //  Helper functions to generate test data of random numbers.
     //===============================================================================
 
-    template <typename T>
-    inline void generate_data(std::vector<T> &v)
+    template<typename T>
+    inline int test_array_size()
     {
+        int size;
+#if _DEBUG
+        size = 1023;
+#else
+        size = 1023 + 1029;
+#endif
+        if (std::is_same<T, int>::value)
+        {
+            size *= 13;
+        }
+        else if (std::is_same<T, float>::value)
+        {
+            size *= 5;
+        }
+        return size;
+    }
+
+    template <typename T>
+    inline void generate_data(std::vector<T>& v)
+    {	// TODO: overhaul to use the moredn pRNG infrastructure.
         srand(2012);    // Set random number seed so tests are reproducible.
         std::generate(begin(v), end(v), [=]{
-            int v = rand();
-            return static_cast<T>( ((v % 4) == 0) ? -v : v );
+            T t = (T)rand();
+            return ((static_cast<int>(t) % 4) == 0) ? -t : t;
         });
     }
 
@@ -176,19 +134,6 @@ namespace testtools
         }
     }
     
-    template <int mode, typename InIt, typename OutIt, typename BinaryOp>
-    inline void scan_cpu(InIt first, InIt last, OutIt dest_first, BinaryOp op)
-    {
-        if (mode == static_cast<int>(scan_mode::inclusive))
-        {
-            scan_cpu_inclusive(first, last, dest_first, op);
-        }
-        else
-        {
-            scan_cpu_exclusive(first, last, dest_first, op);
-        }
-    }
-
     //===============================================================================
     //  Comparison.
     //===============================================================================
@@ -237,53 +182,28 @@ namespace testtools
         // This function is constructed in a way that requires T
         // only to define operator< to check for equality
 
-        if ((v1 < v2) || (v2 < v1))
-        {
+        if (v1 < v2) {
+            return false;
+        }
+        if (v2 < v1) {
             return false;
         }
         return true;
     }
 
-    template<typename T>
-    struct is_division : std::false_type
-    {};
-
-    template<>
-    struct is_division < std::divides<int> > : std::true_type
-    {};
-
-    template<>
-    struct is_division < std::modulus<int> > : std::true_type
-    {};
-
-    template<typename StlFunc, typename T>
-    bool is_divide_by_zero(const T& val)
+    template<typename StlFunc, typename AmpFunc, typename Data>
+    void compare_binary_operator(StlFunc&& stl_func, AmpFunc&& amp_func, Data&& tests)
     {
-        return (is_division<StlFunc>() && std::is_arithmetic<T>() && (val == T()));
+        for (auto&& p : tests) {
+           EXPECT_EQ(std::forward<StlFunc>(stl_func)(p.first, p.second), std::forward<AmpFunc>(amp_func)(p.first, p.second));
+        }
     }
 
-    template<typename StlFunc, typename AmpFunc, typename TIter>
-    void compare_binary_operator(StlFunc stl_func, AmpFunc amp_func, TIter first, TIter last)
+    template<typename StlFunc, typename AmpFunc, typename Data>
+    void compare_unary_operator(StlFunc&& stl_func, AmpFunc&& amp_func, Data&& tests)
     {
-        std::for_each(first, last, [=](TIter::value_type p) 
-        {
-            if (!is_divide_by_zero<StlFunc>(p.second))
-            {
-                EXPECT_EQ(stl_func(p.first, p.second), amp_func(p.first, p.second));
-            }
-            if (!is_divide_by_zero<StlFunc>(p.first))
-            {
-                EXPECT_EQ(stl_func(p.second, p.first), amp_func(p.second, p.first));
-            }
-        });
-    }
-
-    template<typename StlFunc, typename AmpFunc, typename T>
-    void compare_unary_operator(StlFunc stl_func, AmpFunc amp_func, T test_values)
-    {
-        for (auto v : test_values)
-        {
-            EXPECT_EQ(stl_func(v), amp_func(v));
+        for (auto&& p : tests) {
+            EXPECT_EQ(std::forward<StlFunc>(stl_func)(p), std::forward<AmpFunc>(amp_func)(p));
         }
     }
 
@@ -301,10 +221,10 @@ namespace testtools
     }
 
     template <typename T1, typename T2>
-    bool are_equal(const T1& expected, const T2& actual, size_t expected_size = -1)
-    {    
-        const int output_range = 8;
-        if (expected_size == -1)
+    bool are_equal(const T1& expected, const T2& actual, ptrdiff_t expected_size = std::numeric_limits<ptrdiff_t>::min())
+    {
+        static constexpr int output_range = 8;
+        if (expected_size == std::numeric_limits<ptrdiff_t>::min())
         {
             expected_size = std::distance(begin(expected), end(expected));
             EXPECT_EQ(expected_size, std::distance(begin(actual), end(actual)));
@@ -377,7 +297,7 @@ namespace testtools
     std::basic_ostream<StrmType, Traits>& operator<< (std::basic_ostream<StrmType, Traits>& os, concurrency::array<T, 1>& vec)
     {
         size_t i = std::min<size_t>(_details::get_width(os), vec.extent[0]);
-        std::vector<const T> buffer(i);
+        std::vector<T> buffer(i);
         copy(vec.section(0, static_cast<int>(i)), std::begin(buffer));
         return os << buffer;
     }
@@ -459,61 +379,13 @@ namespace testtools
     }
 }; // namespace test_tools
 
-//===============================================================================
-//  Operator test definitions
-//===============================================================================
-
-template <typename StlType, typename AmpType>
-class OperatorTestDefinition
-{
-public:
-    typedef StlType stl_type;
-    typedef AmpType amp_type;
-};
-
-//===============================================================================
-//  Acceptance test definitions
-//===============================================================================
-
-template <typename T, int N, int P = 0>
-class TestDefinition {
-public:
-    typedef T value_type;
-    static const int size = N;
-    static const int parameter = P;
-};
-
-template <typename T, int TS, int N, int P = 0>
-class TiledTestDefinition : public TestDefinition < T, N, P >
-{
-public:
-    static const int tile_size = TS;
-};
-
-template <typename T, int N, int P = 0>
-const int TestDefinition<T, N, P>::size;
-
-template <typename T, int N, int P = 0>
-const int TestDefinition<T, N, P>::parameter;
-
-template <typename T, int TS, int N, int P = 0>
-const int TiledTestDefinition<T, TS, N, P>::tile_size;
-
-//===============================================================================
-//  Test base class
-//===============================================================================
-
 class testbase
 {
 protected:
     testbase()
     {
+        testtools::set_default_accelerator(L"stl_algorithms_tests");
         accelerator().default_view.wait();
-    }
-
-    ~testbase()
-    {
-        accelerator().default_view.flush();
     }
 };
 
@@ -541,7 +413,7 @@ protected:
         std::fill(begin(expected), end(expected), -1);
     }
 
-    static const int size = _Size;
+    static constexpr int size = _Size;
 };
 
 template <typename T>

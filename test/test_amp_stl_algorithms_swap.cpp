@@ -75,7 +75,7 @@ TEST_F(stl_algorithms_tests, swap_n_cpu)
 
 TEST_F(stl_algorithms_tests, swap_n_amp)
 {
-    std::array<int, 10> expected = { 6, 7, 8, 9, 10, 1, 2, 3, 4, 5 };
+    std::array<int, 10> exp = { 6, 7, 8, 9, 10, 1, 2, 3, 4, 5 };
 
     std::vector<int> vec(10);
     std::iota(begin(vec), end(vec), 1);
@@ -107,7 +107,7 @@ TEST_F(stl_algorithms_tests, swap_n_amp)
 
         tidx.barrier.wait();
     });
-    ASSERT_TRUE(are_equal(expected, av));
+    ASSERT_TRUE(are_equal(exp, av));
 }
 
 TEST_F(stl_algorithms_tests, swap_ranges)
@@ -127,7 +127,7 @@ TEST_F(stl_algorithms_tests, swap_iter)
     std::iota(begin(vec), end(vec), 1);
     array_view<int> av(2, vec);
 
-    parallel_for_each(concurrency::extent<1>(1), [=](concurrency::index<1> idx) restrict(amp)
+    parallel_for_each(concurrency::extent<1>(1), [=](concurrency::index<1>) restrict(amp)
     {
         amp_stl_algorithms::iter_swap(begin(av), begin(av) + 1);
     });

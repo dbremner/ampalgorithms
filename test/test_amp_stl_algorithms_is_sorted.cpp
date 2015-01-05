@@ -51,7 +51,7 @@ TEST_P(is_sorted_sorted_tests, test)
     auto expected = std::distance(cbegin(input), std::is_sorted_until(cbegin(input), cend(input)));
     auto r = std::distance(begin(input_av), amp_stl_algorithms::is_sorted_until(begin(input_av), end(input_av)));
     ASSERT_EQ(expected, r);
-    ASSERT_TRUE(amp_stl_algorithms::is_sorted(begin(input_av), end(input_av), amp_algorithms::less_equal<int>()));
+    ASSERT_TRUE(amp_stl_algorithms::is_sorted(begin(input_av), end(input_av), amp_algorithms::less_equal<>()));
     ASSERT_TRUE(amp_stl_algorithms::is_sorted(begin(input_av), end(input_av)));
 }
 

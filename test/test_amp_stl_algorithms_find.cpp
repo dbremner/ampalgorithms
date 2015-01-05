@@ -33,56 +33,56 @@ class stl_algorithms_tests : public stl_algorithms_testbase<13>, public ::testin
 
 TEST_F(stl_algorithms_tests, find_finds_no_values)
 {
-    auto iter = amp_stl_algorithms::find(begin(input_av), end(input_av), 17);
-    ASSERT_EQ(end(input_av), iter);
+    auto iter = amp_stl_algorithms::find(cbegin(input_av), cend(input_av), 17);
+    ASSERT_EQ(cend(input_av), iter);
 }
 
 TEST_F(stl_algorithms_tests, find_finds_value)
 {
-    auto iter = amp_stl_algorithms::find(begin(input_av), end(input_av), 3);
-    ASSERT_EQ(1, std::distance(begin(input_av), iter));
+    auto iter = amp_stl_algorithms::find(cbegin(input_av), cend(input_av), 3);
+    ASSERT_EQ(1, std::distance(cbegin(input_av), iter));
 }
 
 TEST_F(stl_algorithms_tests, find_finds_first_value)
 {
-    auto iter = amp_stl_algorithms::find(begin(input_av), end(input_av), 2);
-    ASSERT_EQ(4, std::distance(begin(input_av), iter));
+    auto iter = amp_stl_algorithms::find(cbegin(input_av), cend(input_av), 2);
+    ASSERT_EQ(4, std::distance(cbegin(input_av), iter));
 }
 
 TEST_F(stl_algorithms_tests, find_if_finds_no_values)
 {
-    auto iter = amp_stl_algorithms::find_if(begin(input_av), end(input_av), [=](int v) restrict(amp) { return v == 17; });
-    ASSERT_EQ(end(input_av), iter);
+    auto iter = amp_stl_algorithms::find_if(cbegin(input_av), cend(input_av), [=](int v) restrict(amp) { return v == 17; });
+    ASSERT_EQ(cend(input_av), iter);
 }
 
 TEST_F(stl_algorithms_tests, find_if_finds_value)
 {
-    auto iter = amp_stl_algorithms::find_if(begin(input_av), end(input_av), [=](int v) restrict(amp) { return v == 3; });
-    ASSERT_EQ(1, std::distance(begin(input_av), iter));
+    auto iter = amp_stl_algorithms::find_if(cbegin(input_av), cend(input_av), [=](int v) restrict(amp) { return v == 3; });
+    ASSERT_EQ(1, std::distance(cbegin(input_av), iter));
 }
 
 TEST_F(stl_algorithms_tests, find_if_finds_first_value)
 {
-    auto iter = amp_stl_algorithms::find_if(begin(input_av), end(input_av), [=](int v) restrict(amp) { return v == 2; });
-    ASSERT_EQ(4, std::distance(begin(input_av), iter));
+    auto iter = amp_stl_algorithms::find_if(cbegin(input_av), cend(input_av), [=](int v) restrict(amp) { return v == 2; });
+    ASSERT_EQ(4, std::distance(cbegin(input_av), iter));
 }
 
 TEST_F(stl_algorithms_tests, find_if_not_finds_no_values)
 {
-    auto iter = amp_stl_algorithms::find_if_not(begin(input_av), end(input_av), [=](int v) restrict(amp) { return v != 17; });
-    ASSERT_EQ(end(input_av), iter);
+    auto iter = amp_stl_algorithms::find_if_not(cbegin(input_av), cend(input_av), [=](int v) restrict(amp) { return v != 17; });
+    ASSERT_EQ(cend(input_av), iter);
 }
 
 TEST_F(stl_algorithms_tests, find_if_not_finds_value)
 {
-    auto iter = amp_stl_algorithms::find_if_not(begin(input_av), end(input_av), [=](int v) restrict(amp) { return v != 3; });
-    ASSERT_EQ(1, std::distance(begin(input_av), iter));
+    auto iter = amp_stl_algorithms::find_if_not(cbegin(input_av), cend(input_av), [=](int v) restrict(amp) { return v != 3; });
+    ASSERT_EQ(1, std::distance(cbegin(input_av), iter));
 }
 
 TEST_F(stl_algorithms_tests, find_if_not_finds_first_value)
 {
-    auto iter = amp_stl_algorithms::find_if_not(begin(input_av), end(input_av), [=](int v) restrict(amp) { return v != 2; });
-    ASSERT_EQ(4, std::distance(begin(input_av), iter));
+    auto iter = amp_stl_algorithms::find_if_not(cbegin(input_av), cend(input_av), [=](int v) restrict(amp) { return v != 2; });
+    ASSERT_EQ(4, std::distance(cbegin(input_av), iter));
 }
 
 const std::array<int, 10> adjacent_find_data[] = {

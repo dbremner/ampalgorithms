@@ -100,7 +100,7 @@ namespace amp_algorithms
             template <>
             struct _dx_scan_type_helper<unsigned int>
             {
-                // Note: Despite what the MSDN says D3DCSX does not support uint, 
+                // Note: Despite what the MSDN says D3DCSX does not support uint,
                 // we can partially support it by treating it as int.
                 static const bool is_type_supported = true;
                 static const D3DX11_SCAN_DATA_TYPE dx_scan_type = D3DX11_SCAN_DATA_TYPE_INT;
@@ -154,7 +154,7 @@ namespace amp_algorithms
                 static const D3DX11_SCAN_OPCODE dx_op_type = D3DX11_SCAN_OPCODE_ADD;
             };
 
-            template <typename T>
+            template<typename T>
             struct _dx_scan_op_helper<amp_algorithms::max<T>>
             {
                 static const bool is_op_supported = true;

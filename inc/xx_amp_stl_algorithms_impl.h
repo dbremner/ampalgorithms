@@ -36,6 +36,7 @@ namespace amp_stl_algorithms
         inline void amp_assert(bool cond) restrict(amp)
         {
             // TODO_NOT_IMPLEMENTED: amp_assert
+            cond; // Silence warnings about unreferenced formal parameters.
         }
 
         template <typename array_type>
@@ -59,16 +60,16 @@ namespace amp_stl_algorithms
         // Note: only array_view<T, 1> is supported.
         /////////////////////////////////////////////////////////////////////////////
 
-        // Specialization for array_views 
+        // Specialization for array_views
         template <typename value_type>
         class empty_array_view_factory
         {
         public:
-            // On the CPU, use local static variables as stable storage
+            // On the CPU, use the source-less array_view constructor
             static concurrency::array_view<value_type> create() restrict(cpu)
             {
                 static value_type stable_storage;
-                return concurrency::array_view<value_type>(1, &stable_storage);
+                return concurrency::array_view<value_type>(1);
             }
 
             // On the accelerator, use the stable storage helper.

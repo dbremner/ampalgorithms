@@ -34,10 +34,9 @@ class stl_algorithms_tests : public stl_algorithms_testbase<13>, public ::testin
 TEST_F(stl_algorithms_tests, unary_transform)
 {
     std::iota(begin(input), end(input), 7);
-    std::transform(cbegin(input), cend(input), begin(expected), [](int x) { return x * 2; });
+    std::transform(cbegin(input), cend(input), begin(expected), [](auto&& x) { return x * 2; });
 
-    amp_stl_algorithms::transform(begin(input_av), end(input_av), begin(output_av), [] (int x) restrict(amp) 
-    {
+    amp_stl_algorithms::transform(cbegin(input_av), cend(input_av), begin(output_av), [] (auto&& x) restrict(amp) {
         return 2 * x;
     });
 
@@ -52,10 +51,7 @@ TEST_F(stl_algorithms_tests, binary_transform)
     array_view<const int> input2_av(size, input2);
     std::transform(cbegin(input), cend(input), cbegin(input2), begin(expected), std::plus<int>());
 
-    amp_stl_algorithms::transform(begin(input_av), end(input_av), begin(input2_av), begin(output_av), [] (int x1, int x2) restrict(amp) 
-    {
-        return x1 + x2;
-    });
+    amp_stl_algorithms::transform(cbegin(input_av), cend(input_av), cbegin(input2_av), begin(output_av), amp_algorithms::plus<>());
 
     ASSERT_TRUE(are_equal(expected, output_av));
 }

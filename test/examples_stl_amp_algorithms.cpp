@@ -39,9 +39,15 @@ struct saxpy_functor
 {
     const float a;
 
+    saxpy_functor() = delete;
     saxpy_functor(float _a) : a(_a) {}
+    saxpy_functor(const saxpy_functor&) = default;
+    saxpy_functor(saxpy_functor&&) = default;
 
-    float operator()(const float& x, const float& y) const restrict(amp, cpu)
+    saxpy_functor& operator=(const saxpy_functor&) = delete;
+    saxpy_functor& operator=(saxpy_functor&&) = delete;
+
+    float operator()(float x, float y) const restrict(amp, cpu)
     {
         return a * x + y;
     }
@@ -51,7 +57,7 @@ struct saxpy_functor
 
 TEST(examples, stl_example_saxpy)
 {
-    int size = 7919;
+    auto size = testtools::test_array_size<int>();
 
     {
         const float a = 2.0f;
@@ -81,16 +87,16 @@ TEST(examples, stl_example_saxpy)
 
 TEST(examples, hello_world)
 {
-    int size = 7919;
+    auto size = testtools::test_array_size<int>();
 
     {
         concurrency::array<float> data(size);
         array_view<float> data_av(data);
         amp_stl_algorithms::iota(begin(data_av), end(data_av), 1.0f);
 
-        auto last = amp_stl_algorithms::remove_if(begin(data_av), end(data_av), 
+        auto last = amp_stl_algorithms::remove_if(begin(data_av), end(data_av),
             [=](const float& v) restrict(amp) { return int(v) % 2 == 1; });
-        float total = amp_stl_algorithms::reduce(begin(data_av), last, 0.0f);
+        float total = amp_stl_algorithms::reduce(begin(data_av), last, 0.0f, amp_algorithms::plus<>());
 
         std::stringstream str;
         str << "AAL: Sum of all even numbers in the input array = " << total;
@@ -101,7 +107,7 @@ TEST(examples, hello_world)
         std::vector<float> data(size);
         std::iota(std::begin(data), std::end(data), 1.0f);
 
-        auto last = std::remove_if(std::begin(data), std::end(data), 
+        auto last = std::remove_if(std::begin(data), std::end(data),
             [=](const float& v) { return int(v) % 2 == 1; });
         float total = std::accumulate(begin(data), last, 0.0f);
 
@@ -138,14 +144,14 @@ TEST(examples, map_reduce)
     array_view<const vertices, 1> tetrahedrons_av(static_cast<int>(tetrahedrons.size()), tetrahedrons.data());
     concurrency::array<float, 1> volumes_arr(static_cast<int>(tetrahedrons.size()));
     array_view<float, 1> volumes_vw(volumes_arr);
-    amp_stl_algorithms::transform(begin(tetrahedrons_av), end(tetrahedrons_av), begin(volumes_vw), 
+    amp_stl_algorithms::transform(begin(tetrahedrons_av), end(tetrahedrons_av), begin(volumes_vw),
         [=](const vertices& t) restrict(amp)
     {
         return t.x1 * (t.y2 * t.z3 - t.y3 * t.z2)
                 + t.y1 * (t.z2 * t.x3 - t.x2 * t.z3)
                 + t.z1 * (t.x2 * t.y3 - t.x3 * t.y2);
     });
-    float sum = amp_stl_algorithms::reduce(begin(volumes_vw), end(volumes_vw), 0.0f);
+    float sum = amp_stl_algorithms::reduce(begin(volumes_vw), end(volumes_vw), 0.0f, amp_algorithms::plus<>());
 
     std::stringstream str;
     str << "STD: Total volume of tetrahedrons = " << sum;

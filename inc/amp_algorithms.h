@@ -1,26 +1,26 @@
 /*----------------------------------------------------------------------------
 * Copyright (c) Microsoft Corp.
 *
-* Licensed under the Apache License, Version 2.0 (the "License"); you may not 
-* use this file except in compliance with the License.  You may obtain a copy 
-* of the License at http://www.apache.org/licenses/LICENSE-2.0  
-* 
-* THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED 
-* WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE, 
-* MERCHANTABLITY OR NON-INFRINGEMENT. 
+* Licensed under the Apache License, Version 2.0 (the "License"); you may not
+* use this file except in compliance with the License.  You may obtain a copy
+* of the License at http://www.apache.org/licenses/LICENSE-2.0
 *
-* See the Apache Version 2.0 License for specific language governing 
+* THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+* WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+* MERCHANTABLITY OR NON-INFRINGEMENT.
+*
+* See the Apache Version 2.0 License for specific language governing
 * permissions and limitations under the License.
 *---------------------------------------------------------------------------
-* 
+*
 * C++ AMP algorithms library.
 *
 * This file contains the C++ AMP algorithms
 *---------------------------------------------------------------------------*/
 
 // TODO: Does it really make a lot of sense to declare two namespaces or should everything be flattened into amp_algorithms?
-// TODO: Here the functions are defined here. In the STL implementation they are defined in the main header file 
+// TODO: Here the functions are defined here. In the STL implementation they are defined in the main header file
 // and just declared in the public one. Is this by design?
 
 #pragma once
@@ -33,108 +33,118 @@
 
 namespace amp_algorithms
 {
-    //----------------------------------------------------------------------------
-    // Function base classes
-    //----------------------------------------------------------------------------
-
-    template <typename _Arg1, typename _Arg2, typename _Result>
-    struct binary_function
-    {
-        typedef _Arg1 first_argument_type;
-        typedef _Arg2 second_argument_type;
-        typedef _Result result_type;
-    };
-
-    template <typename _Arg, typename _Result>
-    struct unary_function
-    {
-        typedef _Arg argument_type;
-        typedef _Result result_type;
-    };
-
 #pragma region Arithmetic, comparison, logical and bitwise operators
 
     //----------------------------------------------------------------------------
     // Arithmetic operations
     //----------------------------------------------------------------------------
 
-    template <typename T>
-    struct plus : public binary_function<T, T, T>
-    {
-        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+    template <typename T = void>
+    struct plus : std::binary_function<T, T, T> {
+        constexpr T operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
             return (a + b);
         }
     };
+    template<>
+    struct plus<void> {
+        // This should be corrected once full constexpr support is in place
+        template<typename T, typename U>
+        constexpr std::common_type_t<T, U> operator()(T&& a, U&& b) const restrict(cpu, amp)
+        {
+            return a + b;
+        }
+    };
 
-    template <typename T>
-    struct minus : public binary_function<T, T, T>
-    {
-        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+    template <typename T = void>
+    struct minus : std::binary_function<T, T, T> {
+        constexpr T operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
             return (a - b);
         }
     };
+    template<>
+    struct minus<void> {
+        template<typename T, typename U>
+        constexpr std::common_type_t<T, U> operator()(T&& a, U&& b) const restrict(cpu, amp)
+        {
+            return a - b;
+        }
+    };
 
-    template <typename T>
-    struct multiplies : public binary_function<T, T, T>
-    {
-        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+    template <typename T = void>
+    struct multiplies : std::binary_function<T, T, T> {
+        constexpr T operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
             return (a * b);
         }
     };
-
-    template <typename T>
-    struct divides : public binary_function<T, T, T>
-    {
-        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+    template<>
+    struct multiplies<void> {
+        template<typename T, typename U>
+        constexpr std::common_type_t<T, U> operator()(T&& a, U&& b) const restrict(cpu, amp)
         {
-            return (a / b);
+            return a * b;
         }
     };
 
-    template <typename T>
-    struct modulus : public binary_function<T, T, T>
-    {
-    public:
-        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+    template<typename T = void>
+    struct divides : std::binary_function<T, T, T> {
+        constexpr T operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return a / b;
+        }
+    };
+    template<>
+    struct divides<void> {
+        template<typename T, typename U>
+        constexpr std::common_type_t<T, U> operator()(T&& a, U&& b) const restrict(cpu, amp)
+        {
+            return a / b;
+        }
+    };
+
+    template <typename T = void>
+    struct modulus : std::binary_function<T, T, T> {
+        constexpr T operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
             return (a % b);
         }
     };
+    template<>
+    struct modulus<void> {
+        template<typename T, typename U>
+        constexpr std::common_type_t<T, U> operator()(T&& a, U&& b) const restrict(cpu, amp)
+        {
+            return a % b;
+        }
+    };
 
-    template <typename T>
-    struct negate : public unary_function<T, T>
-    {
-    public:
-        T operator()(const T &a) const restrict(cpu, amp)
+    template <typename T = void>
+    struct negate : std::unary_function<T, T> {
+        constexpr T operator()(const T &a) const restrict(cpu, amp)
         {
             return (-a);
+        }
+    };
+    template<>
+    struct negate<void> {
+        template<typename T>
+        decltype(auto) operator()(T&& a) const restrict(cpu, amp)
+        {
+            return -a;
         }
     };
 
     //----------------------------------------------------------------------------
     // Additional arithmetic operations with no STL equivalents
     //----------------------------------------------------------------------------
-
-    template<int N, unsigned int P = 0>
-    struct static_log2
-    {
-        enum { value = static_log2<N / 2, P + 1>::value };
-    };
-
-    template <unsigned int P>
-    struct static_log2<0, P>
-    {
-        enum { value = P };
-    };
-
-    template <unsigned int P>
-    struct static_log2<1, P>
-    {
-        enum { value = P };
-    };
+	// TODO: constexpr-esize all of these functions.
+	template<typename T, std::enable_if_t<std::is_integral<T>::value>* = nullptr>
+	static inline constexpr T static_log2(T&& val) restrict(cpu, amp)
+	{
+		return (zero(forward<T>(val)) || one(forward<T>(val))) ? T(0) : (T(1) + static_log2(half_nonnegative(forward<T>(val))));
+	}
 
     template<unsigned int N>
     struct static_is_power_of_two
@@ -144,7 +154,7 @@ namespace amp_algorithms
 
     // TODO: Generalize this for other integer types.
     template <typename T>
-    bool is_power_of_two(T value)
+    inline bool is_power_of_two(T value)
     {
         return count_bits(value) == 1;
     }
@@ -153,57 +163,99 @@ namespace amp_algorithms
     // Comparison operations
     //----------------------------------------------------------------------------
 
-    template <typename T>
-    struct equal_to : public binary_function<T, T, T>
-    {
-        bool operator()(const T &a, const T &b) const restrict(cpu, amp)
+    template <typename T = void>
+    struct equal_to : std::binary_function<T, T, T> {
+        constexpr bool operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
             return (a == b);
         }
     };
-
-    template <typename T>
-    struct not_equal_to : public binary_function<T, T, T>
-    {
-        bool operator()(const T &a, const T &b) const restrict(cpu, amp)
+    template<>
+    struct equal_to<void> {
+        template<typename T, typename U>
+        constexpr bool operator()(T&& a, U&& b) const restrict(cpu, amp)
         {
-            return (a != b);
+            return a == b;
         }
     };
 
-    template <typename T>
-    struct greater : public binary_function<T, T, T>
-    {
-        bool operator()(const T &a, const T &b) const restrict(cpu, amp)
+    template <typename T = void>
+    struct not_equal_to : std::binary_function<T, T, T> {
+        constexpr bool operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
-            return (a > b);
+            return !equal_to<T>()(a, b);
+        }
+    };
+    template<>
+    struct not_equal_to<void> {
+        template<typename T, typename U>
+        /*constexpr*/ bool operator()(T&& a, U&& b) const restrict(cpu, amp)
+        {
+            return !equal_to<>()(a, b);
         }
     };
 
-    template <typename T>
-    struct less : public binary_function<T, T, T>
-    {
-        bool operator()(const T &a, const T &b) const restrict(cpu, amp)
+    template <typename T = void>
+    struct less : std::binary_function<T, T, T> {
+        constexpr bool operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
             return (a < b);
         }
     };
-
-    template <typename T>
-    struct greater_equal : public binary_function<T, T, T>
-    {
-        bool operator()(const T &a, const T &b) const restrict(cpu, amp)
+    template<>
+    struct less<void> {
+        template<typename T, typename U>
+        constexpr bool operator()(T&& a, U&& b) const restrict(cpu, amp)
         {
-            return (a >= b);
+            return a < b;
         }
     };
 
-    template <typename T>
-    struct less_equal : public binary_function<T, T, T>
-    {
-        bool operator()(const T &a, const T &b) const restrict(cpu, amp)
+    template <typename T = void>
+    struct less_equal : std::binary_function<T, T, T> {
+        constexpr bool operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
-            return (a <= b);
+            return !(b < a);
+        }
+    };
+    template<>
+    struct less_equal<void> {
+        template<typename T, typename U>
+        constexpr bool operator()(T&& a, U&& b) const restrict(cpu, amp)
+        {
+            return !(b < a);
+        }
+    };
+
+    template <typename T = void>
+    struct greater : std::binary_function<T, T, T> {
+        constexpr bool operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return !less_equal<T>()(a, b);
+        }
+    };
+    template<>
+    struct greater<void> {
+        template<typename T, typename U>
+        /*constexpr*/ bool operator()(T&& a, U&& b) const restrict(cpu, amp)
+        {
+            return !less_equal<>()(a, b);
+        }
+    };
+
+    template <typename T = void>
+    struct greater_equal : std::binary_function<T, T, T> {
+        constexpr bool operator()(const T &a, const T &b) const restrict(cpu, amp)
+        {
+            return !(a < b);
+        }
+    };
+    template<>
+    struct greater_equal<void> {
+        template<typename T, typename U>
+        constexpr bool operator()(T&& a, U&& b) const restrict(cpu, amp)
+        {
+            return !(a < b);
         }
     };
 
@@ -211,12 +263,19 @@ namespace amp_algorithms
 #error amp_algorithms encountered a definition of the macro max.
 #endif
 
-    template <typename T>
-    struct max : public binary_function<T, T, T>
-    {
-        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+    template <typename T = void>
+    struct max : std::binary_function<T, T, T> {
+        constexpr const T& operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
-            return ((a < b) ? b : a);
+            return ((b < a) ? a : b);
+        }
+    };
+    template<>
+    struct max<void> {
+        template<typename T, typename U>
+        constexpr const std::remove_reference_t<std::common_type_t<T, U>>& operator()(T&& a, U&& b) const restrict(cpu, amp)
+        {
+            return b < a ? a : b;
         }
     };
 
@@ -224,13 +283,20 @@ namespace amp_algorithms
 #error amp_algorithms encountered a definition of the macro min.
 #endif
 
-    template <typename T>
-    struct min : public binary_function<T, T, T>
-    {
-        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+    template <typename T = void>
+    struct min : std::binary_function<T, T, T> {
+        constexpr const T& operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
-            return ((a < b) ? a : b);
+            return ((b < a) ? b : a);
         }
+    };
+    template<>
+    struct min<void> {
+        template<typename T, typename U>
+        constexpr std::common_type_t<T, U> operator()(T&& a, U&& b) const restrict(cpu, amp)
+        {
+            return b < a ? b : a;
+        };
     };
 
     //----------------------------------------------------------------------------
@@ -238,33 +304,30 @@ namespace amp_algorithms
     //----------------------------------------------------------------------------
 
     template<class T>
-    struct logical_not : unary_function<T, T>
-    {
-        bool operator()(const T& a) const restrict(cpu, amp)
+    struct logical_not : std::unary_function<T, T> {
+        constexpr bool operator()(const T& a) const restrict(cpu, amp)
         {
             return (!a);
         }
     };
 
     template<class T>
-    struct logical_and : public binary_function<T, T, T>
-    {
-        bool operator()(const T& a, const T& b) const restrict(cpu, amp)
+    struct logical_and : public std::binary_function<T, T, T> {
+        constexpr bool operator()(const T& a, const T& b) const restrict(cpu, amp)
         {
             return (a && b);
         }
     };
 
     template<class T>
-    struct logical_or : public binary_function<T, T, T>
-    {
-        bool operator()(const T& a, const T& b) const restrict(cpu, amp)
+    struct logical_or : public std::binary_function<T, T, T> {
+        constexpr bool operator()(const T& a, const T& b) const restrict(cpu, amp)
         {
             return (a || b);
         }
     };
 
-    template <typename Predicate> 
+    template <typename Predicate>
     class unary_negate
     {
     protected:
@@ -274,21 +337,26 @@ namespace amp_algorithms
         typedef typename Predicate::argument_type argument_type;
         typedef bool result_type;
 
-        explicit unary_negate(const Predicate& pred) : m_pred(pred) {}
+        explicit unary_negate(Predicate&& pred) : m_pred(std::forward<Predicate>(pred)) {}
 
-        bool operator() (const typename Predicate::argument_type& a) const restrict(cpu, amp)
-        { 
-            return !m_pred(a); 
+        constexpr result_type operator() (const argument_type& a) const restrict(cpu, amp)
+        {
+            return !m_pred(a);
         }
     };
 
     template <typename Predicate>
-    amp_algorithms::unary_negate<Predicate> not1(const Predicate& pred) restrict(cpu, amp)
+    amp_algorithms::unary_negate<Predicate> not1(Predicate&& pred) restrict(cpu)
     {
-        return amp_algorithms::unary_negate<Predicate>(pred);
+        return amp_algorithms::unary_negate<Predicate>(std::forward<Predicate>(pred));
+    }
+    template <typename Predicate>
+    amp_algorithms::unary_negate<Predicate> not1(Predicate&& pred) restrict(amp)
+    {
+        return amp_algorithms::unary_negate<Predicate>(forward<Predicate>(pred));
     }
 
-    template <typename Predicate> 
+    template<typename Predicate>
     class binary_negate
     {
     protected:
@@ -299,55 +367,51 @@ namespace amp_algorithms
         typedef typename Predicate::second_argument_type second_argument_type;
         typedef bool result_type;
 
-        explicit binary_negate(const Predicate& pred) : m_pred(pred) {}
+        explicit binary_negate(Predicate&& pred) : m_pred(std::forward<Predicate>(pred)) {}
 
-        bool operator() (const typename Predicate::first_argument_type& a, const typename Predicate::second_argument_type& b) const restrict(cpu, amp)
-        { 
-            return !m_pred(a, b); 
+        constexpr result_type operator()(const first_argument_type& a, const second_argument_type& b) const restrict(cpu, amp)
+        {
+            return !m_pred(a, b);
         }
     };
 
-    template <class Predicate> 
-    amp_algorithms::binary_negate<Predicate> not2(const Predicate& pred) restrict(cpu, amp)
+    template<typename Predicate>
+    amp_algorithms::binary_negate<Predicate> not2(Predicate&& pred) restrict(cpu, amp)
     {
-        return amp_algorithms::binary_negate<Predicate>(pred);
+        return amp_algorithms::binary_negate<Predicate>(amp_algorithms::forward<Predicate>(pred));
     }
 
     //----------------------------------------------------------------------------
     // Bitwise operations
     //----------------------------------------------------------------------------
 
-    template <typename T>
-    struct bit_and : public binary_function<T, T, T>
-    {
-        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+    template<typename T>
+    struct bit_and : std::binary_function<T, T, T> {
+        constexpr T operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
             return (a & b);
         }
     };
 
     template <typename T>
-    struct bit_or : public binary_function<T, T, T>
-    {
-        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+    struct bit_or : std::binary_function<T, T, T> {
+        constexpr T operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
             return (a | b);
         }
     };
 
     template <typename T>
-    struct bit_xor : public binary_function<T, T, T>
-    {
-        T operator()(const T &a, const T &b) const restrict(cpu, amp)
+    struct bit_xor : std::binary_function<T, T, T> {
+        constexpr T operator()(const T &a, const T &b) const restrict(cpu, amp)
         {
             return (a ^ b);
         }
     };
 
     template <typename T>
-    struct bit_not : unary_function<T, T>
-    {
-        T operator()(const T &a) const restrict(cpu, amp)
+    struct bit_not : std::unary_function<T, T> {
+        constexpr T operator()(const T &a) const restrict(cpu, amp)
         {
             return (~a);
         }
@@ -357,9 +421,9 @@ namespace amp_algorithms
     // Additional bitwise operations with no STL equivalent
     //----------------------------------------------------------------------------
 
-    static const unsigned int bit08 = 0x80;
-    static const unsigned int bit16 = 0x8000;
-    static const unsigned int bit32 = 0x80000000;
+    static constexpr unsigned int bit08 = 0x80;
+    static constexpr unsigned int bit16 = 0x8000;
+    static constexpr unsigned int bit32 = 0x80000000;
 
     namespace _details
     {
@@ -382,13 +446,19 @@ namespace amp_algorithms
         enum { value = FALSE };
     };
 
-    template <typename T>
-    int count_bits(T value)
+    template<typename T, std::enable_if_t<std::is_integral<T>::value>* = nullptr>
+    inline unsigned int count_bits(T value) restrict(cpu)
     {
         value = value - ((value >> 1) & 0x55555555);
         value = (value & 0x33333333) + ((value >> 2) & 0x33333333);
         return (((value + (value >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
     }
+
+	template<typename T, std::enable_if_t<std::is_integral<T>::value>* = nullptr>
+	inline unsigned int count_bits(T value) restrict(amp)
+	{
+		return concurrency::direct3d::countbits(value);
+	}
 
 #pragma endregion
 
@@ -407,7 +477,7 @@ namespace amp_algorithms
     }
 
     template<typename T>
-    inline unsigned long pack_byte(const T& value, const unsigned index) restrict(cpu, amp)
+    inline unsigned long pack_byte(const T& value, unsigned index) restrict(cpu, amp)
     {
         //assert(value < 256);
         //assert(index < sizeof(T));
@@ -422,14 +492,14 @@ namespace amp_algorithms
     }
 
     template<typename T>
-    inline unsigned int unpack_byte(const T& value, const unsigned index) restrict(cpu, amp)
+    inline unsigned int unpack_byte(const T& value, unsigned index) restrict(cpu, amp)
     {
         //assert(index < sizeof(T));
         return (value >> (index * CHAR_BIT)) & 0xFF;
     }
 
     template<typename T>
-    unsigned int bit_count() restrict(cpu, amp)
+    constexpr unsigned int bit_count() restrict(cpu, amp)
     {
         return sizeof(T) * CHAR_BIT;
     }
@@ -438,40 +508,39 @@ namespace amp_algorithms
     // container padded_read & padded_write
     //----------------------------------------------------------------------------
 
-    template <typename InputIndexableView, int N>
-    inline typename InputIndexableView::value_type padded_read(const InputIndexableView& arr, const concurrency::index<N> idx) restrict(cpu, amp)
+    template <typename T, int R>
+    inline decltype(auto) padded_read(const concurrency::array_view<T, R>& arr, const concurrency::index<R>& idx) restrict(cpu, amp)
     {
-        return arr.extent.contains(idx) ? arr[idx] : typename InputIndexableView::value_type();
+        return arr.extent.contains(idx) ? arr[idx] : T();
     }
 
-    template <typename InputIndexableView>
-    inline typename InputIndexableView::value_type padded_read(const InputIndexableView& arr, const int idx) restrict(cpu, amp)
+    template <typename T>
+    inline decltype(auto) padded_read(const concurrency::array_view<T>& arr, int idx) restrict(cpu, amp)
     {
-        return padded_read<InputIndexableView, 1>(arr, concurrency::index<1>(idx));
+        return padded_read(arr, concurrency::index<1>(idx));
     }
 
-    template <typename InputIndexableView, int N>
-    inline void padded_write(InputIndexableView& arr, const concurrency::index<N> idx, const typename InputIndexableView::value_type &value) restrict(cpu, amp)
+    template <typename T, typename U, int R>
+    inline void padded_write(const concurrency::array_view<T, R>& arr, const concurrency::index<R>& idx, U&& value) restrict(cpu, amp)
     {
-        if (arr.extent.contains(idx))
-        {
+        if (arr.extent.contains(idx)) {
             arr[idx] = value;
         }
     }
 
-    template <typename InputIndexableView>
-    inline void padded_write(InputIndexableView& arr, const int idx, const typename InputIndexableView::value_type &value) restrict(cpu, amp)
+    template <typename T, typename U>
+    inline void padded_write(const concurrency::array_view<T>& arr, int idx, U&& value) restrict(cpu, amp)
     {
-        padded_write<InputIndexableView, 1>(arr, concurrency::index<1>(idx), value);
+        padded_write(arr, concurrency::index<1>(idx), value);
     }
 
     // TODO: Should this return an extent? Better name.
     template <int N, typename InputIndexableView>
-    inline int tile_partial_data_size(const InputIndexableView& arr, tiled_index<N> tidx) restrict(amp)
+    inline int tile_partial_data_size(const InputIndexableView& arr, const tiled_index<N>& tidx) restrict(amp)
     {
         return arr.extent.size() - tidx.tile[0] * tidx.tile_extent[0];
     }
-    
+
 #pragma endregion
 
     //----------------------------------------------------------------------------
@@ -505,18 +574,18 @@ namespace amp_algorithms
         bitvector() = delete;
         ~bitvector() = default;
         bitvector(const bitvector&) = default;
-        //bitvector(bitvector&&) = default;
+        bitvector(bitvector&&) = default;
         bitvector& operator=(const bitvector&) = default;
-        //bitvector& operator=(bitvector&&) = default;
+        bitvector& operator=(bitvector&&) = default;
 #endif
-        bitvector(const unsigned data_size) : m_data_size(data_size)
+        bitvector(unsigned data_size) : m_data_size(data_size)
         {
             data = std::vector<unsigned>(bits_pad_to_uint(data_size), 0);
         }
 
         // Initialize bitvector with constant segment width.
 
-        void initialize(const int segment_width)
+        void initialize(int segment_width)
         {
             initialize(uniform_segments<int>(segment_width));
         }
@@ -542,9 +611,9 @@ namespace amp_algorithms
             }
         }
 
-        bool is_bit_set(unsigned pos, const amp_algorithms::scan_direction direction = amp_algorithms::scan_direction::forward) const
+        bool is_bit_set(unsigned pos, amp_algorithms::scan_direction direction = amp_algorithms::scan_direction::forward)
         {
-            // When we encounter flag going direction it means, 
+            // When we encounter flag going direction it means,
             // that it is the first element of this segment (last element to be scanned going direction)
             // for simplification we increment 'pos' and always look for flags behind our current position.
 
@@ -559,7 +628,7 @@ namespace amp_algorithms
         }
 
     private:
-        unsigned bits_pad_to_uint(const unsigned& bits) const
+        unsigned bits_pad_to_uint(unsigned bits) const
         {
             return (bits + amp_algorithms::bit_count<unsigned>() - 1) / amp_algorithms::bit_count<unsigned>();
         }
@@ -569,14 +638,14 @@ namespace amp_algorithms
     // fill
     //----------------------------------------------------------------------------
 
-    template<typename OutputIndexableView, typename T>
-    void fill(const concurrency::accelerator_view &accl_view, OutputIndexableView& output_view, const T& value)
+    template<typename T>
+    void fill(const concurrency::accelerator_view &accl_view, const concurrency::array_view<T>& output_view, const T& value)
     {
         ::amp_algorithms::generate(accl_view, output_view, [value]() restrict(amp) { return value; });
     }
 
-    template<typename OutputIndexableView, typename T>
-    void fill(OutputIndexableView& output_view, const T& value)
+    template<typename T>
+    void fill(const concurrency::array_view<T>& output_view, const T& value)
     {
         ::amp_algorithms::generate(output_view, [value]() restrict(amp) { return value; });
     }
@@ -585,18 +654,18 @@ namespace amp_algorithms
     // generate
     //----------------------------------------------------------------------------
 
-    template <typename OutputIndexableView, typename Generator>
-    void generate(const concurrency::accelerator_view &accl_view, OutputIndexableView& output_view, const Generator& generator)
+    template <typename T, typename Generator>
+    void generate(const concurrency::accelerator_view &accl_view, const concurrency::array_view<T>& output_view, Generator&& generator)
     {
-        _details::parallel_for_each(accl_view, output_view.extent, [output_view, generator](concurrency::index<indexable_view_traits<OutputIndexableView>::rank> idx) restrict(amp) {
+        _details::parallel_for_each(accl_view, output_view.extent, [output_view, generator = std::forward<Generator>(generator)](auto&& idx) restrict(amp) {
             output_view[idx] = generator();
         });
     }
 
-    template <typename OutputIndexableView, typename Generator>
-    void generate(OutputIndexableView& output_view, const Generator& generator)
+    template <typename T, typename Generator>
+    void generate(const concurrency::array_view<T>& output_view, Generator&& generator)
     {
-        ::amp_algorithms::generate(_details::auto_select_target(), output_view, generator);
+        ::amp_algorithms::generate(_details::auto_select_target(), output_view, std::forward<Generator>(generator));
     }
 
     //----------------------------------------------------------------------------
@@ -605,12 +674,12 @@ namespace amp_algorithms
 
     // TODO_NOT_IMPLEMENTED: merge_sort
     template <typename T, typename BinaryOperator>
-    void merge_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<unsigned int>& input_view, BinaryOperator op)
+    void merge_sort(const concurrency::accelerator_view& accl_view, const concurrency::array_view<T>& input_view, BinaryOperator&& op)
     {
     }
 
     template <typename T>
-    void merge_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<unsigned int>& input_view)
+    void merge_sort(const concurrency::accelerator_view& accl_view, const concurrency::array_view<T>& input_view)
     {
         ::amp_algorithms::merge_sort(accl_view, input_view, amp_algorithms::less<T>());
     }
@@ -622,8 +691,8 @@ namespace amp_algorithms
     template <typename T>
     inline void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<T>& input_view, concurrency::array_view<T>& output_view)
     {
-        static const int bin_width = 2;
-        static const int tile_size = 128;
+        static constexpr int bin_width = 2;
+        static constexpr int tile_size = 128;
         _details::radix_sort<T, tile_size, bin_width>(accl_view, input_view, output_view);
     }
 
@@ -635,7 +704,7 @@ namespace amp_algorithms
     }
 
     template <typename T>
-    inline void radix_sort(const concurrency::accelerator_view& accl_view, concurrency::array_view<T>& input_view)
+    inline void radix_sort(const concurrency::accelerator_view& accl_view, const concurrency::array_view<T>& input_view)
     {
         radix_sort(accl_view, input_view, input_view);
     }
@@ -651,26 +720,24 @@ namespace amp_algorithms
     //----------------------------------------------------------------------------
 
     // Generic reduction template for binary operators that are commutative and associative
-    template <typename InputIndexableView, typename BinaryFunction>
-    typename std::result_of<BinaryFunction(const typename indexable_view_traits<InputIndexableView>::value_type&, const typename indexable_view_traits<InputIndexableView>::value_type&)>::type
-        reduce(const concurrency::accelerator_view &accl_view, const InputIndexableView &input_view, const BinaryFunction &binary_op)
+    template <typename IndexableInputView, typename BinaryFunction>
+    inline Value_type<IndexableInputView> reduce(const concurrency::accelerator_view& accl_view, const IndexableInputView& input_view, BinaryFunction&& binary_op)
     {
-        const int tile_size = 512;
-        return _details::reduce<tile_size, 10000, InputIndexableView, BinaryFunction>(accl_view, input_view, binary_op);
+        constexpr int tile_size = 512;
+        return _details::reduce<tile_size, 10000>(accl_view, input_view, std::forward<BinaryFunction>(binary_op));
     }
 
-    template <typename InputIndexableView, typename BinaryFunction>
-    typename std::result_of<BinaryFunction(const typename indexable_view_traits<InputIndexableView>::value_type&, const typename indexable_view_traits<InputIndexableView>::value_type&)>::type
-        reduce(const InputIndexableView &input_view, const BinaryFunction &binary_op)
+    template <typename IndexableInputView, typename BinaryFunction>
+    inline Value_type<IndexableInputView> reduce(const IndexableInputView& input_view, BinaryFunction&& binary_op)
     {
-        return reduce(_details::auto_select_target(), input_view, binary_op);
+        return reduce(_details::auto_select_target(), input_view, std::forward<BinaryFunction>(binary_op));
     }
 
     //----------------------------------------------------------------------------
     // scan
     //----------------------------------------------------------------------------
 
-    // This header needs these enums but they also have to be defined in the _impl header for use by the 
+    // This header needs these enums but they also have to be defined in the _impl header for use by the
     // main STL header, which includes the _impl.
 #if !defined(AMP_ALGORITHMS_ENUMS)
 #define AMP_ALGORITHMS_ENUMS
@@ -687,69 +754,90 @@ namespace amp_algorithms
     };
 #endif
 
-    template <int TileSize, scan_mode _Mode, typename _BinaryFunc, typename InputIndexableView>
-    inline void scan(const InputIndexableView& input_view, InputIndexableView& output_view, const _BinaryFunc& op)
+    template <int TileSize, scan_mode _Mode, typename T, typename _BinaryFunc>
+    inline void scan(const concurrency::array_view<T>& input_view, const concurrency::array_view<T>& output_view, _BinaryFunc&& op)
     {
-        _details::scan<TileSize, _Mode, _BinaryFunc>(_details::auto_select_target(), input_view, output_view, op);
+        _details::scan<TileSize, _Mode>(_details::auto_select_target(), input_view, output_view, std::forward<_BinaryFunc>(op));
     }
 
-    template <typename IndexableView>
-    void scan_exclusive(const concurrency::accelerator_view& accl_view, const IndexableView& input_view, IndexableView& output_view)
+    template <typename T>
+    void scan_exclusive(const concurrency::accelerator_view& accl_view, const concurrency::array_view<T>& input_view, const concurrency::array_view<T>& output_view)
     {
-        _details::scan<_details::scan_default_tile_size, amp_algorithms::scan_mode::exclusive>(accl_view, input_view, output_view, amp_algorithms::plus<IndexableView::value_type>());
+        _details::scan<_details::scan_default_tile_size, amp_algorithms::scan_mode::exclusive>(accl_view, input_view, output_view, amp_algorithms::plus<>());
     }
 
-    template <typename IndexableView>
-    void scan_exclusive(const IndexableView& input_view, IndexableView& output_view)
+    template <typename T>
+    void scan_exclusive(const concurrency::array_view<T>& input_view, const concurrency::array_view<T>& output_view)
     {
-        _details::scan<_details::scan_default_tile_size, amp_algorithms::scan_mode::exclusive>(_details::auto_select_target(), input_view, output_view, amp_algorithms::plus<typename IndexableView::value_type>());
+        _details::scan<_details::scan_default_tile_size, amp_algorithms::scan_mode::exclusive>(_details::auto_select_target(), input_view, output_view, amp_algorithms::plus<>());
     }
 
-    template <typename IndexableView>
-    void scan_inclusive(const concurrency::accelerator_view& accl_view, const IndexableView& input_view, IndexableView& output_view)
+    template <typename T>
+    void scan_inclusive(const concurrency::accelerator_view& accl_view, const concurrency::array_view<T>& input_view, const concurrency::array_view<T>& output_view)
     {
-        _details::scan<_details::scan_default_tile_size, amp_algorithms::scan_mode::inclusive>(accl_view, input_view, output_view, amp_algorithms::plus<IndexableView::value_type>());
+        _details::scan<_details::scan_default_tile_size, amp_algorithms::scan_mode::inclusive>(accl_view, input_view, output_view, amp_algorithms::plus<>());
     }
 
-    template <typename IndexableView>
-    void scan_inclusive(const IndexableView& input_view, IndexableView& output_view)
+    template <typename T>
+    void scan_inclusive(const concurrency::array_view<T>& input_view, const concurrency::array_view<T>& output_view)
     {
-        _details::scan<_details::scan_default_tile_size, amp_algorithms::scan_mode::inclusive>(_details::auto_select_target(), input_view, output_view, amp_algorithms::plus<typename IndexableView::value_type>());
+        _details::scan<_details::scan_default_tile_size, amp_algorithms::scan_mode::inclusive>(_details::auto_select_target(), input_view, output_view, amp_algorithms::plus<>());
     }
 
     //----------------------------------------------------------------------------
     // transform (unary)
     //----------------------------------------------------------------------------
 
-    template <typename ConstInputIndexableView, typename OutputIndexableView, typename UnaryFunc>
-    void transform(const concurrency::accelerator_view &accl_view, const ConstInputIndexableView& input_view, OutputIndexableView& output_view, const UnaryFunc& func)
+    template <typename T, typename U, int R, typename UnaryFunc>
+    void transform(const concurrency::accelerator_view &accl_view, const concurrency::array_view<const T, R>& input_view, const concurrency::array_view<U, R>& output_view, UnaryFunc&& func)
     {
-        _details::parallel_for_each(accl_view, output_view.extent, [input_view,output_view,func] (concurrency::index<indexable_view_traits<OutputIndexableView>::rank> idx) restrict(amp) {
+        _details::parallel_for_each(accl_view, output_view.extent, [input_view,output_view,func = std::forward<UnaryFunc>(func)] (auto&& idx) restrict(amp) {
             output_view[idx] = func(input_view[idx]);
         });
     }
 
-    template <typename ConstInputIndexableView, typename OutputIndexableView, typename UnaryFunc>
-    void transform(const ConstInputIndexableView& input_view, OutputIndexableView& output_view, const UnaryFunc& func)
+    template <typename T, typename U, int R, typename UnaryFunc>
+    void transform(const concurrency::array_view<const T, R>& input_view, const concurrency::array_view<U, R>& output_view, UnaryFunc&& func)
     {
-        ::amp_algorithms::transform(_details::auto_select_target(), input_view, output_view, func);
+        ::amp_algorithms::transform(_details::auto_select_target(), input_view, output_view, std::forward<UnaryFunc>(func));
     }
 
     //----------------------------------------------------------------------------
     // transform (binary)
     //----------------------------------------------------------------------------
 
-    template <typename ConstInputIndexableView1, typename ConstInputIndexableView2, typename OutputIndexableView, typename BinaryFunc>
-    void transform(const concurrency::accelerator_view &accl_view, const ConstInputIndexableView1& input_view1, const ConstInputIndexableView2& input_view2, OutputIndexableView& output_view, const BinaryFunc& func)
+    template <typename T, typename U, typename V, int R, typename BinaryFunc>
+    void transform(const concurrency::accelerator_view &accl_view, const concurrency::array_view<T, R>& input_view1, const concurrency::array_view<U, R>& input_view2, const concurrency::array_view<V, R>& output_view, BinaryFunc&& func)
     {
-        _details::parallel_for_each(accl_view, output_view.extent, [input_view1,input_view2,output_view,func] (concurrency::index<indexable_view_traits<OutputIndexableView>::rank> idx) restrict(amp) {
+        _details::parallel_for_each(accl_view, output_view.extent, [input_view1,input_view2,output_view,func = std::forward<BinaryFunc>(func)] (auto&& idx) restrict(amp) {
             output_view[idx] = func(input_view1[idx], input_view2[idx]);
         });
     }
 
-    template <typename ConstInputIndexableView1, typename ConstInputIndexableView2, typename OutputIndexableView, typename BinaryFunc>
-    void transform(const ConstInputIndexableView1& input_view1, const ConstInputIndexableView2& input_view2, OutputIndexableView& output_view, const BinaryFunc& func)
+    template <typename T, typename U, typename V, int R, typename BinaryFunc>
+    void transform(const concurrency::array_view<T, R>& input_view1, const concurrency::array_view<U, R>& input_view2, const concurrency::array_view<V, R>& output_view, BinaryFunc&& func)
     {
-        ::amp_algorithms::transform(_details::auto_select_target(), input_view1, input_view2, output_view, func);
+        ::amp_algorithms::transform(_details::auto_select_target(), input_view1, input_view2, output_view, std::forward<BinaryFunc>(func));
     }
+
+    //----------------------------------------------------------------------------
+    // forward and move for restrict(amp) contexts; should be moved elsewhere.
+    //----------------------------------------------------------------------------
+    template<typename T>
+    constexpr inline T&& forward(std::remove_reference_t<T>& t) restrict(cpu, amp)
+    {
+        return static_cast<T&&>(t);
+    }
+    template<typename T>
+    constexpr inline T&& forward(std::remove_reference_t<T>&& t) restrict(cpu, amp)
+    {
+        return static_cast<T&&>(t);
+    }
+
+    template<typename T>
+    constexpr inline std::remove_reference_t<T>&& move(T&& t) restrict(cpu, amp)
+    {
+        return static_cast<std::remove_reference_t<T>&&>(t);
+    }
+
 } // namespace amp_algorithms

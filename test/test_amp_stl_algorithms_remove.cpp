@@ -46,7 +46,9 @@ TEST_P(remove_tests, test)
     auto expected_size = std::distance(begin(expected), expected_iter);
     std::copy(cbegin(GetParam()), cend(GetParam()), begin(input));
 
+    std::sort(begin(expected), expected_iter);
     auto iter = amp_stl_algorithms::remove(begin(input_av), end(input_av), 1);
+    std::sort(begin(input_av), iter);
 
     ASSERT_EQ(expected_size, std::distance(begin(input_av), iter));
     ASSERT_TRUE(are_equal(expected, input_av, expected_size));
@@ -77,12 +79,14 @@ TEST_P(remove_copy_tests, test)
 {
     std::array<int, size> expected_output;
     std::fill(begin(expected_output), end(expected_output), -1);
-    std::copy(begin(GetParam()), end(GetParam()), begin(expected));
-    auto expected_iter = std::remove_copy(begin(expected), end(expected), begin(expected_output), 1);
+    std::copy(cbegin(GetParam()), cend(GetParam()), begin(expected));
+    auto expected_iter = std::remove_copy(cbegin(expected), cend(expected), begin(expected_output), 1);
     std::copy(cbegin(GetParam()), cend(GetParam()), begin(input));
     auto expected_size = std::distance(begin(expected_output), expected_iter);
 
-    auto iter = amp_stl_algorithms::remove_copy(begin(input_av), end(input_av), begin(output_av), 1);
+    std::sort(begin(expected_output), expected_iter);
+    auto iter = amp_stl_algorithms::remove_copy(cbegin(input_av), cend(input_av), begin(output_av), 1);
+    std::sort(begin(output_av), iter);
 
     ASSERT_EQ(expected_size, std::distance(begin(input_av), iter));
     ASSERT_TRUE(are_equal(expected, input_av, size - expected_size));
@@ -97,12 +101,14 @@ TEST_P(remove_copy_if_tests, test)
 {
     std::array<int, size> expected_output;
     std::fill(begin(expected_output), end(expected_output), -1);
-    std::copy(begin(GetParam()), end(GetParam()), begin(expected));
-    auto expected_iter = std::remove_copy_if(begin(expected), end(expected), begin(expected_output), greater_than<int>());
+    std::copy(cbegin(GetParam()), cend(GetParam()), begin(expected));
+    auto expected_iter = std::remove_copy_if(cbegin(expected), cend(expected), begin(expected_output), greater_than<int>());
     std::copy(cbegin(GetParam()), cend(GetParam()), begin(input));
     auto expected_size = std::distance(begin(expected_output), expected_iter);
 
+    std::sort(begin(expected_output), expected_iter);
     auto iter = amp_stl_algorithms::remove_copy_if(begin(input_av), end(input_av), begin(output_av), greater_than<int>());
+    std::sort(begin(output_av), iter);
 
     ASSERT_EQ(expected_size, std::distance(begin(input_av), iter));
     ASSERT_TRUE(are_equal(expected, input_av, size - expected_size));

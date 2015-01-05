@@ -1,19 +1,19 @@
 /*----------------------------------------------------------------------------
 * Copyright © Microsoft Corp.
 *
-* Licensed under the Apache License, Version 2.0 (the "License"); you may not 
-* use this file except in compliance with the License.  You may obtain a copy 
-* of the License at http://www.apache.org/licenses/LICENSE-2.0  
-* 
-* THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED 
-* WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE, 
-* MERCHANTABLITY OR NON-INFRINGEMENT. 
+* Licensed under the Apache License, Version 2.0 (the "License"); you may not
+* use this file except in compliance with the License.  You may obtain a copy
+* of the License at http://www.apache.org/licenses/LICENSE-2.0
 *
-* See the Apache Version 2.0 License for specific language governing 
+* THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+* WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+* MERCHANTABLITY OR NON-INFRINGEMENT.
+*
+* See the Apache Version 2.0 License for specific language governing
 * permissions and limitations under the License.
 *---------------------------------------------------------------------------
-* 
+*
 * C++ AMP standard algorithm library.
 *
 * This file contains unit tests for scan.
@@ -44,7 +44,7 @@ public:
         srand(2012);    // Set random number seed so tests are reproducible.
     }
 
-    bool operator()(const T &i) const
+    bool operator()(const T&) const
     {
         return (rand() % 13 == 0) ? 1 : 0;
     }
@@ -54,11 +54,13 @@ class amp_algorithms_direct3d_scan_tests : public testbase, public ::testing::Te
 {
 public:
     template<typename T, typename BinaryFunction>
-    void test_scan_internal(int column_count, BinaryFunction op,
+    void test_scan_internal(int column_count, BinaryFunction&& op,
         amp_algorithms::scan_direction direction, bool inplace, scan_type test_type = scan_type::scan, unsigned int row_count = 1)
     {
+//#ifdef _DEBUG
         column_count = std::min(200, column_count);
         row_count = std::min(200u, row_count);
+//#endif
         accelerator().default_view.wait();
 
         std::vector<T> in(row_count * column_count);
@@ -76,7 +78,7 @@ public:
             concurrency::array<T, 2> input(e2, begin(in));
             concurrency::array<T, 2> output(e2);
 
-            s.multi_scan_exclusive(input, inplace ? input : output, direction, op);
+            s.multi_scan_exclusive(input, inplace ? input : output, direction, std::forward<BinaryFunction>(op));
             copy(inplace ? input : output, begin(out));
         }
         else
@@ -87,20 +89,20 @@ public:
 
             if (test_type == scan_type::scan)
             {
-                s.scan_exclusive(input, inplace ? input : output, direction, op);
+                s.scan_exclusive(input, inplace ? input : output, direction, std::forward<BinaryFunction>(op));
             }
             else
             {
                 flags.initialize(random_segments<int>());
                 concurrency::array<unsigned int> input_flags(static_cast<unsigned int>(flags.data.size()), begin(flags.data));
-                s.segmented_scan_exclusive(input, inplace ? input : output, input_flags, direction, op);
+                s.segmented_scan_exclusive(input, inplace ? input : output, input_flags, direction, std::forward<BinaryFunction>(op));
             }
 
             copy(inplace ? input : output, begin(out));
         }
 
         // Now time to verify the results with host-side computation
-        verify_scan_results(direction, /*exclusive=*/true, op, in, out, column_count, column_count, row_count, flags);
+        verify_scan_results(direction, /*exclusive=*/true, std::forward<BinaryFunction>(op), in, out, column_count, column_count, row_count, flags);
     }
 
     template<typename T>
@@ -178,7 +180,7 @@ public:
     }
 
     template <typename T, typename BinaryFunction>
-    void verify_scan_results(amp_algorithms::scan_direction direction, bool exclusive, BinaryFunction op, std::vector<T> &in, std::vector<T> &out,
+    void verify_scan_results(amp_algorithms::scan_direction direction, bool exclusive, BinaryFunction&& op, std::vector<T> &in, std::vector<T> &out,
         unsigned int scan_size, unsigned int scan_pitch, unsigned int scan_count, amp_algorithms::bitvector &flags)
     {
         // For each sub-scan
@@ -196,7 +198,7 @@ public:
                 if (i == current_scan_num * scan_pitch || flags.is_bit_set(pos, direction))
                 {
                     // Establish first result, either it is identity (for exclusive) or first/last element depending on scan direction for inclusive scan
-                    expected_scan_result = (exclusive) ? get_identity<T>(op) : in[pos];
+                    expected_scan_result = (exclusive) ? get_identity<T>(std::forward<BinaryFunction>(op)) : in[pos];
                 }
 
                 // Inclusive is computed as pre-fix op
@@ -218,21 +220,21 @@ public:
     }
 
     template<typename value_type, typename functor>
-    value_type get_identity(functor op)
+    inline value_type get_identity(functor)
     {
-        if (typeid(op) == typeid(amp_algorithms::max<value_type>))
+        if (std::is_same<functor, amp_algorithms::max<value_type>>::value)
         {
             return std::numeric_limits<value_type>::lowest();
         }
-        if (typeid(op) == typeid(amp_algorithms::min<value_type>))
+        if (std::is_same<functor, amp_algorithms::min<value_type>>::value)
         {
             return std::numeric_limits<value_type>::max();
         }
-        if (typeid(op) == typeid(amp_algorithms::multiplies<value_type>))
+        if (std::is_same<functor, amp_algorithms::multiplies<value_type>>::value)
         {
             return 1;
         }
-        if (typeid(op) == typeid(amp_algorithms::bit_and<value_type>))
+        if (std::is_same<functor, amp_algorithms::bit_and<value_type>>::value)
         {
             return (value_type)(0xFFFFFFFF);
         }
@@ -327,7 +329,7 @@ TEST_F(amp_algorithms_direct3d_scan_tests, segmented_scan_forwards_bitwise)
 
 TEST_F(amp_algorithms_direct3d_scan_tests, scan_other)
 {
-    const int elem_count = 10;
+    constexpr int elem_count = 10;
     std::vector<unsigned int> in(elem_count, 1);
 
     concurrency::array<unsigned int> input(concurrency::extent<1>(elem_count), begin(in));
@@ -337,12 +339,12 @@ TEST_F(amp_algorithms_direct3d_scan_tests, scan_other)
     // 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ->
     s.scan_exclusive(input, input);
     // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ->
-    s.scan_exclusive(input, input, amp_algorithms::scan_direction::forward, amp_algorithms::plus<unsigned int>());
+    s.scan_exclusive(input, input, amp_algorithms::scan_direction::forward, amp_algorithms::plus<>());
     // 0, 0, 1, 3, 6, 10, 15, 21, 28, 36 ->
 
     unsigned int flg = 8; // 001000 in binary, so our segment is in here: 0, 0, 1, | 3, 6, 10, 15, 21, 28, 36
     concurrency::array<unsigned int> flags(1, &flg);
-    s.segmented_scan_exclusive(input, input, flags, amp_algorithms::scan_direction::backward, amp_algorithms::plus<unsigned int>());
+    s.segmented_scan_exclusive(input, input, flags, amp_algorithms::scan_direction::backward, amp_algorithms::plus<>());
     // 1, 1, 0, 116, 110, 100, 85, 64, 36, 0
 
     // Copy out
@@ -360,7 +362,7 @@ TEST_F(amp_algorithms_direct3d_scan_tests, scan_other)
 //    accelerator ref(accelerator::direct3d_ref);
 //    accelerator_view ref_view = ref.create_view();
 //
-//    const int elem_count = 10;
+//    constexpr int elem_count = 10;
 //    std::vector<unsigned int> in(elem_count, 1);
 //
 //    concurrency::array<unsigned int> input(concurrency::extent<1>(elem_count), begin(in), ref_view);
@@ -368,7 +370,7 @@ TEST_F(amp_algorithms_direct3d_scan_tests, scan_other)
 //    Assert::ExpectException<runtime_exception>([&]() {
 //        amp_algorithms::direct3d::scan s2(2 * elem_count, elem_count, accelerator().default_view);
 //        s2.scan_exclusive(input, input);
-//    }, 
+//    },
 //        L"Expected exception for non-matching accelerator_view in scan object");
 //
 //    Assert::ExpectException<runtime_exception>([&]() {
@@ -392,7 +394,7 @@ TEST_F(amp_algorithms_direct3d_scan_tests, scan_other)
 //    Assert::ExpectException<runtime_exception>([&]() {
 //        amp_algorithms::direct3d::scan s2(elem_count, 1, ref_view);
 //        concurrency::array<unsigned int, 2> in2(10, 10);
-//        s2.multi_scan_exclusive(in2, in2, amp_algorithms::scan_direction::forward, amp_algorithms::plus<unsigned int>());
+//        s2.multi_scan_exclusive(in2, in2, amp_algorithms::scan_direction::forward, amp_algorithms::plus<>());
 //    },
 //        L"Expected exception for scan object with max_scan_count < scan_count");
 //
