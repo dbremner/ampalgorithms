@@ -111,9 +111,36 @@ else
 
 $stopwatch.Start()
 
+write-host "`n== Check Config  ===============================================================" -fore yellow
+
+$gtest_ok = $True
+if ($env:GTEST_ROOT -eq "")
+{
+    write-host "GTEST_ROOT not defined. This should declare the path to the Google Test source."
+    $gtest_ok = $False
+}
+
+foreach ($l in @( "x64\Release\gtest.lib", "x64\Debug\gtestd.lib", "gtest\Release\gtest.lib", "gtest\Debug\gtestd.lib" ))
+{
+    $lib = "${env:GTEST_ROOT}\msvc\$l"
+    if (-not (test-path $lib))
+    {
+        write-host "Unable to find Google Test library '$lib'."
+        $gtest_ok = $False
+    }
+}
+
+if (-not $gtest_ok)
+{
+    write-host "`nGoogle Test 1.7 can be downloaded from here:`n  https://code.google.com/p/googletest/downloads/list" -fore red
+    write-host "See here for details on how to create a x64 build:`n  https://code.google.com/p/googletest/wiki/FAQ#How_do_I_generate_64-bit_binaries_on_Windows_(using_Visual_Studi" -fore red
+    exit
+}
+write-host "  Found Google Test 1.7 libraries OK."
+
 ## Clean tree...
 
-write-host "== Clean         ===============================================================" -fore yellow
+write-host "`n== Clean         ===============================================================" -fore yellow
 
 foreach ($p in @( $build_bin, $build_int ))
 {
