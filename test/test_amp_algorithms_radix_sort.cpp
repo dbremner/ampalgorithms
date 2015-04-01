@@ -372,7 +372,7 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_by_key_with_index_0_t
 TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_by_key_with_index_0_tile_8_data_14)
 {
     // gidx                                                    0   1   2   3   4   5   6   7     8   9  10  11  12  13
-    std::array<unsigned, 14> input =                         { 3,  2,  1,  6, 10, 11, 13,  0,   15, 10,  5, 14,  4, 12}; //,  9,  8 };
+    std::array<unsigned, 14> input =                         { 3,  2,  1,  6, 10, 11, 13,  0,   15, 10,  5, 14,  4, 12 }; //,  9,  8 };
     // rdx =                                                   3,  2,  1,  2,  2,  3,  1,  0,    3,  2,  1,  2,  0,  0
 
     std::array<unsigned, 14> per_tile_rdx_histograms =       { 1,  2,  3,  2,        0,0,0,0,    2,  1,  2,  1,        0,0 };
@@ -384,9 +384,12 @@ TEST_F(amp_algorithms_radix_sort_tests, details_radix_sort_by_key_with_index_0_t
                           
     std::array<unsigned, 14> global_histogram =              { 3,  3,  5,  3,                          0,0,0,0,0,0,0,0,0,0 };
     std::array<unsigned, 14> global_rdx_offsets =            { 0,  3,  6, 11,                          0,0,0,0,0,0,0,0,0,0 };
-    std::array<unsigned, 14> dest_gidx =                     { 4,  8,  9, 13,    0,  5, 10, 14,    6, 11, 12, 15,    1,  2 }; 
+
+    std::array<unsigned, 14> sorted_per_tile =               { 0,  1, 13,  2,  6, 10,  3, 11,    4, 12,  5, 10, 14, 15     };
+
+    std::array<unsigned, 14> dest_gidx =                     { 4,  8,  9, 13,  0,  5, 10, 14,    6, 11, 12, 15,  1,  2     }; 
                                                                  
-    std::array<unsigned, 14> sorted_by_key_0 =               { 0,  4, 12,  1, 13,  5,    2,  6, 10, 10, 14,  3, 11, 15 };
+    std::array<unsigned, 14> sorted_by_key_0 =               { 0,  4, 12,  1, 13,  5,  2,  6,   10, 10, 14,  3, 11, 15     };
                                                            
     array_view<unsigned> input_av(static_cast<int>(input.size()), input);
     std::array<unsigned, 14> output;
@@ -502,10 +505,6 @@ TYPED_TEST_P(details_radix_sort_with_tile_tests, test)
 REGISTER_TYPED_TEST_CASE_P(details_radix_sort_with_tile_tests, test);
 INSTANTIATE_TYPED_TEST_CASE_P(amp_algorithms_radix_sort_tests, details_radix_sort_with_tile_tests, details_radix_sort_with_tile_data);
 
-//----------------------------------------------------------------------------
-// Public API Acceptance Tests
-//----------------------------------------------------------------------------
-
 TEST_F(amp_algorithms_radix_sort_tests, radix_sort_with_data_16)
 {
     std::array<int, 16> input =                              { 3,  2,  1,  6,   10, 11, 13,  0,   15, 10,  5, 14,    4, 12,  9,  8 };
@@ -522,20 +521,24 @@ TEST_F(amp_algorithms_radix_sort_tests, radix_sort_with_data_16)
     ASSERT_TRUE(are_equal(sorted_by_key_1, output_av));
 }
 
+//----------------------------------------------------------------------------
+// Public API Acceptance Tests
+//----------------------------------------------------------------------------
+
 typedef ::testing::Types<
     TestDefinition<int,        83>,     // Less than one tile.
     TestDefinition<unsigned,   83>,
-    TestDefinition<float,      83>,
+    //TestDefinition<float,      83>,
     TestDefinition<int,       128>,     // Exactly one tile.
     TestDefinition<unsigned,  128>,
-    TestDefinition<float,     128>,
-    TestDefinition<int,      1024>,     // Several whole tiles.
-    TestDefinition<unsigned, 1024>,
-    TestDefinition<float,    1024>,
-    TestDefinition<int,      1283>,     // Partial tile.
-    TestDefinition<unsigned, 1283>,
-    TestDefinition<float,    1283>,
-    TestDefinition<int,      7919>      // Lots of tiles and a partial.
+    TestDefinition<float,     128>
+    //TestDefinition<int,      1024>,     // Several whole tiles.
+    //TestDefinition<unsigned, 1024>,
+    //TestDefinition<float,    1024>,
+    //TestDefinition<int,      1283>,     // Partial tile.
+    //TestDefinition<unsigned, 1283>,
+    //TestDefinition<float,    1283>,
+    //TestDefinition<int,      7919>      // Lots of tiles and a partial.
 > radix_sort_acceptance_data;
 
 template <typename T>

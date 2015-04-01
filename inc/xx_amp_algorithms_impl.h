@@ -640,7 +640,7 @@ namespace amp_algorithms
                 const int keys_per_tile = (key_bit_width / tile_key_bit_width);
                 for (int k = (keys_per_tile * key_idx); k < (keys_per_tile * (key_idx + 1)); ++k)
                 {
-                    _details::radix_sort_tile_by_key<unsigned, tile_size, tile_key_bit_width>(tile_data, input_view.extent.size(), tidx, k);
+                    _details::radix_sort_tile_by_key<unsigned, tile_size, tile_key_bit_width>(tile_data, input_view.extent[0], tidx, k);
                 }
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
@@ -657,7 +657,12 @@ namespace amp_algorithms
 
                 //output_view[gidx] = dest_gidx;                                                                                            // Dump destination indices, dest_gidx
 
-                padded_write(output_view, dest_gidx, convert_from_uint<T>(tile_data[idx]));
+                if (gidx < input_view.extent[0])
+                {
+                    // TODO: Why do we need a padded write here? Surely dest_gidx should always be valid?
+                    padded_write(output_view, dest_gidx, convert_from_uint<T>(tile_data[idx]));
+                    //output_view[dest_gidx] = convert_from_uint<T>(tile_data[idx]);
+                }
             });
         }
 

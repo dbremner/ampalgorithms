@@ -60,7 +60,7 @@ $msbuild_exe = "$env:FrameworkDir$env:FrameworkVersion\msbuild.exe"
 $msbuild_options = "/p:WARNINGS_AS_ERRORS=true /nologo /target:build /verbosity:m /filelogger /consoleloggerparameters:verbosity=m"
 
 $test_exe = "amp_algorithms.exe"
-$test_options = "--gtest_shuffle --gtest_filter=*:-*radix_sort*:*_direct3d_* --verbose "
+$test_options = "--gtest_shuffle --verbose --gtest_filter=*:-*radix_sort_acceptance_tests*"
 
 $vsvers = @( "12" )
 $configs = @( "Debug", "Release" )
