@@ -125,14 +125,14 @@ TEST_F(amp_algorithms_scan_tests, details_scan_tile_exclusive_partial)
 TEST_F(amp_algorithms_scan_tests, exclusive_multi_tile)
 {
     std::vector<int> input(test_tile_size * 4);
-    //generate_data(input);
-    std::iota(begin(input), end(input), 1);
+    generate_data(input);
     concurrency::array_view<int, 1> input_vw(static_cast<int>(input.size()), input);
     std::vector<int> expected(input.size());
     scan_cpu_exclusive(cbegin(input), cend(input), begin(expected), std::plus<int>());
 
     scan<test_tile_size, scan_mode::exclusive>(input_vw, input_vw, amp_algorithms::plus<int>());
 
+    input_vw.synchronize();
     ASSERT_TRUE(are_equal(expected, input_vw));
 }
 

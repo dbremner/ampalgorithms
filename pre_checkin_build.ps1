@@ -58,14 +58,16 @@ $stopwatch = New-Object System.Diagnostics.Stopwatch
 
 $msbuild_exe = "$env:FrameworkDir$env:FrameworkVersion\msbuild.exe"
 $msbuild_options = "/p:WARNINGS_AS_ERRORS=true /nologo /target:build /verbosity:m /filelogger /consoleloggerparameters:verbosity=m"
-
 $test_exe = "amp_algorithms.exe"
-$test_options = "--gtest_shuffle --verbose --gtest_filter=*:-*radix_sort_acceptance_tests*"
+$test_options = "--gtest_repeat=1 --gtest_filter=*:-*radix_sort_acceptance_tests*" # --gtest_shuffle --gtest_throw_on_failure"
 
 $vsvers = @( "12" )
 $configs = @( "Debug", "Release" )
 $platforms = @( "x64", "Win32" )
-$test_devices = @( "gpu" )
+$test_devices = @( )
+$test_ver = "12"
+$test_plat = "Win32"
+$test_config = "Debug"
 
 ## Build output paths
 
@@ -75,22 +77,21 @@ $build_bin = "$build_dir/Bin"
 
 ## Process arguments and configure builds
 
-if ($args -contains "/ref")
-{
-    $test_devices = @( "ref" )
-    write-host "`nUnit tests will use REF accelerator." -fore yellow
-}
+if ($args -contains "/ref") { $test_devices += "ref" }
+if ($args -contains "/warp"){ $test_devices += "warp" }
+if ($args -contains "/gpu") { $test_devices += "gpu" }
+if ($args -contains "/all") { $test_devices = @( "ref", "warp", "gpu" ) }
+if ($test_devices.Count -eq 0) { $test_devices = @( "gpu" ) }
 
-if ($args -contains "/all")
-{
-    $test_devices = @( "ref", "warp", "gpu" )
-    write-host "`nUnit tests will use REF accelerator." -fore yellow
-}
+write-host ("`nUnit tests will use these accelerators: " + ($test_devices -join ", ").ToUpper()) -fore yellow
 
 if ($args -contains "/test")
 {
-    $builds = @( ( New-Object 'Tuple[string, string, string]'("12", "Release", "Win32") ) )
-    write-host "Test build: Building only Win32/Release." -fore yellow
+    if (-not (Test-Path "Bin\v${test_ver}0\$test_plat\$test_config\amp_algorithms.exe"))
+    {
+        $builds = @( ( New-Object 'Tuple[string, string, string]'($test_ver, $test_config, $test_plat) ) )
+        write-host "Test build: Building only Win32/Release." -fore yellow
+    }
 }
 else
 {
@@ -140,18 +141,21 @@ write-host "  Found Google Test 1.7 libraries OK."
 
 ## Clean tree...
 
-write-host "`n== Clean         ===============================================================" -fore yellow
-
-foreach ($p in @( $build_bin, $build_int ))
+if (-not ($args -contains "/test"))
 {
-    if (test-path $p)
-    { 
-        Remove-Item -Recurse -Force $p
-        write-host "  Cleaned:  $p"
-    }
-}
+    write-host "`n== Clean         ===============================================================" -fore yellow
 
-if ($args -contains "/clean") { exit }
+    foreach ($p in @( $build_bin, $build_int ))
+    {
+        if (test-path $p)
+        { 
+            Remove-Item -Recurse -Force $p
+            write-host "  Cleaned:  $p"
+        }
+    }
+
+    if ($args -contains "/clean") { exit }
+}
 
 ## Build all targets...
 
@@ -208,23 +212,25 @@ else
 
     write-host "`n== Run Tests     ===============================================================" -fore yellow
 
+    $ver = $test_ver
+    $plat = $test_plat
+    $conf = $test_config
+
     $stopwatch.Reset();
     $stopwatch.Start();
 
-    foreach ($ver in $vsvers)
+    if ($test_devices.Count -eq 1)
     {
-        if ($test_devices.Count -eq 1)
-        {
-            $dev = $test_devices[0]
-            write-host "Running tests for Visual Studio ${ver}.0 ( $plat | $conf ) build on device" $dev.ToUpper() "..." -fore yellow
-            Invoke-Expression "$build_bin/v${ver}0/$plat/$conf/$test_exe --gtest_color=yes $test_options --device $dev"
-            continue
-        }
+        $dev = $test_devices[0]
+        write-host "Running tests for Visual Studio ${ver}.0 ( $plat | $conf ) build on device" $dev.ToUpper() "..." -fore yellow
+        Invoke-Expression "$build_bin/v${ver}0/$plat/$conf/$test_exe --gtest_color=yes $test_options --device $dev"
+    }
+    else
+    {
         foreach ($dev in $test_devices)
         {
             write-host "Running tests for Visual Studio ${ver}.0 ( $plat | $conf ) build on device" $dev.ToUpper() "..." -fore yellow
-
-            Invoke-Expression "$build_bin/v${ver}0/$plat/$conf/$test_exe --gtest_color=no $test_options --device $dev" > $build_int\test_output_$dev.log            
+            Invoke-Expression "$build_bin/v${ver}0/$plat/$conf/$test_exe --gtest_color=no $test_options --device $dev" > $build_int\test_output_$dev.log
             $line_count = 0
             $color = "green"
             Get-Content $build_int\test_output_$dev.log |
@@ -233,7 +239,6 @@ else
               %{ if ( $line_count -gt 1 ) { write-host "  $_" -fore $color } }
         }
     }
-
     $stopwatch.Stop();
     $elapsed = $stopwatch.Elapsed  
     $TestsElapsedTime = [System.String]::Format("{0:00}m {1:00}s", $elapsed.Minutes, $elapsed.Seconds);

@@ -118,11 +118,12 @@ TYPED_TEST_P(amp_reduce_acceptance_tests, test)
 
     std::vector<T> input(size);
     generate_data(input);
+    auto expected = std::accumulate(cbegin(input), cend(input), T(), std::plus<T>());
     array_view<const T> input_vw(size, input);
 
     T r = amp_algorithms::reduce(input_vw, amp_algorithms::plus<T>());
 
-    ASSERT_EQ(std::accumulate(cbegin(input), cend(input), T(), std::plus<T>()), r);
+    ASSERT_EQ(expected, r);
 }
 
 REGISTER_TYPED_TEST_CASE_P(amp_reduce_acceptance_tests, test);

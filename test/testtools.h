@@ -200,33 +200,20 @@ namespace testtools
     {
         // Return quickly if floating-point representations are exactly the same,
         // additionally guard against division by zero when, both v1 and v2 are equal to 0.0f
-        if (v1 == v2) 
-        {
-            return true;
-        }
-        else if (fabs(v1 - v2) < maxAbsoluteDiff) // absolute comparison
+        if ((v1 == v2) || (fabs(v1 - v2) < maxAbsoluteDiff))
         {
             return true;
         }
 
-        T diff = 0.0f;
-
-        if (fabs(v1) > fabs(v2))
-        {
-            diff = fabs(v1 - v2) / fabs(v1);
-        }
-        else
-        {
-            diff = fabs(v2 - v1) / fabs(v2);
-        }
+        T diff = (fabs(v1) > fabs(v2)) ? fabs(v1 - v2) / fabs(v1) : fabs(v2 - v1) / fabs(v2);
 
         return (diff < maxRelativeDiff); // relative comparison
     }
 
     // Compare two floats and return true if they are close to each other.
     inline bool compare(float v1, float v2, 
-        const float maxAbsoluteDiff = 0.000005f,
-        const float maxRelativeDiff = 0.001f)
+        const float maxAbsoluteDiff = 0.00005f,
+        const float maxRelativeDiff = 0.0025f)
     {
         return are_almost_equal(v1, v2, maxAbsoluteDiff, maxRelativeDiff);
     }
@@ -237,11 +224,7 @@ namespace testtools
         // This function is constructed in a way that requires T
         // only to define operator< to check for equality
 
-        if ((v1 < v2) || (v2 < v1))
-        {
-            return false;
-        }
-        return true;
+        return !((v1 < v2) || (v2 < v1));
     }
 
     template<typename T>
