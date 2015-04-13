@@ -1,16 +1,16 @@
 /*----------------------------------------------------------------------------
 * Copyright (c) Microsoft Corp.
 *
-* Licensed under the Apache License, Version 2.0 (the "License"); you may not 
-* use this file except in compliance with the License.  You may obtain a copy 
-* of the License at http://www.apache.org/licenses/LICENSE-2.0  
+* Licensed under the Apache License, Version 2.0 (the "License"); you may not
+* use this file except in compliance with the License.  You may obtain a copy
+* of the License at http://www.apache.org/licenses/LICENSE-2.0
 * 
 * THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED 
-* WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE, 
-* MERCHANTABLITY OR NON-INFRINGEMENT. 
+* KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+* WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+* MERCHANTABLITY OR NON-INFRINGEMENT.
 *
-* See the Apache Version 2.0 License for specific language governing 
+* See the Apache Version 2.0 License for specific language governing
 * permissions and limitations under the License.
 *---------------------------------------------------------------------------
 * 
@@ -445,24 +445,27 @@ namespace amp_algorithms
     }
 
     template <typename InputIndexableView>
-    inline typename InputIndexableView::value_type padded_read(const InputIndexableView& arr, const int idx) restrict(cpu, amp)
+    inline typename InputIndexableView::value_type padded_read(const InputIndexableView& arr, const int gidx) restrict(cpu, amp)
     {
-        return padded_read<InputIndexableView, 1>(arr, concurrency::index<1>(idx));
+        return padded_read<InputIndexableView, 1>(arr, concurrency::index<1>(gidx));
     }
 
     template <typename InputIndexableView, int N>
-    inline void padded_write(InputIndexableView& arr, const concurrency::index<N> idx, const typename InputIndexableView::value_type &value) restrict(cpu, amp)
+    inline void padded_write(InputIndexableView& arr, const concurrency::index<N> gidx, const typename InputIndexableView::value_type &value) restrict(cpu, amp)
     {
-        if (arr.extent.contains(idx))
+        if (gidx[0] < arr.extent[0])
         {
-            arr[idx] = value;
+            arr[gidx] = value;
         }
     }
 
     template <typename InputIndexableView>
-    inline void padded_write(InputIndexableView& arr, const int idx, const typename InputIndexableView::value_type &value) restrict(cpu, amp)
+    inline void padded_write(InputIndexableView& arr, const int gidx, const typename InputIndexableView::value_type &value) restrict(cpu, amp)
     {
-        padded_write<InputIndexableView, 1>(arr, concurrency::index<1>(idx), value);
+        if (gidx < arr.extent[0])
+        {
+            arr[gidx] = value;
+        }
     }
 
     // TODO: Should this return an extent? Better name.

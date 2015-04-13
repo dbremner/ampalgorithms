@@ -59,7 +59,7 @@ $stopwatch = New-Object System.Diagnostics.Stopwatch
 $msbuild_exe = "$env:FrameworkDir$env:FrameworkVersion\msbuild.exe"
 $msbuild_options = "/p:WARNINGS_AS_ERRORS=true /nologo /target:build /verbosity:m /filelogger /consoleloggerparameters:verbosity=m"
 $test_exe = "amp_algorithms.exe"
-$test_options = "--gtest_repeat=1 --gtest_filter=*:-*radix_sort_acceptance_tests*" # --gtest_shuffle --gtest_throw_on_failure"
+$test_options = "--gtest_repeat=1 --gtest_shuffle --gtest_throw_on_failure"
 
 $vsvers = @( "12" )
 $configs = @( "Debug", "Release" )
@@ -85,32 +85,7 @@ if ($test_devices.Count -eq 0) { $test_devices = @( "gpu" ) }
 
 write-host ("`nUnit tests will use these accelerators: " + ($test_devices -join ", ").ToUpper()) -fore yellow
 
-if ($args -contains "/test")
-{
-    if (-not (Test-Path "Bin\v${test_ver}0\$test_plat\$test_config\amp_algorithms.exe"))
-    {
-        $builds = @( ( New-Object 'Tuple[string, string, string]'($test_ver, $test_config, $test_plat) ) )
-        write-host "Test build: Building only Win32/Release." -fore yellow
-    }
-}
-else
-{
-    $builds = @()
-    foreach ($ver in $vsvers)
-    {
-        foreach ($conf in $configs) 
-        {
-            foreach ($plat in $platforms)
-            {
-                $builds += New-Object 'Tuple[string, string, string]'($ver, $conf, $plat)
-            }
-        }
-    }
-}
-
-## Run build
-
-$stopwatch.Start()
+## Check dependencies and configurations
 
 write-host "`n== Check Config  ===============================================================" -fore yellow
 
@@ -139,9 +114,23 @@ if (-not $gtest_ok)
 }
 write-host "  Found Google Test 1.7 libraries OK."
 
-## Clean tree...
+## Create list of builds
 
-if (-not ($args -contains "/test"))
+$builds = @()
+foreach ($ver in $vsvers)
+{
+    foreach ($conf in $configs) 
+    {
+        foreach ($plat in $platforms)
+        {
+            $builds += New-Object 'Tuple[string, string, string]'($ver, $conf, $plat)
+        }
+    }
+}
+
+## Clean tree... Don't clean if running tests
+
+if (($args -contains "/clean") -or (-not ($args -contains "/test")))
 {
     write-host "`n== Clean         ===============================================================" -fore yellow
 
@@ -153,9 +142,17 @@ if (-not ($args -contains "/test"))
             write-host "  Cleaned:  $p"
         }
     }
-
-    if ($args -contains "/clean") { exit }
 }
+
+if ($args -contains "/test")
+{
+    $builds = @( ( New-Object 'Tuple[string, string, string]'($test_ver, $test_config, $test_plat) ) )
+    write-host "Test build: Building only Win32/Release." -fore yellow
+}
+
+## Run build
+
+$stopwatch.Start()
 
 ## Build all targets...
 

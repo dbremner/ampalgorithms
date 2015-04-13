@@ -72,25 +72,25 @@ namespace amp_stl_algorithms
         concurrency::tiled_extent<tile_size> compute_domain = concurrency::extent<1>(element_count).tile<tile_size>().pad();
         concurrency::parallel_for_each(compute_domain, [=](concurrency::tiled_index<tile_size> tidx) restrict(amp)
         {
-            const int idx = tidx.global[0];
+            const int gidx = tidx.global[0];
             const int i = tidx.local[0];
             tile_static T local_buffer[tile_size + 1];
 
-            local_buffer[i] = padded_read(input_view, idx - 1);
+            local_buffer[i] = padded_read(input_view, gidx - 1);
             if (i == (tile_size - 1))
             {
-                local_buffer[tile_size] = padded_read(input_view, idx);
+                local_buffer[tile_size] = padded_read(input_view, gidx);
             }
 
             tidx.barrier.wait_with_all_memory_fence();
              
-            if (idx == 0)
+            if (gidx == 0)
             {
                 output_view[0] = input_view[0];
             }
             else
             {
-                padded_write(output_view, idx, p(local_buffer[i + 1], local_buffer[i]));
+                padded_write(output_view, gidx, p(local_buffer[i + 1], local_buffer[i]));
             }
         });
 
