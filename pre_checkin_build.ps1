@@ -75,11 +75,11 @@ $build_dir = split-path -parent $MyInvocation.MyCommand.Definition
 $build_int = "$build_dir/Intermediate"
 $build_bin = "$build_dir/Bin"
 
-## Process arguments and configure builds
+## Process arguments and configure builds. Run accelerators in order; fasters to slowest.
 
-if ($args -contains "/ref") { $test_devices += "ref" }
-if ($args -contains "/warp"){ $test_devices += "warp" }
 if ($args -contains "/gpu") { $test_devices += "gpu" }
+if ($args -contains "/warp"){ $test_devices += "warp" }
+if ($args -contains "/ref") { $test_devices += "ref" }
 if ($args -contains "/all") { $test_devices = @( "ref", "warp", "gpu" ) }
 if ($test_devices.Count -eq 0) { $test_devices = @( "gpu" ) }
 

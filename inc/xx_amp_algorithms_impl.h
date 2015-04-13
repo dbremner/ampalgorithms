@@ -222,7 +222,7 @@ namespace amp_algorithms
 
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
-                // this variable is used to test if we are on the edge of data within tile
+                // this variable is used to test if we are on the edge of data within the tile
                 int partial_data_length = tile_partial_data_size(input_view, tidx);
                 // reduce all values in this tile
                 _details::reduce_tile(&smem, tidx, binary_op, partial_data_length);
@@ -262,8 +262,11 @@ namespace amp_algorithms
 
         static const int scan_default_tile_size = 512;
 
+        // TODO: right now this function assumes that all elements of the tile are valid (no partial tiles). Calling code 
+        // typically sets any unused values to 0. I think this is INCORRECT when the binary operator is not add or subtract.
+
         template <int TileSize, typename _BinaryOp, typename T>
-        inline T scan_tile_exclusive(T* const tile_data, concurrency::tiled_index<TileSize> tidx, const _BinaryOp& op, const int partial_data_length) restrict(amp)
+        inline T scan_tile_exclusive(T* const tile_data, concurrency::tiled_index<TileSize> tidx, const _BinaryOp& op) restrict(amp)
         {
             const int lidx = tidx.local[0];
  
@@ -275,7 +278,7 @@ namespace amp_algorithms
                 }
                 tidx.barrier.wait_with_tile_static_memory_fence();
             }
-
+            
             if (lidx == 0)
             {
                 tile_data[TileSize - 1] = 0;
@@ -301,8 +304,19 @@ namespace amp_algorithms
             typedef InputIndexableView::value_type T;
 
             const auto compute_domain = output_view.extent.tile<TileSize>().pad();
-            concurrency::array<T, 1> tile_results(compute_domain / TileSize, accl_view);
-            concurrency::array_view<T, 1> tile_results_vw(tile_results);
+            concurrency::array<T, 1> tile_sums(compute_domain / TileSize, accl_view);
+            concurrency::array_view<T, 1> tile_sums_vw(tile_sums);
+
+            // Warp A: Run this on Warp accelerators to ensure that the tile_results_vw to contain the correct values.
+            // Equivalent to: tile_sums_vw[tidx.tile[0]] = current_value;
+
+            if (accl_view.accelerator.device_path == accelerator::direct3d_warp)
+            {
+                concurrency::parallel_for_each(accl_view, tile_sums_vw.extent, [=](concurrency::index<1> idx) restrict(amp)
+                {
+                    tile_sums_vw[idx] = (_Mode == scan_mode::inclusive) ? T() : input_view[last_index_in_tile<TileSize>(idx[0], input_view.extent[0])];
+                });
+            }
 
             // 1 & 2. Scan all tiles and store results in tile_results.
 
@@ -317,24 +331,37 @@ namespace amp_algorithms
                 const T current_value = tile_data[lidx];
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
-                auto val = _details::scan_tile_exclusive<TileSize>(tile_data, tidx, amp_algorithms::plus<T>(), partial_data_length);
+                auto val = _details::scan_tile_exclusive<TileSize>(tile_data, tidx, amp_algorithms::plus<T>());
                 if (_Mode == scan_mode::inclusive)
                 {
                     tile_data[lidx] += current_value;
                 }
 
+                // This does not execute correctly on Warp accelerators for some reason. Steps Warp A & B do this instead.
                 if (lidx == (TileSize - 1))
                 {
-                    tile_results_vw[tidx.tile[0]] = val + current_value;
+                    tile_sums_vw[tidx.tile[0]] = val + current_value;
                 }
+
                 padded_write(output_view, gidx, tile_data[lidx]);
             });
 
-            // 3. Scan tile results.
+            // Warp B: Run this on Warp accelerators to ensure that the tile_results_vw to contain the correct values.
+            // Equivalent to: tile_sums_vw[tidx.tile[0]] += val;
 
-            if (tile_results_vw.extent[0] > TileSize)
+            if (accl_view.accelerator.device_path == accelerator::direct3d_warp)
             {
-                scan<TileSize, amp_algorithms::scan_mode::exclusive>(accl_view, tile_results_vw, tile_results_vw, op);
+                concurrency::parallel_for_each(accl_view, tile_sums_vw.extent, [=](concurrency::index<1> idx) restrict(amp)
+                {
+                    tile_sums_vw[idx] += output_view[last_index_in_tile<TileSize>(idx[0], output_view.extent[0])];
+                });
+            }
+
+            // 3. Scan tile results.
+            
+            if (tile_sums_vw.extent[0] > TileSize)
+            {
+                scan<TileSize, amp_algorithms::scan_mode::exclusive>(accl_view, tile_sums_vw, tile_sums_vw, op);
             }
             else
             {
@@ -342,15 +369,16 @@ namespace amp_algorithms
                 {
                     const int gidx = tidx.global[0];
                     const int lidx = tidx.local[0];
-                    const int partial_data_length = tile_partial_data_size(tile_results_vw, tidx);
+                    const int partial_data_length = tile_partial_data_size(tile_sums_vw, tidx);
 
                     tile_static T tile_data[TileSize];
-                    tile_data[lidx] = tile_results_vw[gidx];
+                    tile_data[lidx] = (lidx >= partial_data_length) ? 0 : tile_sums_vw[gidx];
+
                     tidx.barrier.wait_with_tile_static_memory_fence();
 
-                    _details::scan_tile_exclusive<TileSize>(tile_data, tidx, amp_algorithms::plus<T>(), partial_data_length);
+                    _details::scan_tile_exclusive<TileSize>(tile_data, tidx, amp_algorithms::plus<T>());
 
-                    tile_results_vw[gidx] = tile_data[lidx];
+                    tile_sums_vw[gidx] = tile_data[lidx];
                     tidx.barrier.wait_with_tile_static_memory_fence();
                 });
             }
@@ -363,9 +391,17 @@ namespace amp_algorithms
 
                 if (gidx < output_view.extent[0])
                 {
-                    output_view[gidx] += tile_results_vw[tidx.tile[0]];
+                    output_view[gidx] += tile_sums_vw[tidx.tile[0]];
                 }
             });
+        }
+
+        // Return the value of the last element in tile tidx.
+
+        template <int TileSize>
+        inline int last_index_in_tile(const int tidx, const int extent) restrict(amp)
+        {
+            return amp_algorithms::min<int>()(((tidx + 1) * TileSize) - 1, extent - 1);
         }
 
         // This takes an exclusive scan result and calculates the equivalent of a segmented scan at element i for a regular segment_width.
@@ -507,7 +543,7 @@ namespace amp_algorithms
             }
             tidx.barrier.wait_with_tile_static_memory_fence();
 
-            _details::scan_tile_exclusive<tile_size>(tile_radix_values, tidx, amp_algorithms::plus<unsigned long>(), tile_size);
+            _details::scan_tile_exclusive<tile_size>(tile_radix_values, tidx, amp_algorithms::plus<unsigned long>());
 
             // Shuffle data into sorted order.
 
@@ -586,7 +622,7 @@ namespace amp_algorithms
                     tile_histograms[(idx * tile_count) + tlx] = per_thread_rdx_histograms[0][idx];
                 }
                 tidx.barrier.wait_with_tile_static_memory_fence();
-                _details::scan_tile_exclusive<tile_size>(per_thread_rdx_histograms[0], tidx, amp_algorithms::plus<unsigned>(), tile_size);
+                _details::scan_tile_exclusive<tile_size>(per_thread_rdx_histograms[0], tidx, amp_algorithms::plus<unsigned>());
 
                 if (idx < bin_count)
                 {
@@ -607,7 +643,7 @@ namespace amp_algorithms
                 scan_data[idx] = (idx < bin_count) ? global_rdx_offsets[idx] : 0;
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
-                _details::scan_tile_exclusive<tile_size>(scan_data, tidx, amp_algorithms::plus<unsigned>(), tile_size);
+                _details::scan_tile_exclusive<tile_size>(scan_data, tidx, amp_algorithms::plus<unsigned>());
 
                 if (gidx < bin_count)
                 {
@@ -659,9 +695,7 @@ namespace amp_algorithms
 
                 if (gidx < input_view.extent[0])
                 {
-                    // TODO: Why do we need a padded write here? Surely dest_gidx should always be valid?
-                    padded_write(output_view, dest_gidx, convert_from_uint<T>(tile_data[idx]));
-                    //output_view[dest_gidx] = convert_from_uint<T>(tile_data[idx]);
+                    output_view[dest_gidx] = convert_from_uint<T>(tile_data[idx]);
                 }
             });
         }

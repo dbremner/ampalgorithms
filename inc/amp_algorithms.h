@@ -468,7 +468,7 @@ namespace amp_algorithms
         }
     }
 
-    // TODO: Should this return an extent? Better name.
+    // TODO: Should this return an extent? Better name. o we even need a specific function for this or can we use extent.contains() instead?
     template <int N, typename InputIndexableView>
     inline int tile_partial_data_size(const InputIndexableView& arr, tiled_index<N> tidx) restrict(amp)
     {
