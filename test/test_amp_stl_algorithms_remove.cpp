@@ -22,8 +22,11 @@
 #include "stdafx.h"
 #include <gtest/gtest.h>
 
+#include <amp_algorithms.h>
 #include <amp_stl_algorithms.h>
 #include "testtools.h"
+
+#include <functional>
 
 using namespace concurrency;
 using namespace amp_stl_algorithms;
@@ -60,20 +63,25 @@ class remove_if_tests : public stl_algorithms_testbase<13>, public ::testing::Te
 
 TEST_P(remove_if_tests, test)
 {
-    std::copy(begin(GetParam()), end(GetParam()), begin(expected));
-    auto expected_iter = std::remove_if(begin(expected), end(expected), greater_than<int>());
-    auto expected_size = std::distance(begin(expected), expected_iter);
-    std::copy(cbegin(GetParam()), cend(GetParam()), begin(input));
+	using namespace amp_stl_algorithms;
 
-    auto iter = amp_stl_algorithms::remove_if(begin(input_av), end(input_av), greater_than<int>());
+    std::copy(std::cbegin(GetParam()), std::cend(GetParam()), std::begin(expected));
+	std::copy(cbegin(GetParam()), cend(GetParam()), begin(input_av));
 
-    ASSERT_EQ(std::distance(begin(input_av), iter), std::distance(begin(expected), expected_iter));
-    ASSERT_TRUE(are_equal(expected, input_av, expected_size));
+	const auto p = [](auto&& x) restrict(cpu, amp) { return 0 < forward<decltype(x)>(x); };
+
+	const auto result_expect = std::remove_if(std::begin(expected), std::end(expected), p);
+    const auto result_amp = amp_stl_algorithms::remove_if(begin(input_av), end(input_av), p);
+
+    ASSERT_EQ(std::distance(std::begin(expected), result_expect),
+ 			  std::distance(begin(input_av), result_amp));
+    ASSERT_TRUE(std::equal(std::begin(expected), result_expect, cbegin(input_av)));
 }
 
 INSTANTIATE_TEST_CASE_P(stl_algorithms_tests, remove_if_tests, ::testing::ValuesIn(remove_if_data));
 
-class remove_copy_tests : public stl_algorithms_testbase<13>, public ::testing::TestWithParam <std::array<int, 13>> {};
+class remove_copy_tests : public stl_algorithms_testbase<13>,
+						  public ::testing::TestWithParam <std::array<int, 13>> {};
 
 TEST_P(remove_copy_tests, test)
 {

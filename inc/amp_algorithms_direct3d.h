@@ -22,11 +22,15 @@
 // TODO: Here the functions are defined here. In the STL implementation they are defined in the main header file
 // and just declared in the public one. Is this by design?
 #pragma once
+#ifndef _AMP_ALGORITHMS_DIRECT3D_H_BUMPTZI
+#define _AMP_ALGORITHMS_DIRECT3D_H_BUMPTZI
+
+#include <amp_indexable_view.h>
+#include <xx_amp_algorithms_direct3d_impl.h>
 
 #include <amp.h>
-
-#include <xx_amp_algorithms_direct3d_impl.h>
-#include <amp_indexable_view.h>
+#include <functional>
+#include <type_traits>
 
 namespace amp_algorithms
 {
@@ -44,9 +48,9 @@ namespace amp_algorithms
             scan() = delete;
             ~scan() = default;
             scan(const scan&) = delete;
-            //scan(scan&&) = default;
+            scan(scan&&) = default;
             scan& operator=(const scan&) = delete;
-            //scan& operator=(scan&&) = default;
+            scan& operator=(scan&&) = default;
 #endif
             // Constructs scan object, this constructor provides ability to define max_scan_count for multiscan
             scan(unsigned int max_scan_size, unsigned int max_scan_count, const concurrency::accelerator_view &target_accel_view = concurrency::accelerator().default_view) : m_scan_accelerator_view(target_accel_view)
@@ -54,7 +58,7 @@ namespace amp_algorithms
                 initialize_scan(max_scan_size, max_scan_count);
             }
 
-            // Constructs scan object 
+            // Constructs scan object
             scan(unsigned int max_scan_size, const concurrency::accelerator_view &target_accel_view = concurrency::accelerator().default_view) : m_scan_accelerator_view(target_accel_view)
             {
                 initialize_scan(max_scan_size, 1);
@@ -207,4 +211,5 @@ namespace amp_algorithms
             scan_direction m_selected_scan_direction;
         };
     }
-}
+}	   // namespace amp_algorithms
+#endif // _AMP_ALGORITHMS_DIRECT3D_H_BUMPTZI

@@ -35,9 +35,9 @@ TEST_F(stl_algorithms_tests, swap_cpu)
 {
     int a = 1;
     int b = 2;
-    
+
     amp_stl_algorithms::swap(a, b);
-    
+
     ASSERT_EQ(2, a);
     ASSERT_EQ(1, b);
 }
@@ -47,12 +47,11 @@ TEST_F(stl_algorithms_tests, swap_amp)
     std::vector<int> vec(2);
     std::iota(begin(vec), end(vec), 1);
     array_view<int> av(2, vec);
-    
-    parallel_for_each(concurrency::extent<1>(1), [=](concurrency::index<1> idx) restrict(amp)
-    {
+
+    parallel_for_each(concurrency::extent<1>(1), [=](auto&& idx) restrict(amp) {
         amp_stl_algorithms::swap(av[idx], av[idx + 1]);
     });
-    
+
     ASSERT_EQ(2, av[0]);
     ASSERT_EQ(1, av[1]);
 }
@@ -75,37 +74,29 @@ TEST_F(stl_algorithms_tests, swap_n_cpu)
 
 TEST_F(stl_algorithms_tests, swap_n_amp)
 {
-    std::array<int, 10> exp = { 6, 7, 8, 9, 10, 1, 2, 3, 4, 5 };
+    static constexpr std::array<int, 10> exp = { 6, 7, 8, 9, 10, 1, 2, 3, 4, 5 };
 
     std::vector<int> vec(10);
     std::iota(begin(vec), end(vec), 1);
     array_view<int> av(10, vec);
 
-    parallel_for_each(concurrency::tiled_extent<5>(concurrency::extent<1>(5)),
-        [=](concurrency::tiled_index<5> tidx) restrict(amp)
-    {
+    parallel_for_each(concurrency::extent<1>(5).tile<5>(), [=](auto&& tidx) restrict(amp) {
         tile_static int arr1[5];
         tile_static int arr2[5];
 
-        int idx = tidx.global[0];
-        int i = tidx.local[0];
+        arr1[tidx.local[0]] = av[tidx.local[0]];
+        arr2[tidx.local[0]] = av[tidx.local[0] + 5];
 
-        arr1[i] = av[i];
-        arr2[i] = av[i + 5];
+        tidx.barrier.wait_with_tile_static_memory_fence();
 
-        tidx.barrier.wait();
-
-        if (i == 0)
-        {
-            amp_stl_algorithms::swap<int, 5>(arr1, arr2);
+        if (tidx.tile_origin == tidx.global) {
+            amp_stl_algorithms::swap(arr1, arr2);
         }
 
-        tidx.barrier.wait();
+        tidx.barrier.wait_with_tile_static_memory_fence();
 
-        av[i] = arr1[i];
-        av[i + 5] = arr2[i];
-
-        tidx.barrier.wait();
+        av[tidx.local[0]] = arr1[tidx.local[0]];
+        av[tidx.local[0] + 5] = arr2[tidx.local[0]];
     });
     ASSERT_TRUE(are_equal(exp, av));
 }
@@ -113,10 +104,13 @@ TEST_F(stl_algorithms_tests, swap_n_amp)
 TEST_F(stl_algorithms_tests, swap_ranges)
 {
     auto block_size = size / 6;
-    std::copy(cbegin(input), cend(input), begin(expected));
-    std::swap_ranges(begin(expected) + block_size, begin(expected) + block_size * 2, begin(expected) + block_size * 4);
+    std::copy(std::cbegin(input), std::cend(input), std::begin(expected));
+    std::swap_ranges(std::begin(expected) + block_size, std::begin(expected) + block_size * 2,
+					 std::begin(expected) + block_size * 4);
 
-    auto expected_end = amp_stl_algorithms::swap_ranges(begin(input_av) + block_size, begin(input_av) + block_size * 2, begin(input_av) + block_size * 4);
+    auto expected_end = amp_stl_algorithms::swap_ranges(amp_stl_algorithms::begin(input_av) + block_size,
+														amp_stl_algorithms::begin(input_av) + block_size * 2,
+														amp_stl_algorithms::begin(input_av) + block_size * 4);
 
     ASSERT_TRUE(are_equal(expected, input_av));
 }
@@ -127,8 +121,7 @@ TEST_F(stl_algorithms_tests, swap_iter)
     std::iota(begin(vec), end(vec), 1);
     array_view<int> av(2, vec);
 
-    parallel_for_each(concurrency::extent<1>(1), [=](concurrency::index<1>) restrict(amp)
-    {
+    parallel_for_each(concurrency::extent<1>(1), [=](auto&&) restrict(amp) {
         amp_stl_algorithms::iter_swap(begin(av), begin(av) + 1);
     });
 

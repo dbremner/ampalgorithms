@@ -21,41 +21,16 @@
 *---------------------------------------------------------------------------*/
 
 #pragma once
+#ifndef _XX_AMP_ALGORITHMS_IMPL_H_BUMPTZI
+#define _XX_AMP_ALGORITHMS_IMPL_H_BUMPTZI
+
+#include "amp_indexable_view.h"
+#include "xx_amp_algorithms_impl_inl.h"
 
 #include <amp.h>
-#include <assert.h>
+#include <cassert>
 #include <sstream>
-
-#include <xx_amp_algorithms_impl_inl.h>
-#include <amp_indexable_view.h>
-
-//----------------------------------------------------------------------------
-// Type functions (and related machinery)
-//----------------------------------------------------------------------------
-
-template<typename O, typename... T, typename = decltype(std::declval<O>()(std::declval<T>()...))>
-std::true_type has_op(O&&, T&&...);
-std::false_type has_op(...);
-
-template<typename> struct has {};
-template<typename O, typename... T> struct has<O(T...)> : decltype(has_op(std::declval<O>(), std::declval<T>()...)) {};
-
-template<typename T> using Pointer = T*;
-
-template<typename...> struct voider { using type = void; };
-template<typename... Ts> using void_t = typename voider<Ts...>::type;
-template<typename, typename = void> struct has_value_type : std::false_type {};
-template<typename T> struct has_value_type<T, void_t<typename T::value_type>> : std::true_type{};
-
-template<typename T, typename E = void> struct Val_t;
-template<typename T> struct Val_t<T, std::enable_if_t<!has_value_type<T>::value>> { using type = std::remove_pointer_t<std::remove_reference_t<T>>; };
-template<typename T> struct Val_t<T, std::enable_if_t<has_value_type<T>::value>> { using type = typename T::value_type; };
-template<typename T> using Value_type = typename Val_t<T>::type;
-
-template<typename I> using Difference_type = typename std::iterator_traits<I>::difference_type;
-template<typename I> using Iterator_category = typename std::iterator_traits<I>::iterator_category;
-
-template<typename Op, typename... Args> using Codomain = std::result_of_t<Op(Args...)>;
+#include <type_traits>
 
 namespace amp_algorithms
 {
@@ -77,7 +52,7 @@ namespace amp_algorithms
 
     namespace _details
     {
-        inline concurrency::accelerator_view auto_select_target()
+        inline decltype(auto) auto_select_target()
         {
 #if _MSC_VER < 1800
             static concurrency::accelerator_view auto_select_accelerator_view = concurrency::accelerator(concurrency::accelerator::cpu_accelerator).create_view();
@@ -92,7 +67,7 @@ namespace amp_algorithms
         //----------------------------------------------------------------------------
 
         template <int _Rank, typename _Kernel_type>
-        void parallel_for_each(const concurrency::accelerator_view &_Accl_view, const concurrency::extent<_Rank>& _Compute_domain, _Kernel_type&& _Kernel)
+        inline void parallel_for_each(const concurrency::accelerator_view &_Accl_view, const concurrency::extent<_Rank>& _Compute_domain, _Kernel_type&& _Kernel)
         {
 #if _MSC_VER < 1800
             _Host_Scheduling_info _SchedulingInfo = { NULL };
@@ -107,51 +82,18 @@ namespace amp_algorithms
 #endif
         }
 
-        template <int _Dim0, int _Dim1, int _Dim2, typename _Kernel_type>
-        void parallel_for_each(const concurrency::accelerator_view &_Accl_view, const concurrency::tiled_extent<_Dim0, _Dim1, _Dim2>& _Compute_domain, _Kernel_type&& _Kernel)
+        template <typename _Kernel_type, int... _Dims>
+        inline void parallel_for_each(const concurrency::accelerator_view &_Accl_view, const concurrency::tiled_extent<_Dims...>& _Compute_domain, _Kernel_type&& _Kernel)
         {
 #if _MSC_VER < 1800
             _Host_Scheduling_info _SchedulingInfo = { NULL };
-            if (_Accl_view != _details::auto_select_target())
-            {
+            if (_Accl_view != _details::auto_select_target()) {
                 _SchedulingInfo._M_accelerator_view = concurrency::details::_Get_accelerator_view_impl_ptr(_Accl_view);
             }
 
             concurrency::details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
 #else
-            concurrency::parallel_for_each(_Accl_view, _Compute_domain, std::forward<_Kernel_type>(_Kernel));
-#endif
-        }
-
-        template <int _Dim0, int _Dim1, typename _Kernel_type>
-        void parallel_for_each(const concurrency::accelerator_view &_Accl_view, const concurrency::tiled_extent<_Dim0, _Dim1>& _Compute_domain, _Kernel_type&& _Kernel)
-        {
-#if _MSC_VER < 1800
-            _Host_Scheduling_info _SchedulingInfo = { NULL };
-            if (_Accl_view != _details::auto_select_target())
-            {
-                _SchedulingInfo._M_accelerator_view = concurrency::details::_Get_accelerator_view_impl_ptr(_Accl_view);
-            }
-
-            concurrency::details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
-#else
-            concurrency::parallel_for_each(_Accl_view, _Compute_domain, std::forward<_Kernel_type>(_Kernel));
-#endif
-        }
-
-        template <int _Dim0, typename _Kernel_type>
-        void parallel_for_each(const concurrency::accelerator_view &_Accl_view, const concurrency::tiled_extent<_Dim0>& _Compute_domain, _Kernel_type&& _Kernel)
-        {
-#if _MSC_VER < 1800
-            _Host_Scheduling_info _SchedulingInfo = { NULL };
-            if (_Accl_view != _details::auto_select_target())
-            {
-                _SchedulingInfo._M_accelerator_view = concurrency::details::_Get_accelerator_view_impl_ptr(_Accl_view);
-            }
-
-            concurrency::details::_Parallel_for_each(&_SchedulingInfo, _Compute_domain, _Kernel);
-#else
-            concurrency::parallel_for_each(_Accl_view, _Compute_domain, std::forward<_Kernel_type>(_Kernel));
+			concurrency::parallel_for_each(_Accl_view, _Compute_domain, std::forward<_Kernel_type>(_Kernel));
 #endif
         }
 
@@ -166,64 +108,46 @@ namespace amp_algorithms
         // reduced is same as the tile size and if not what is the length of valid data in "mem".
 
         template <int tile_size, typename functor, typename T>
-        T reduce_tile(T* const mem, const concurrency::tiled_index<tile_size>& tidx, functor&& op, int partial_data_length) restrict(amp)
+        inline T reduce_tile(T* const mem, const concurrency::tiled_index<tile_size>& tidx, functor op, int partial_data_length) restrict(amp)
         {
-            const concurrency::array_view<T> m(amp_stl_algorithms::min(tile_size, partial_data_length), mem);
-            // unrolled for performance
-            static_for<1024u, 0u, Inc::div, 2u>()([=](auto&& off) {
-                if (off < m.extent.size()) {
-                    if ((m.extent - off).contains(tidx.local)) {
-						m[0] = op(m[0], m[off]);
-					}
+  			const int lidx = tidx.local[0];
 
-                    tidx.barrier.wait_with_tile_static_memory_fence();
-                }
-            });
-			return m[0];
-        }
+			if (partial_data_length < tile_size)
+			{
+				// unrolled for performance
+				if (partial_data_length > 512) { if (lidx < (partial_data_length - 512)) { mem[0] = op(mem[0], mem[512]); } tidx.barrier.wait_with_tile_static_memory_fence(); }
+				if (partial_data_length > 256) { if (lidx < (partial_data_length - 256)) { mem[0] = op(mem[0], mem[256]); } tidx.barrier.wait_with_tile_static_memory_fence(); }
+				if (partial_data_length > 128) { if (lidx < (partial_data_length - 128)) { mem[0] = op(mem[0], mem[128]); } tidx.barrier.wait_with_tile_static_memory_fence(); }
+				if (partial_data_length > 64) { if (lidx < (partial_data_length - 64)) { mem[0] = op(mem[0], mem[64]); } tidx.barrier.wait_with_tile_static_memory_fence(); }
+				if (partial_data_length > 32) { if (lidx < (partial_data_length - 32)) { mem[0] = op(mem[0], mem[32]); } tidx.barrier.wait_with_tile_static_memory_fence(); }
+				if (partial_data_length > 16) { if (lidx < (partial_data_length - 16)) { mem[0] = op(mem[0], mem[16]); } tidx.barrier.wait_with_tile_static_memory_fence(); }
+				if (partial_data_length > 8) { if (lidx < (partial_data_length - 8)) { mem[0] = op(mem[0], mem[8]); } tidx.barrier.wait_with_tile_static_memory_fence(); }
+				if (partial_data_length > 4) { if (lidx < (partial_data_length - 4)) { mem[0] = op(mem[0], mem[4]); } tidx.barrier.wait_with_tile_static_memory_fence(); }
+				if (partial_data_length > 2) { if (lidx < (partial_data_length - 2)) { mem[0] = op(mem[0], mem[2]); } tidx.barrier.wait_with_tile_static_memory_fence(); }
+				if (partial_data_length > 1) { if (lidx < (partial_data_length - 1)) { mem[0] = op(mem[0], mem[1]); } tidx.barrier.wait_with_tile_static_memory_fence(); }
+			}
+			else
+			{
+				// unrolled for performance
+				if (tile_size >= 1024) { if (lidx < 512) { mem[0] = op(mem[0], mem[512]); } tidx.barrier.wait_with_tile_static_memory_fence(); }
+				if (tile_size >= 512) { if (lidx < 256) { mem[0] = op(mem[0], mem[256]); } tidx.barrier.wait_with_tile_static_memory_fence(); }
+				if (tile_size >= 256) { if (lidx < 128) { mem[0] = op(mem[0], mem[128]); } tidx.barrier.wait_with_tile_static_memory_fence(); }
+				if (tile_size >= 128) { if (lidx < 64) { mem[0] = op(mem[0], mem[64]); } tidx.barrier.wait_with_tile_static_memory_fence(); }
+				if (tile_size >= 64) { if (lidx < 32) { mem[0] = op(mem[0], mem[32]); } tidx.barrier.wait_with_tile_static_memory_fence(); }
+				if (tile_size >= 32) { if (lidx < 16) { mem[0] = op(mem[0], mem[16]); } tidx.barrier.wait_with_tile_static_memory_fence(); }
+				if (tile_size >= 16) { if (lidx < 8) { mem[0] = op(mem[0], mem[8]); } tidx.barrier.wait_with_tile_static_memory_fence(); }
+				if (tile_size >= 8) { if (lidx < 4) { mem[0] = op(mem[0], mem[4]); } tidx.barrier.wait_with_tile_static_memory_fence(); }
+				if (tile_size >= 4) { if (lidx < 2) { mem[0] = op(mem[0], mem[2]); } tidx.barrier.wait_with_tile_static_memory_fence(); }
+				if (tile_size >= 2) { if (lidx < 1) { mem[0] = op(mem[0], mem[1]); } tidx.barrier.wait_with_tile_static_memory_fence(); }
+			}
 
-        const enum class Inc { add, sub, mul, div, mod, last };
-        template<unsigned int i_0, unsigned int i_N, Inc incr = Inc::add, unsigned int modifier = 1u>
-        struct static_for {
-            template<typename F>
-            void operator()(F&& fn) const restrict(cpu, amp)
-            {
-                fn(i_0);
-                static constexpr unsigned int i_next = (incr == Inc::add) ? (i_0 + modifier) :
-                                                       (incr == Inc::sub) ? (i_0 - modifier) :
-                                                       (incr == Inc::mul) ? (i_0 * modifier) :
-                                                       (incr == Inc::div) ? (i_0 / modifier) :
-                                                       (incr == Inc::mod) ? (i_0 % modifier) : i_N;
-                static constexpr Inc incr_next = i_next == i_N ? Inc::last : incr;
-                static constexpr unsigned int modifier_next = i_next == i_N ? 0u : modifier;
-                static_for<i_next, i_N, incr_next, modifier_next>()(forward<F>(fn));
-            }
-        };
-        template<unsigned int i_N>
-        struct static_for<i_N, i_N, Inc::last, 0u> {
-            template<typename F>
-            void operator()(F&&) const restrict(cpu, amp) { return; };
-        };
-
-        template<typename T, typename F, int tsz>
-        T reduce_tile(T (&in)[tsz], const concurrency::tiled_index<tsz>& tidx, F&& op) restrict(amp)
-        {
-            const concurrency::array_view<T> i(tsz, in);
-            static_for<tsz / 2u, 0u, Inc::div, 2u>()([=](auto&& h) {
-                if (tidx.local[0] < h) {
-					i[tidx.local[0]] = op(i[tidx.local[0]], i[tidx.local[0] + h]);
-				}
-
-                tidx.barrier.wait_with_tile_static_memory_fence();
-            });
-
-            return i[0];
+			return mem[0];
         }
 
         // Generic reduction of a 1D indexable view with a reduction binary functor
 
         template<unsigned int tile_size, unsigned int max_tiles, typename IndexableInputView, typename BinaryFunction>
-        decltype(auto) reduce(const concurrency::accelerator_view &accl_view, const IndexableInputView& input_view, BinaryFunction&& binary_op)
+        inline decltype(auto) reduce(const concurrency::accelerator_view &accl_view, const IndexableInputView& input_view, BinaryFunction binary_op)
         {
             // The input view must be of rank 1
             //static_assert(indexable_view_traits<InputIndexableView>::rank == 1, "The input indexable view must be of rank 1");
@@ -238,7 +162,7 @@ namespace amp_algorithms
             // global buffer (return type)
             concurrency::array_view<result_type> global_buffer_view(tile_count);//concurrency::array<T>(tile_count, concurrency::accelerator(concurrency::accelerator::cpu_accelerator).default_view, accl_view));
 
-            _details::parallel_for_each(accl_view, concurrency::extent<1>(thread_count).tile<tile_size>(), [=, binary_op = std::forward<BinaryFunction>(binary_op)](auto&& tidx) restrict(amp) {
+            _details::parallel_for_each(accl_view, concurrency::extent<1>(thread_count).tile<tile_size>(), [=](auto&& tidx) restrict(amp) {
                 // shared tile buffer
                 tile_static result_type local_buffer[tile_size];
 
@@ -266,7 +190,7 @@ namespace amp_algorithms
                 // this variable is used to test if we are on the edge of data within tile
                 int partial_data_length = tile_partial_data_size(input_view, tidx);
                 // reduce all values in this tile
-                amp_algorithms::_details::reduce_tile(&smem, tidx, move(binary_op), partial_data_length);
+                amp_algorithms::_details::reduce_tile(&smem, tidx, binary_op, partial_data_length);
 
                 if (tidx.local[0] == 0)
                 {
@@ -334,7 +258,7 @@ namespace amp_algorithms
         }
 
         template <int TileSize, scan_mode _Mode, typename T, typename _BinaryFunc>
-        inline void scan(const concurrency::accelerator_view& accl_view, const concurrency::array_view<T>& input_view, const concurrency::array_view<T>& output_view, _BinaryFunc&& op)
+        inline void scan(const concurrency::accelerator_view& accl_view, const concurrency::array_view<T>& input_view, const concurrency::array_view<T>& output_view, _BinaryFunc op)
         {
             const auto compute_domain = output_view.extent.tile<TileSize>().pad();
             concurrency::array<T, 1> tile_results(compute_domain / TileSize, accl_view);
@@ -346,7 +270,7 @@ namespace amp_algorithms
             {
                 const int gidx = tidx.global[0];
                 const int lidx = tidx.local[0];
-                const int partial_data_length = tile_partial_data_size(output_view, tidx);
+                const int partial_data_length = amp_algorithms::tile_partial_data_size(output_view, tidx);
 
                 tile_static T tile_data[TileSize];
                 tile_data[lidx] = (lidx >= partial_data_length) ? 0 : input_view[gidx];
@@ -354,7 +278,7 @@ namespace amp_algorithms
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
                 auto val = amp_algorithms::_details::scan_tile_exclusive<TileSize>(tile_data, tidx, amp_algorithms::plus<>());
-                if (_Mode == scan_mode::inclusive)
+                if (_Mode == amp_algorithms::scan_mode::inclusive)
                 {
                     tile_data[lidx] += current_value;
                 }
@@ -363,7 +287,7 @@ namespace amp_algorithms
                 {
                     tile_results_vw[tidx.tile[0]] = val + current_value;
                 }
-                padded_write(output_view, gidx, tile_data[lidx]);
+                amp_algorithms::padded_write(output_view, gidx, tile_data[lidx]);
             });
 
             // 3. Scan tile results.
@@ -378,7 +302,7 @@ namespace amp_algorithms
                 {
                     const int gidx = tidx.global[0];
                     const int lidx = tidx.local[0];
-                    const int partial_data_length = tile_partial_data_size(tile_results_vw, tidx);
+//                    const int partial_data_length = tile_partial_data_size(tile_results_vw, tidx);
 
                     tile_static T tile_data[TileSize];
                     tile_data[lidx] = tile_results_vw[gidx];
@@ -568,7 +492,8 @@ namespace amp_algorithms
                     tile_histograms[(idx * tile_count) + tlx] = per_thread_rdx_histograms[0][idx];
                 }
                 tidx.barrier.wait_with_tile_static_memory_fence();
-                _details::scan_tile_exclusive<tile_size>(per_thread_rdx_histograms[0], tidx, amp_algorithms::plus<>());
+                //details::scan_tile_exclusive<tile_size>(per_thread_rdx_histograms[0], tidx, amp_algorithms::plus<>());
+				amp_stl_algorithms::_exclusive_scan_single_tile_n(per_thread_rdx_histograms[0], bin_count, per_thread_rdx_histograms[0], 0, tidx, amp_algorithms::plus<>());
 
                 if (idx < bin_count)
                 {
@@ -589,7 +514,9 @@ namespace amp_algorithms
                 scan_data[idx] = (idx < bin_count) ? global_rdx_offsets[idx] : 0;
                 tidx.barrier.wait_with_tile_static_memory_fence();
 
-                _details::scan_tile_exclusive<tile_size>(scan_data, tidx, amp_algorithms::plus<>());
+                //_details::scan_tile_exclusive<tile_size>(scan_data, tidx, amp_algorithms::plus<>());
+
+				amp_stl_algorithms::_exclusive_scan_single_tile_n(scan_data, tile_size, scan_data, 0, tidx, amp_algorithms::plus<>());
 
                 if (gidx < bin_count)
                 {
@@ -655,6 +582,6 @@ namespace amp_algorithms
             std::swap(input_view, output_view);
         }
 
-    } // namespace amp_algorithms::_details
-
-} // namespace amp_algorithms
+    }  // namespace amp_algorithms::_details
+}	   // namespace amp_algorithms
+#endif // _XX_AMP_ALGORITHMS_IMPL_H_BUMPTZI

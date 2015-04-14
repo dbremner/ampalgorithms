@@ -1,26 +1,28 @@
 /*----------------------------------------------------------------------------
 * Copyright © Microsoft Corp.
 *
-* Licensed under the Apache License, Version 2.0 (the "License"); you may not 
-* use this file except in compliance with the License.  You may obtain a copy 
-* of the License at http://www.apache.org/licenses/LICENSE-2.0  
-* 
-* THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED 
-* WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE, 
-* MERCHANTABLITY OR NON-INFRINGEMENT. 
+* Licensed under the Apache License, Version 2.0 (the "License"); you may not
+* use this file except in compliance with the License.  You may obtain a copy
+* of the License at http://www.apache.org/licenses/LICENSE-2.0
 *
-* See the Apache Version 2.0 License for specific language governing 
+* THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+* WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+* MERCHANTABLITY OR NON-INFRINGEMENT.
+*
+* See the Apache Version 2.0 License for specific language governing
 * permissions and limitations under the License.
 *---------------------------------------------------------------------------
-* 
+*
 * C++ AMP standard algorithm library.
 *
 * This file contains unit tests.
 *---------------------------------------------------------------------------*/
 
 #include "stdafx.h"
+
 #include <amp_algorithms.h>
+#include <gtest\gtest.h>
 
 #include "testtools.h"
 
@@ -88,11 +90,11 @@ TEST_F(amp_operator_tests, static_log2)
 
 TEST_F(amp_operator_tests, static_is_power_of_two)
 {
-    ASSERT_FALSE(static_is_power_of_two<0>::value);
-    ASSERT_TRUE(static_is_power_of_two<1>::value);
-    ASSERT_TRUE(static_is_power_of_two<4>::value);
-    ASSERT_FALSE(static_is_power_of_two<5>::value);
-    ASSERT_TRUE(static_is_power_of_two<256>::value);
+    ASSERT_FALSE(static_is_power_of_two(0));
+    ASSERT_TRUE(static_is_power_of_two(1));
+    ASSERT_TRUE(static_is_power_of_two(4));
+    ASSERT_FALSE(static_is_power_of_two(5));
+    ASSERT_TRUE(static_is_power_of_two(256));
 }
 
 TEST_F(amp_operator_tests, is_power_of_two)
@@ -138,16 +140,6 @@ TEST_F(amp_operator_tests, less_equal)
     compare_binary_operator(std::less_equal<int>(), amp_algorithms::less_equal<>(), arithmetic_operator_data);
 }
 
-TEST_F(amp_operator_tests, max)
-{
-    compare_binary_operator([](auto&& x, auto&& y) { return std::max(x, y); }, amp_algorithms::max<>(), arithmetic_operator_data);
-}
-
-TEST_F(amp_operator_tests, min)
-{
-	compare_binary_operator([](auto&& x, auto&& y) { return std::min(x, y); }, amp_algorithms::min<>(), arithmetic_operator_data);
-}
-
 std::array<std::pair<unsigned, unsigned>, 8> logical_operator_data = {
     std::pair<unsigned, unsigned>(0xF, 0xF),
     std::pair<unsigned, unsigned>(0xFF, 0x0A),
@@ -188,12 +180,12 @@ TEST_F(amp_operator_tests, bit_not)
 
 TEST_F(amp_operator_tests, static_count_bits)
 {
-    ASSERT_EQ( 4, static_count_bits<0x0F>::value);
-    ASSERT_EQ( 8, static_count_bits<0xFF>::value);
-    ASSERT_EQ(16, static_count_bits<0xFFFF>::value);
-    ASSERT_EQ( 8, (static_count_bits<0xFFFF, amp_algorithms::bit08>::value));
-    ASSERT_EQ( 2, static_count_bits<0x0A>::value);
-    ASSERT_EQ( 0, static_count_bits<0x00>::value);
+    ASSERT_EQ( 4, static_count_bits(0x0F));
+    ASSERT_EQ( 8, static_count_bits(0xFF));
+    ASSERT_EQ(16, static_count_bits(0xFFFF));
+    ASSERT_EQ( 8, static_count_bits(0xFFFF, amp_algorithms::bit08));
+    ASSERT_EQ( 2, static_count_bits(0x0A));
+    ASSERT_EQ( 0, static_count_bits(0x00));
 }
 
 TEST_F(amp_operator_tests, count_bits)
@@ -225,12 +217,11 @@ TEST_F(amp_operator_tests, logical_or)
 }
 
 template<typename T>
-class is_odd
-{
+class is_odd {
 public:
     typedef T argument_type;
 
-    constexpr bool operator()(const T& a) const restrict(cpu, amp) { return (a % 2) != 0; }
+    constexpr bool operator()(const T& a) restrict(cpu, amp) { return (a % 2) != 0; }
 };
 
 TEST_F(amp_operator_tests, not1)

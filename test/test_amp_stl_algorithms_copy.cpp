@@ -20,6 +20,7 @@
 *---------------------------------------------------------------------------*/
 
 #include "stdafx.h"
+
 #include <gtest/gtest.h>
 
 #include <amp_stl_algorithms.h>
@@ -29,7 +30,7 @@ using namespace concurrency;
 using namespace amp_stl_algorithms;
 using namespace testtools;
 
-const std::array<int, 13> copy_data[] = {
+static constexpr std::array<int, 13> copy_data[] = {
     { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
     { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
     { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },

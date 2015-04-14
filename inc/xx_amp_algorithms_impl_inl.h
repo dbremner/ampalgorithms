@@ -20,7 +20,10 @@
 *---------------------------------------------------------------------------*/
 
 #pragma once
+#ifndef _XX_AMP_ALGORITHMS_IMPL_INL_H_BUMPTZI
+#define _XX_AMP_ALGORITHMS_IMPL_INL_H_BUMPTZI
 
 namespace amp_algorithms
 {
-}
+}	   // namespace amp_algorithms
+#endif // _XX_AMP_ALGORITHMS_IMPL_INL_H_BUMPTZI

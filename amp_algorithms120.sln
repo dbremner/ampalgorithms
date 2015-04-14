@@ -1,15 +1,20 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.22609.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "amp_algorithms", "vs120\amp_algorithms.vcxproj", "{3D74703F-3A58-A860-884D-7B64204109BA}"
+	ProjectSection(ProjectDependencies) = postProject
+		{AADD1BC8-33C5-41EE-885A-3E40F687FD74} = {AADD1BC8-33C5-41EE-885A-3E40F687FD74}
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{78D4E5AC-D404-4FC0-87F2-A153E1808C5A}"
 	ProjectSection(SolutionItems) = preProject
 		pre_checkin_build.ps1 = pre_checkin_build.ps1
 		readme.txt = readme.txt
 	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "native_SIMD_width_deducer", "native_SIMD_width_deducer\native_SIMD_width_deducer\native_SIMD_width_deducer.vcxproj", "{AADD1BC8-33C5-41EE-885A-3E40F687FD74}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +32,12 @@ Global
 		{3D74703F-3A58-A860-884D-7B64204109BA}.Release|Win32.Build.0 = Release|Win32
 		{3D74703F-3A58-A860-884D-7B64204109BA}.Release|x64.ActiveCfg = Release|x64
 		{3D74703F-3A58-A860-884D-7B64204109BA}.Release|x64.Build.0 = Release|x64
+		{AADD1BC8-33C5-41EE-885A-3E40F687FD74}.Debug|Win32.ActiveCfg = Debug|Win32
+		{AADD1BC8-33C5-41EE-885A-3E40F687FD74}.Debug|Win32.Build.0 = Debug|Win32
+		{AADD1BC8-33C5-41EE-885A-3E40F687FD74}.Debug|x64.ActiveCfg = Debug|Win32
+		{AADD1BC8-33C5-41EE-885A-3E40F687FD74}.Release|Win32.ActiveCfg = Release|Win32
+		{AADD1BC8-33C5-41EE-885A-3E40F687FD74}.Release|Win32.Build.0 = Release|Win32
+		{AADD1BC8-33C5-41EE-885A-3E40F687FD74}.Release|x64.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

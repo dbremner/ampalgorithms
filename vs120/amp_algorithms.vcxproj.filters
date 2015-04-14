@@ -1,94 +1,192 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClInclude Include="..\inc\amp_algorithms.h" />
-    <ClInclude Include="..\inc\amp_indexable_view.h" />
-    <ClInclude Include="..\inc\xx_amp_algorithms_impl.h" />
-    <ClInclude Include="..\inc\xx_amp_algorithms_impl_inl.h" />
-    <ClInclude Include="..\inc\amp_algorithms_direct3d.h" />
-    <ClInclude Include="..\inc\xx_amp_algorithms_direct3d_impl.h" />
-    <ClInclude Include="..\test\testtools.h">
-      <Filter>Tests</Filter>
+    <ClInclude Include="..\inc\amp_algorithms.h">
+      <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\inc\amp_iterators.h" />
-    <ClInclude Include="..\inc\amp_stl_algorithms.h" />
-    <ClInclude Include="..\inc\xx_amp_stl_algorithms_impl.h" />
-    <ClInclude Include="..\inc\xx_amp_stl_algorithms_impl_inl.h" />
+    <ClInclude Include="..\inc\amp_algorithms_direct3d.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\amp_indexable_view.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\amp_iterators.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\amp_stl_algorithms.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\xx_amp_algorithms_direct3d_impl.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\xx_amp_algorithms_impl_inl.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\xx_amp_algorithms_impl.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\xx_amp_stl_algorithms_impl.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\xx_amp_stl_algorithms_impl_inl.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
     <ClInclude Include="..\test\stdafx.h">
-      <Filter>Tests</Filter>
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\test\testtools.h">
+      <Filter>Headers\Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\amp_algorithms_pair.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\amp_algorithms_type_functions_helpers.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\amp_algorithms_atomic.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\amp_algorithms_execution_parameters.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\native_simd_width.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\amp_algorithms_tuple.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\amp_algorithms_programming_model.h">
+      <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="Tests">
-      <UniqueIdentifier>{f6ab5e2c-a870-4319-a325-a363beb3bbe3}</UniqueIdentifier>
+    <Filter Include="Headers">
+      <UniqueIdentifier>{7147a1a1-39ba-4ce1-b032-810d7672887f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Headers\Tests">
+      <UniqueIdentifier>{d58d51a5-1a74-432f-95aa-fdb90f5ae4a8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Sources">
+      <UniqueIdentifier>{aae553ff-0ee3-469b-b435-56681bc0a635}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Sources\Tests">
+      <UniqueIdentifier>{2f9b0d7f-64de-4086-8562-c3663f2e4564}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\test\test_amp_algorithms_scan.cpp">
-      <Filter>Tests</Filter>
-    </ClCompile>
-    <ClCompile Include="..\test\test_testtools.cpp">
-      <Filter>Tests</Filter>
-    </ClCompile>
-    <ClCompile Include="..\test\stdafx.cpp">
-      <Filter>Tests</Filter>
+    <ClCompile Include="..\test\gtest_main.cpp">
+      <Filter>Sources\Tests</Filter>
     </ClCompile>
     <ClCompile Include="..\test\test_amp_algorithms.cpp">
-      <Filter>Tests</Filter>
-    </ClCompile>
-    <ClCompile Include="..\test\test_amp_algorithms_direct3d_scan.cpp">
-      <Filter>Tests</Filter>
-    </ClCompile>
-    <ClCompile Include="..\test\test_amp_algorithms_operators.cpp">
-      <Filter>Tests</Filter>
-    </ClCompile>
-    <ClCompile Include="..\test\test_amp_algorithms_reduce.cpp">
-      <Filter>Tests</Filter>
-    </ClCompile>
-    <ClCompile Include="..\test\gtest_main.cpp">
-      <Filter>Tests</Filter>
-    </ClCompile>
-    <ClCompile Include="..\test\test_amp_stl_algorithms.cpp">
-      <Filter>Tests</Filter>
-    </ClCompile>
-    <ClCompile Include="..\test\test_amp_stl_algorithms_copy.cpp">
-      <Filter>Tests</Filter>
-    </ClCompile>
-    <ClCompile Include="..\test\test_amp_stl_algorithms_fill.cpp">
-      <Filter>Tests</Filter>
-    </ClCompile>
-    <ClCompile Include="..\test\test_amp_stl_algorithms_find.cpp">
-      <Filter>Tests</Filter>
-    </ClCompile>
-    <ClCompile Include="..\test\test_amp_stl_algorithms_is_sorted.cpp">
-      <Filter>Tests</Filter>
-    </ClCompile>
-    <ClCompile Include="..\test\test_amp_stl_algorithms_remove.cpp">
-      <Filter>Tests</Filter>
-    </ClCompile>
-    <ClCompile Include="..\test\test_amp_stl_algorithms_replace.cpp">
-      <Filter>Tests</Filter>
-    </ClCompile>
-    <ClCompile Include="..\test\test_amp_stl_algorithms_swap.cpp">
-      <Filter>Tests</Filter>
-    </ClCompile>
-    <ClCompile Include="..\test\test_amp_stl_algorithms_transform.cpp">
-      <Filter>Tests</Filter>
-    </ClCompile>
-    <ClCompile Include="..\test\test_amp_stl_iterators.cpp">
-      <Filter>Tests</Filter>
-    </ClCompile>
-    <ClCompile Include="..\test\examples_stl_amp_algorithms.cpp">
-      <Filter>Tests</Filter>
+      <Filter>Sources\Tests</Filter>
     </ClCompile>
     <ClCompile Include="..\test\test_amp_algorithms_bitvector.cpp">
-      <Filter>Tests</Filter>
+      <Filter>Sources\Tests</Filter>
     </ClCompile>
-    <ClCompile Include="..\test\test_amp_algorithms_radix_sort.cpp">
-      <Filter>Tests</Filter>
+    <ClCompile Include="..\test\test_amp_algorithms_operators.cpp">
+      <Filter>Sources\Tests</Filter>
     </ClCompile>
-    <ClCompile Include="..\test\test_amp_stl_algorithms_pair.cpp">
-      <Filter>Tests</Filter>
+    <ClCompile Include="..\test\test_amp_algorithms_direct3d_scan.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_algorithms_reduce.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_algorithms_scan.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_algorithms_sort.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_copy.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_fill.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_find.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_is_sorted.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_remove.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_replace.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_swap.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_transform.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_iterators.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_testtools.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\examples_stl_amp_algorithms.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_binary_search.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_partition.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_sort.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_search_n.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_min_element.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_minmax_element.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_max_element.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_nth_element.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_merge.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_all_of.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_any_of.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_none_of.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_count.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_count_if.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_equal.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_equal_range.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_reduce.cpp">
+      <Filter>Sources\Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\test_amp_stl_algorithms_partial_sum.cpp">
+      <Filter>Sources\Tests</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

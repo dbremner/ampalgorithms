@@ -16,42 +16,169 @@
 *
 * C++ AMP standard algorithm library.
 *
-* This file contains unit tests.
+* This file contains unit tests for the transform algorithm.
 *---------------------------------------------------------------------------*/
 
-#include "stdafx.h"
 #include <gtest/gtest.h>
 
-#include <amp_stl_algorithms.h>
+#include "amp_stl_algorithms.h"
 #include "testtools.h"
 
-using namespace concurrency;
-using namespace amp_stl_algorithms;
-using namespace testtools;
+#include <algorithm>
+#include <iterator>
+#include <functional>
+#include <ppl.h>
 
-class stl_algorithms_tests : public stl_algorithms_testbase<13>, public ::testing::Test {};
+//----------------------------------------------------------------------------
+// transform
+//----------------------------------------------------------------------------
 
-TEST_F(stl_algorithms_tests, unary_transform)
+class stl_algorithms_transform_tests : public stl_algorithms_testbase<13>,
+									   public ::testing::Test {};
+
+TEST_F(stl_algorithms_transform_tests, unary_transform)
 {
-    std::iota(begin(input), end(input), 7);
-    std::transform(cbegin(input), cend(input), begin(expected), [](auto&& x) { return x * 2; });
+	using namespace amp_stl_algorithms;
 
-    amp_stl_algorithms::transform(cbegin(input_av), cend(input_av), begin(output_av), [] (auto&& x) restrict(amp) {
-        return 2 * x;
-    });
+	for (decltype(input.size()) i = 2; i != input.size(); ++i) {
+		decltype(input) out;
+		const concurrency::array_view<decltype(input)::value_type> out_av(out.size());
 
-    ASSERT_TRUE(are_equal(expected, output_av));
+		const auto result_expect = std::transform(cbegin(input_av),
+												  std::next(cbegin(input_av), i),
+												  std::begin(out),
+												  std::negate<>());
+		const auto result_amp = amp_stl_algorithms::transform(cbegin(input_av),
+															  std::next(cbegin(input_av), i),
+															  begin(out_av),
+															  amp_algorithms::negate<>());
+		ASSERT_EQ(std::distance(std::begin(out), result_expect),
+				  std::distance(begin(out_av), result_amp));
+		ASSERT_TRUE(std::equal(std::begin(out), result_expect, cbegin(out_av)));
+	}
 }
 
-TEST_F(stl_algorithms_tests, binary_transform)
+TEST_F(stl_algorithms_transform_tests, unary_transform_empty_range)
 {
-    std::iota(begin(input), end(input), 99);
-    std::vector<int> input2(size);
-    std::iota(begin(input2), end(input2), 0);
-    array_view<const int> input2_av(size, input2);
-    std::transform(cbegin(input), cend(input), cbegin(input2), begin(expected), std::plus<int>());
+	using namespace amp_stl_algorithms;
 
-    amp_stl_algorithms::transform(cbegin(input_av), cend(input_av), cbegin(input2_av), begin(output_av), amp_algorithms::plus<>());
+	decltype(input) out;
+	const concurrency::array_view<decltype(input)::value_type> out_av(out.size());
 
-    ASSERT_TRUE(are_equal(expected, output_av));
+	const auto result_expect = std::transform(cbegin(input_av),
+											  cbegin(input_av),
+											  std::begin(out),
+											  std::negate<>());
+	const auto result_amp = amp_stl_algorithms::transform(cbegin(input_av),
+														  cbegin(input_av),
+														  begin(out_av),
+														  amp_algorithms::negate<>());
+	ASSERT_EQ(std::distance(std::begin(out), result_expect),
+			  std::distance(begin(out_av), result_amp));
+}
+
+TEST_F(stl_algorithms_transform_tests, unary_transform_single_element_range)
+{
+	using namespace amp_stl_algorithms;
+
+	decltype(input) out;
+	const concurrency::array_view<decltype(input)::value_type> out_av(out.size());
+
+	const auto result_expect = std::transform(cbegin(input_av),
+											  std::next(cbegin(input_av)),
+											  std::begin(out),
+											  std::negate<>());
+	const auto result_amp = amp_stl_algorithms::transform(cbegin(input_av),
+														  std::next(cbegin(input_av)),
+														  begin(out_av),
+														  amp_algorithms::negate<>());
+
+	ASSERT_EQ(std::distance(std::begin(out), result_expect),
+			  std::distance(begin(out_av), result_amp));
+	ASSERT_TRUE(std::equal(std::begin(out), result_expect, cbegin(out_av)));
+}
+
+TEST_F(stl_algorithms_transform_tests, unary_transform_large_range)
+{
+	using namespace amp_stl_algorithms;
+
+	static constexpr decltype(auto) sz = successor(Execution_parameters::tile_size() *
+												   Execution_parameters::maximum_tile_cnt());/*successor(1 << 26);*/
+	static constexpr decltype(auto) sample = testtools::compute_sample_size(sz);
+
+	const concurrency::array_view<int> in(sz);
+	std::generate_n(in.data(), sz, rand);
+
+	std::vector<int> out(sz);
+	const concurrency::array_view<int> out_av(sz);
+
+	for (decltype(in.extent.size()) i = 0; i != sample; ++i) {
+		const auto result_expect = concurrency::parallel_transform(cbegin(in),
+																   cend(in),
+												                   std::begin(out),
+												                   std::negate<>());
+		const auto result_amp = amp_stl_algorithms::transform(cbegin(in),
+															  cend(in),
+															  begin(out_av),
+															  amp_algorithms::negate<>());
+		ASSERT_EQ(std::distance(std::begin(out), result_expect),
+				  std::distance(begin(out_av), result_amp));
+		ASSERT_TRUE(std::equal(std::begin(out), result_expect, cbegin(out_av)));
+
+		std::random_shuffle(in.data(), in.data() + sz);
+	}
+}
+
+TEST_F(stl_algorithms_transform_tests, unary_transform_large_range_pod)
+{
+	using namespace amp_stl_algorithms;
+
+	static constexpr decltype(auto) sz = successor(Execution_parameters::tile_size() *
+												   Execution_parameters::maximum_tile_cnt());/*successor(1 << 26);*/
+	static constexpr decltype(auto) sample = testtools::compute_sample_size(sz);
+
+	using T = concurrency::graphics::int_4;
+	const concurrency::array_view<T> in(sz);
+	std::generate_n(in.data(), sz, []() { return T(rand(), rand(), rand(), rand()); });
+	std::vector<T> out(sz);
+	const concurrency::array_view<T> out_av(sz);
+
+	for (decltype(in.extent.size()) i = 0; i != sample; ++i) {
+		const auto result_expect = concurrency::parallel_transform(cbegin(in),
+																   cend(in),
+												                   std::begin(out),
+												                   std::negate<>());
+		const auto result_amp = amp_stl_algorithms::transform(cbegin(in),
+															  cend(in),
+															  begin(out_av),
+															  [](auto&& x) restrict(amp) { return -x; }); // Bug workaround.
+		ASSERT_EQ(std::distance(std::begin(out), result_expect),
+				  std::distance(begin(out_av), result_amp));
+		ASSERT_TRUE(std::equal(std::begin(out), result_expect, cbegin(out_av)));
+
+		std::random_shuffle(in.data(), in.data() + sz);
+	}
+}
+
+TEST_F(stl_algorithms_transform_tests, binary_transform)
+{
+ 	using namespace amp_stl_algorithms;
+
+	for (decltype(input.size()) i = 2; i != input.size(); ++i) {
+		decltype(input) out;
+		const concurrency::array_view<decltype(input)::value_type> out_av(out.size());
+
+		const auto result_expect = std::transform(cbegin(input_av),
+												  std::next(cbegin(input_av), i),
+												  cbegin(input_av),
+												  std::begin(out),
+												  std::minus<>());
+		const auto result_amp = amp_stl_algorithms::transform(cbegin(input_av),
+															  std::next(cbegin(input_av), i),
+															  cbegin(input_av),
+															  begin(out_av),
+															  amp_algorithms::minus<>());
+		ASSERT_EQ(std::distance(std::begin(out), result_expect),
+				  std::distance(begin(out_av), result_amp));
+	}
 }

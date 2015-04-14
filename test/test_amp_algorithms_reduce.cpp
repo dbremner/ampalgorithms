@@ -20,7 +20,9 @@
 *---------------------------------------------------------------------------*/
 
 #include "stdafx.h"
+
 #include <amp_algorithms.h>
+#include <gtest\gtest.h>
 
 #include "testtools.h"
 
@@ -28,78 +30,85 @@ using namespace concurrency;
 using namespace amp_algorithms;
 using namespace testtools;
 
-class amp_reduce_tests : public testbase, public ::testing::Test
-{
+class amp_reduce_tests : public testbase, public ::testing::Test {
 public:
-    template <typename value_type, typename T, typename BinaryFunctor>
-    void test_reduce(int element_count, T&& identity_element, BinaryFunctor&& func, value_type& cpu_result, value_type& amp_result)
+    template<typename T, typename BinaryFunctor>
+    void test_reduce(int element_count, const T& identity_element, BinaryFunctor func, T& cpu_result, T& amp_result)
     {
-        std::vector<value_type> inVec(element_count);
-        generate_data(inVec);
+		using namespace amp_stl_algorithms;
 
-        array_view<const value_type> inArrView(element_count, inVec);
-        amp_result = amp_stl_algorithms::reduce(amp_stl_algorithms::cbegin(inArrView), amp_stl_algorithms::cend(inArrView),
-												std::forward<T>(identity_element), std::forward<BinaryFunctor>(func));
+        std::vector<T> inVec(generate_data<T>(element_count));
+
+        array_view<const T> inArrView(element_count, inVec);
+        amp_result = reduce(cbegin(inArrView), cend(inArrView), identity_element, func);
 
         // Now compute the result on the CPU for verification
-        cpu_result = inVec[0];
-        for (int i = 1; i != element_count; ++i) {
-            cpu_result = func(cpu_result, inVec[i]);
-        }
+        cpu_result = std::accumulate(std::cbegin(inVec), std::cend(inVec), identity_element, func);
     }
 
     template <typename T>
     void test_functor_view(int element_count, T& cpuStdDev, T& gpuStdDev)
     {
-        std::vector<T> inVec(element_count);
-        generate_data(inVec);
+		using namespace amp_stl_algorithms;
 
+        std::vector<T> inVec(generate_data<T>(element_count));
         array_view<const T> inArrView(element_count, inVec);
 
-        // The next 4 lines use the functor_view together with the reduce algorithm to obtain the
-        // standard deviation of a set of numbers.
+        // The next 4 lines use the functor_view together with the reduce
+		// algorithm to obtain the standard deviation of a set of numbers.
         T gpuSum = amp_algorithms::reduce(inArrView, amp_algorithms::plus<>());
         T gpuMean = gpuSum / inArrView.extent.size();
 
-        auto funcView = make_indexable_view(inArrView.extent, [=](const concurrency::index<1> &idx) restrict(cpu, amp) {
+        auto funcView = make_indexable_view(inArrView.extent, [=](auto&& idx) restrict(cpu, amp) {
             return ((inArrView(idx) - gpuMean) * (inArrView(idx) - gpuMean));
         });
 
         T gpuTotalVariance = amp_algorithms::reduce(funcView, amp_algorithms::plus<>());
-        gpuStdDev = static_cast<T>(sqrt(gpuTotalVariance / inArrView.extent.size()));
+        gpuStdDev = static_cast<T>(std::sqrt(gpuTotalVariance / static_cast<T>(element_count)));
 
         // Now compute the result on the CPU for verification
-        T cpuSum = inVec[0];
-        for (int i = 1; i != element_count; ++i) {
-            cpuSum += inVec[i];
-        }
+        T cpuSum = std::accumulate(std::cbegin(inVec), std::cend(inVec), T(0));
 
         T cpuMean = cpuSum / element_count;
-        T cpuTotalVariance = T(0);
-        for (auto&& e : inVec) {
-            cpuTotalVariance += ((e - cpuMean) * (e - cpuMean));
-        }
+		T cpuTotalVariance = std::accumulate(std::cbegin(inVec), std::cend(inVec), T(0), [=](auto&& x,
+																							 auto&& y) {
+			return x + ((y - cpuMean) * (y - cpuMean));
+		});
 
-        cpuStdDev = static_cast<T>(sqrt(cpuTotalVariance / element_count));
+		cpuStdDev = static_cast<T>(std::sqrt(cpuTotalVariance / static_cast<T>(element_count)));
     }
 };
 
 TEST_F(amp_reduce_tests, reduce_int_min)
 {
+	using namespace amp_stl_algorithms;
+
     int cpu_result, amp_result;
 
-    test_reduce<int>(test_array_size<int>(), std::numeric_limits<int>::max(), amp_algorithms::min<>(), cpu_result, amp_result);
+	test_reduce<int>(test_array_size<int>(),
+				     std::numeric_limits<int>::max(),
+					 [](auto&& x, auto&& y) restrict(cpu, amp) { return min(forward<decltype(x)>(x),
+																			forward<decltype(y)>(y)); },
+					 cpu_result,
+					 amp_result);
 
     ASSERT_EQ(cpu_result, amp_result);
 }
 
 TEST_F(amp_reduce_tests, reduce_float_max)
 {
+	using namespace amp_stl_algorithms;
+
     float cpu_result, amp_result;
 
-    test_reduce<float>(test_array_size<float>(), std::numeric_limits<float>::min(), amp_algorithms::max<>(), cpu_result, amp_result);
+    test_reduce<float>(test_array_size<float>(),
+					   std::numeric_limits<float>::min(),
+					   [](auto&& x, auto&& y) restrict(cpu, amp) { return max(forward<decltype(x)>(x),
+																			  forward<decltype(y)>(y)); },
+					   cpu_result,
+					   amp_result);
 
-    ASSERT_EQ(cpu_result, amp_result);
+    ASSERT_TRUE(testtools::compare(cpu_result, amp_result)); // Revisit this.
 }
 
 TEST_F(amp_reduce_tests, functor_view_float)

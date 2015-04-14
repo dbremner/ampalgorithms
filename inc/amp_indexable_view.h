@@ -21,6 +21,11 @@
 *---------------------------------------------------------------------------*/
 
 #pragma once
+#ifndef _AMP_INDEXABLE_VIEW_H_BUMPTZI
+#define _AMP_INDEXABLE_VIEW_H_BUMPTZI
+
+#include <amp.h>
+#include <type_traits>
 
 namespace amp_algorithms
 {
@@ -93,9 +98,10 @@ namespace amp_algorithms
     // This is a template method for constructing a functor_view object which can be used with the "auto" keyword
     // obviating the need to explicitly specify the functor type which is not very straightforward to obtain for lambdas
     template <typename Functor, int Rank>
-    inline functor_view<Functor, Rank> make_indexable_view(const concurrency::extent<Rank> &ext, Functor&& functor)
+    inline functor_view<Functor, Rank> make_indexable_view(const concurrency::extent<Rank>& ext, Functor&& functor)
     {
         return functor_view<Functor, Rank>(ext, std::forward<Functor>(functor));
     }
 
-} // namespace amp_algorithms
+}	   // namespace amp_algorithms
+#endif // _AMP_INDEXABLE_VIEW_H_BUMPTZI

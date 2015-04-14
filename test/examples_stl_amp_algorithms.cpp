@@ -1,30 +1,29 @@
 /*----------------------------------------------------------------------------
 * Copyright © Microsoft Corp.
 *
-* Licensed under the Apache License, Version 2.0 (the "License"); you may not 
-* use this file except in compliance with the License.  You may obtain a copy 
-* of the License at http://www.apache.org/licenses/LICENSE-2.0  
-* 
-* THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED 
-* WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE, 
-* MERCHANTABLITY OR NON-INFRINGEMENT. 
+* Licensed under the Apache License, Version 2.0 (the "License"); you may not
+* use this file except in compliance with the License.  You may obtain a copy
+* of the License at http://www.apache.org/licenses/LICENSE-2.0
 *
-* See the Apache Version 2.0 License for specific language governing 
+* THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+* WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+* MERCHANTABLITY OR NON-INFRINGEMENT.
+*
+* See the Apache Version 2.0 License for specific language governing
 * permissions and limitations under the License.
 *---------------------------------------------------------------------------
-* 
+*
 * C++ AMP standard algorithm library.
 *
 * This file contains examples.
 *---------------------------------------------------------------------------*/
 
-#include "stdafx.h"
 #include <gtest/gtest.h>
 
-#include <amp_algorithms.h>
-#include <xx_amp_algorithms_impl_inl.h>
-#include <amp_stl_algorithms.h>
+#include "amp_algorithms.h"
+#include "amp_iterators.h"
+#include "amp_stl_algorithms.h"
 
 #include "testtools.h"
 
@@ -33,9 +32,9 @@ using namespace amp_stl_algorithms;
 
 class examples : public testbase, public ::testing::Test {};
 
-// SAXPY functor (for both C++ and C++ AMP.
+// SAXPY functor (for both C++ and C++ AMP)
 
-struct saxpy_functor 
+struct saxpy_functor
 {
     const float a;
 
@@ -126,12 +125,12 @@ TEST(examples, map_reduce)
         float x2, y2, z2;
         float x3, y3, z3;
 
-        vertices() { };
+        vertices() : x1(), y1(), z1(), x2(), y2(), z2(), x3(), y3(), z3() {};
 
-        vertices(std::uniform_real_distribution<float> dist, std::mt19937 gen) : 
-            x1(dist(gen)), x2(dist(gen)), x3(dist(gen)), 
-            y1(dist(gen)), y2(dist(gen)), y3(dist(gen)),
-            z1(dist(gen)), z2(dist(gen)), z3(dist(gen))
+        vertices(std::uniform_real_distribution<float> dist, std::mt19937 gen) :
+            x1(dist(gen)), y1(dist(gen)), z1(dist(gen)),
+			x2(dist(gen)), y2(dist(gen)), z2(dist(gen)),
+			x3(dist(gen)), y3(dist(gen)), z3(dist(gen))
         { };
     };
 

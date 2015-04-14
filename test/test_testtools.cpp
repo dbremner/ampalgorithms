@@ -21,6 +21,8 @@
 
 #include "stdafx.h"
 
+#include <gtest\gtest.h>
+
 #include "amp_stl_algorithms.h"
 #include "testtools.h"
 

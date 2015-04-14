@@ -112,7 +112,7 @@ TEST_P(replace_copy_if_tests, test)
 
     auto iter = amp_stl_algorithms::replace_copy(begin(input_av), end(input_av), begin(output_av), 1, -1);
 
-    //ASSERT_EQ(expected_size, std::distance(begin(output_av), iter));
+    ASSERT_EQ(expected_size, std::distance(begin(output_av), iter));
     ASSERT_TRUE(are_equal(expected, input_av));
     ASSERT_TRUE(are_equal(expected_output, output_av, expected_size - 1));
 }

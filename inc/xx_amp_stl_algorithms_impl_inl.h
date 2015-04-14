@@ -20,2188 +20,3888 @@
 *---------------------------------------------------------------------------*/
 
 #pragma once
+#ifndef _XX_AMP_STL_ALGORITHMS_IMPL_INL_H_BUMPTZI
+#define _XX_AMP_STL_ALGORITHMS_IMPL_INL_H_BUMPTZI
 
+#include "amp_algorithms_atomic.h"
+#include "amp_algorithms_execution_parameters.h"
+#include "amp_iterators.h"
+#include "amp_algorithms_pair.h"
+#include "amp_algorithms_programming_model.h"
+#include "amp_algorithms_type_functions_helpers.h"
+
+#include <amp.h>
+#include <amp_short_vectors.h>
 #include <functional>
 #include <numeric>
-
-#include <amp_stl_algorithms.h>
-#include <amp_algorithms.h>
-#include <xx_amp_algorithms_impl_inl.h>
+#include <ppl.h>
+#include <type_traits>
+#include <utility>
 
 namespace amp_stl_algorithms
 {
-    namespace _details
-    {
-        template<class ConstRandomAccessIterator>
-        static inline decltype(auto) create_section(ConstRandomAccessIterator iter, Difference_type<ConstRandomAccessIterator> dist)
-        {
-            auto base_view = _details::array_view_iterator_helper<ConstRandomAccessIterator>::get_base_array_view(iter);
-            return base_view.section(concurrency::index<1>(iter - begin(base_view)), concurrency::extent<1>(dist));
-        }
+#define AMP_ALG ::amp_stl_algorithms::
+	inline namespace amp_stl_algorithms_implementation
+	{
+		// TODO: Lots of the algorithms that typically do a small amount of work per thread should
+		// use tiling to save the runtime overhead of having to do this.
 
-        class Execution_parameters {
-            static constexpr int tsz = 256;
-            static constexpr int max_tiles = 65535; // DX limitation.
-            static constexpr int max_lanes = max_tiles * tsz;
-        public:
-            static constexpr int tile_size() { return tsz; };
-            static concurrency::tiled_extent<tsz> tiled_domain(unsigned int sz) restrict(cpu, amp) {
-                return concurrency::extent<1>(sz < max_lanes ? sz : max_lanes).tile<tsz>().pad();
-            };
-            static constexpr inline unsigned int tile_cnt(unsigned int sz) restrict(cpu, amp) {
-                return sz / tsz + (sz % tsz ? 1u : 0u);
-            };
-        };
-    }
+		//----------------------------------------------------------------------------
+		// adjacent_difference
+		//----------------------------------------------------------------------------
 
-	//----------------------------------------------------------------------------
-	// Computational bases for types
-	//----------------------------------------------------------------------------
+		template<typename I1, typename I2, typename Op, int tsz>
+		inline I2 _adjacent_difference_single_tile_n(I1 first, Difference_type<I1> n, I2 dest_first,
+													 const concurrency::tiled_index<tsz>& tidx, Op op) restrict(amp)
+		{
+			tile_static AMP_ALG Value_type<I1> tmp[tidx.tile_dim0];
 
-	template<typename T, std::enable_if_t<std::is_integral<T>::value>* = nullptr>
-	static inline constexpr T successor(T x) restrict(cpu, amp)
-	{
-		return x + T(1);
-	}
-	template<typename T, std::enable_if_t<std::is_integral<T>::value>* = nullptr>
-	static inline constexpr T predecessor(T x) restrict(cpu, amp)
-	{
-		return x - T(1);
-	}
-	template<typename T, std::enable_if_t<std::is_integral<T>::value>* = nullptr>
-	static inline constexpr T twice(T x) restrict(cpu, amp)
-	{
-		return x + x;
-	}
-	template<typename T, std::enable_if_t<std::is_integral<T>::value>* = nullptr>
-	static inline constexpr T half_nonnegative(T x) restrict(cpu, amp)
-	{
-		return x / T(2);
-	}
-	template<typename T, std::enable_if_t<std::is_integral<T>::value>* = nullptr>
-	static inline constexpr T binary_scale_down_nonnegative(T x, T k) restrict(cpu, amp)
-	{
-		while (k) {
-			x = half_nonnegative(x);
-			k = predecessor(k);
+			const AMP_ALG Difference_type<I1> m = _min(tidx.tile_dim0 * 1, n);
+			_copy_in_tile_n(first, m, tmp, tidx);
+
+			if (successor(tidx.local[0]) < m) {
+				dest_first[successor(tidx.local[0])] = op(first[successor(tidx.local[0])],
+														  first[tidx.local[0]]);
+			}
+
+			return dest_first + m;
 		}
-		return x;
-	}
-	template<typename T, std::enable_if_t<std::is_integral<T>::value>* = nullptr>
-	static inline constexpr T binary_scale_up_nonnegative(T x, T k) restrict(cpu, amp)
-	{
-		while (k) {
-			x = twice(x);
-			k = half_nonnegative(x);
+
+		template<typename I1, typename I2, typename Op, int tsz>
+		inline I2 _adjacent_difference_in_tile_n(I1 first, Difference_type<I1> n, I2 dest_first,
+												 const concurrency::tiled_index<tsz>& tidx, Op op) restrict(amp)
+		{
+			Difference_type<I1> m = 0;
+			while (positive(n)) {
+				if (positive(m) && (tidx.tile_origin == tidx.global)) {
+					*dest_first = op(*first, *(first - 1));
+				}
+
+				m = _min(tidx.tile_dim0 * 1, n);
+				dest_first = _adjacent_difference_single_tile_n(first, m, dest_first, tidx, op);
+
+				n -= m;
+				first += m;
+			}
+			return dest_first;
 		}
-		return x;
-	}
-	template<typename T, std::enable_if_t<std::is_integral<T>::value>* = nullptr>
-	static inline constexpr bool positive(T x) restrict(cpu, amp)
-	{
-		return x > T(0);
-	}
-	template<typename T, std::enable_if_t<std::is_integral<T>::value>* = nullptr>
-	static inline constexpr bool negative(T x) restrict(cpu, amp)
-	{
-		return x < T(0);
-	}
-	template<typename T, std::enable_if_t<std::is_integral<T>::value>* = nullptr>
-	static inline constexpr bool zero(T x) restrict(cpu, amp)
-	{
-		return x == T(0);
-	}
-	template<typename T, std::enable_if_t<std::is_integral<T>::value>* = nullptr>
-	static inline constexpr bool one(T x) restrict(cpu, amp)
-	{
-		return x == T(1);
-	}
-	template<typename T, std::enable_if_t<std::is_integral<T>::value>* = nullptr>
-	static inline constexpr bool even(T x) restrict(cpu, amp)
-	{
-		return (x % T(2)) == T(0);
-	}
-	template<typename T, std::enable_if_t<std::is_integral<T>::value>* = nullptr>
-	static inline constexpr bool odd(T x) restrict(cpu, amp)
-	{
-		return !even(x);
-	}
 
-    // TODO: Get the tests, header and internal implementations into the same logical order.
-    // TODO: Lots of the algorithms that typically do a small amount of work per thread should use tiling to save the runtime overhead of having to do this.
+		template<typename I1, typename I2, typename Op>
+		inline I2 _adjacent_difference(I1 first, I1 last, I2 dest_first, Op op)
+		{	// TODO: not optimized.
+			if (first == last) return dest_first;
+			if (std::next(first) == last) return _copy(first, last, dest_first);
 
-    //----------------------------------------------------------------------------
-    // adjacent_difference
-    //----------------------------------------------------------------------------
+			const auto compute_domain = Execution_parameters::tiled_domain(last - first);
+			const Difference_type<I1> work_per_tile = Execution_parameters::work_per_tile(last - first);
 
-    template<typename ConstRandomAccessIterator,typename RandomAccessIterator, typename BinaryOperation>
-    inline RandomAccessIterator adjacent_difference(ConstRandomAccessIterator first, ConstRandomAccessIterator last, RandomAccessIterator dest_first, BinaryOperation&& op)
-    {
-        if (first == last) return dest_first;
+			concurrency::parallel_for_each(compute_domain, [=, op = std::move(op)](auto&& tidx) restrict(amp) {
+				const Difference_type<I1> t = tidx.tile[0] * work_per_tile;
+				const Difference_type<I1> n = _min(work_per_tile, last - first - t);
 
-		const auto compute_domain = _details::Execution_parameters::tiled_domain(last - first);
-        concurrency::parallel_for_each(compute_domain, [=, op = std::forward<BinaryOperation>(op)](auto&& tidx) restrict(amp) {
-			tile_static Value_type<RandomAccessIterator> vals[tidx.tile_dim0 + 1];
-			for (decltype(last - first) i = tidx.tile_origin[0]; i < (last - first); i += compute_domain.size()) {
-				const auto n = amp_algorithms::min<>()(tidx.tile_dim0 * 1, last - first - i - 1);
+				uniform_invoke(forward<decltype(tidx)>(tidx), [=](auto&&) {
+					dest_first[t] = positive(t) ? op(first[t], first[predecessor(t)]) : *first;
+				});
 
-				if (tidx.local[0] < n) {
-					vals[tidx.local[0] + 1] = *(first + i + tidx.local[0] + 1);
-				}
-				if (tidx.tile_origin == tidx.global) {
-					vals[0] = *(first + i);
-				}
+				_adjacent_difference_in_tile_n(first + t,
+											   n,
+											   dest_first + t,
+											   forward<decltype(tidx)>(tidx),
+											   move(op));
+			});
+			return dest_first + (last - first);
+		}
 
-				tidx.barrier.wait_with_tile_static_memory_fence();
+		template<typename I1, typename I2>
+		inline I2 _adjacent_difference(I1 first, I1 last, I2 dest_first)
+		{
+			return _adjacent_difference(first, last, dest_first, amp_algorithms::minus<>());
+		}
 
-				if (tidx.local[0] < n) {
-					*(dest_first + i + tidx.local[0] + 1) = op(vals[tidx.local[0] + 1], vals[tidx.local[0]]);
-				}
-				if (positive(tidx.global[0])) {
-					*dest_first = *first;
-				}
-			}
-        });
+		//----------------------------------------------------------------------------
+		// all_of, any_of, none_of
+		//----------------------------------------------------------------------------
 
-        return dest_first + (last - first);
-    }
+		template<typename I, typename P>
+		inline bool _all_of(I first, I last, P p)
+		{
+			return !_any_of(first, last, [p = std::move(p)](auto&& x) restrict(amp) {
+				return !p(AMP_ALG forward<decltype(x)>(x));
+			});
+		}
 
-    template<typename ConstRandomAccessIterator,typename RandomAccessIterator>
-    inline RandomAccessIterator adjacent_difference(ConstRandomAccessIterator first, ConstRandomAccessIterator last, RandomAccessIterator dest_first)
-    {
-        return amp_stl_algorithms::adjacent_difference(first, last, dest_first, amp_algorithms::minus<>());
-    }
+		template<typename I, typename P, int tsz>
+		inline bool _any_of_in_tile_n(I first,
+									  Difference_type<I> n,
+									  const concurrency::tiled_index<tsz>& tidx,
+									  P p) restrict(amp)
+		{
+			tile_exclusive_cache<unsigned int, tidx.tile_dim0> found(tidx, [](auto&& out) { out = 0u; });
 
-    //----------------------------------------------------------------------------
-    // all_of, any_of, none_of
-    //----------------------------------------------------------------------------
-
-    template<typename ConstRandomAccessIterator,  typename UnaryPredicate>
-    inline bool all_of(ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate&& p)
-    {
-		return !amp_stl_algorithms::any_of(first, last, [p = std::forward<UnaryPredicate>(p)](auto&& v) restrict(amp) { return !p(v); });
-    }
-
-    // Non-standard, OutputIterator must yield an int reference, where the result will be
-    // stored. This allows the function to eschew synchronization
-    template<typename ConstRandomAccessIterator, typename UnaryPredicate, typename RandomIterator>
-    inline void any_of_impl(ConstRandomAccessIterator first, ConstRandomAccessIterator last, RandomIterator dest_first, UnaryPredicate&& p)
-    {
-        concurrency::parallel_for_each(concurrency::extent<1>(1), [=](auto&&) restrict(amp) { *dest_first = 0; });
-
-		const auto compute_domain = _details::Execution_parameters::tiled_domain(last - first);
-		concurrency::parallel_for_each(compute_domain, [=, p = std::forward<UnaryPredicate>(p)](auto&& tidx) restrict(amp) {
-			for (auto i = tidx.tile_origin[0]; i < (last - first); i += compute_domain.size()) {
-				tile_static bool early_out;
-				if (tidx.tile_origin == tidx.global) {
-					early_out = positive(*dest_first);
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				if (early_out) return;
-
-				tile_static Value_type<RandomIterator> cnt;
-				if (tidx.tile_origin == tidx.global) cnt = 0u;
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				const auto p_val = ((first + i + tidx.local[0]) < last) ? p(*(first + i + tidx.local[0])) : false;
-				if (p_val) {
-					concurrency::atomic_fetch_inc(&cnt);
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				if (positive(cnt)) {
-					if (tidx.tile_origin == tidx.global) {
-						concurrency::atomic_fetch_inc(&*dest_first);
-					}
-					return;
-				}
-			}
-		});
-    }
-
-    // Standard, builds of top of the non-standard async version above, and adds a sync to
-    // materialize the result.
-    template<typename ConstRandomAccessIterator, typename UnaryPredicate>
-    inline bool any_of(ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate&& p)
-    {
-		if (first == last) return false;
-
-        concurrency::array_view<unsigned int> found_any_av(1);
-        amp_stl_algorithms::any_of_impl(first, last, amp_stl_algorithms::begin(found_any_av), std::forward<UnaryPredicate>(p));
-        return positive(found_any_av[0]);
-    }
-
-    template<typename ConstRandomAccessIterator, typename UnaryPredicate>
-    inline bool none_of(ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate&& p)
-    {
-        return !amp_stl_algorithms::any_of(first, last, std::forward<UnaryPredicate>(p));
-    }
-
-    //----------------------------------------------------------------------------
-    // copy, copy_if, copy_n
-    //----------------------------------------------------------------------------
-
-    template<typename ConstRandomAccessIterator, typename RandomAccessIterator>
-    inline RandomAccessIterator copy(ConstRandomAccessIterator first,  ConstRandomAccessIterator last, RandomAccessIterator dest_first)
-    {
-        if (first == last) return dest_first;
-
-        concurrency::copy(_details::create_section(first, last - first), dest_first);
-        return dest_first + (last - first);
-    }
-
-    template<typename ConstRandomAccessIterator, typename RandomAccessIterator, typename UnaryPredicate>
-    inline RandomAccessIterator copy_if(ConstRandomAccessIterator first, ConstRandomAccessIterator last, RandomAccessIterator dest_first, UnaryPredicate&& pred)
-    {
-        if (first == last) return dest_first;
-
-        concurrency::array_view<Difference_type<ConstRandomAccessIterator>> off(1);
-        concurrency::parallel_for_each(off.extent, [=](auto&&) restrict(amp) { off[0] = 0u; });
-
-        const auto compute_domain = _details::Execution_parameters::tiled_domain(last - first);
-        concurrency::parallel_for_each(compute_domain, [=, pred = std::forward<UnaryPredicate>(pred)](auto&& tidx) restrict(amp) {
-			for (Difference_type<ConstRandomAccessIterator> i = tidx.tile_origin[0]; i < (last - first); i += compute_domain.size()) {
-				const auto n = amp_stl_algorithms::min(tidx.tile_dim0 * 1, last - first - i);
-
-				tile_static Value_type<ConstRandomAccessIterator> vals[tidx.tile_dim0];
-				_copy_single_tile(first + i, first + i + n, vals, tidx);
-
-				tile_static Difference_type<ConstRandomAccessIterator> tile_off;
-				if (tidx.tile_origin == tidx.global) {
-					tile_off = Difference_type<ConstRandomAccessIterator>(0);
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				Difference_type<ConstRandomAccessIterator> o(0);
-				if ((tidx.local[0] < n) && pred(vals[tidx.local[0]])) {
-					o = concurrency::atomic_fetch_inc(&tile_off);
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				if (zero(tile_off)) continue;
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				if (tidx.tile_origin == tidx.global) {
-					tile_off = concurrency::atomic_fetch_add(&off[0], tile_off);
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				if ((tidx.local[0] < n) && pred(vals[tidx.local[0]])) {
-					*(dest_first + tile_off + o) = vals[tidx.local[0]];
-				}
-			}
-        });
-
-        return dest_first + off[0];
-    }
-
-    template<typename ConstRandomAccessIterator, typename Size, typename RandomAccessIterator>
-    inline RandomAccessIterator copy_n(ConstRandomAccessIterator first, Size count, RandomAccessIterator dest_first)
-    {
-        // copy() will handle the case where count == 0.
-        return amp_stl_algorithms::copy(first, first + count, dest_first);
-    }
-
-    //----------------------------------------------------------------------------
-    // count, count_if
-    //----------------------------------------------------------------------------
-
-    template<typename ConstRandomAccessIterator, typename T>
-    inline Difference_type<ConstRandomAccessIterator> count(ConstRandomAccessIterator first, ConstRandomAccessIterator last, T&& value)
-    {
-        return amp_stl_algorithms::count_if(first, last, [value = std::forward<T>(value)](auto&& v) restrict(amp) { return v == value; });
-    }
-
-    template<typename ConstRandomAccessIterator, typename UnaryPredicate>
-    inline Difference_type<ConstRandomAccessIterator> count_if(ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate&& p)
-    {
-        if (first == last) return last - first;
-
-        concurrency::array_view<Difference_type<ConstRandomAccessIterator>> cnt(1);
-        concurrency::parallel_for_each(cnt.extent, [=](auto&& idx) restrict(amp) { cnt[idx] = 0; });
-
-        const auto compute_domain = _details::Execution_parameters::tiled_domain(last - first);
-        concurrency::parallel_for_each(compute_domain, [=, p = std::forward<UnaryPredicate>(p)] (auto&& tidx) restrict (amp) {
-            Difference_type<ConstRandomAccessIterator> c(0);
-            for (auto i = tidx.global[0]; i < (last - first); i += compute_domain.size()) {
-                if (p(*(first + i))) ++c;
-            }
-
-            tile_static Difference_type<ConstRandomAccessIterator> cs;
-			if (tidx.tile_origin == tidx.global) {
-				cs = Difference_type<ConstRandomAccessIterator>(0);
+			for (Difference_type<I> i = tidx.local[0]; (i < n) && zero(found.local()); i += tidx.tile_dim0) {
+				if (p(first[i])) found.local() = 1u;
 			}
 
-			tidx.barrier.wait_with_tile_static_memory_fence();
-
-			if (positive(c)) {
-				concurrency::atomic_fetch_add(&cs, c);
-			}
-
-            tidx.barrier.wait_with_tile_static_memory_fence();
-
-            if ((tidx.tile_origin == tidx.global) && positive(cs)) {
-				concurrency::atomic_fetch_add(&cnt[0], cs);
-			}
-        });
-
-        return cnt[0];
-    }
-
-    //----------------------------------------------------------------------------
-    // equal, equal_range
-    //----------------------------------------------------------------------------
-
-    template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2, typename BinaryPredicate>
-    inline bool equal(ConstRandomAccessIterator1 first1, ConstRandomAccessIterator1 last1, ConstRandomAccessIterator2 first2, BinaryPredicate&& p)
-    {
-        if (first1 == last1) return true;
-
-        const concurrency::array_view<unsigned int> neq(1);
-        concurrency::parallel_for_each(neq.extent, [=](auto&&) restrict(amp) { neq[0] = 0u; });
-
-        const auto compute_domain = _details::Execution_parameters::tiled_domain(last1 - first1);
-        concurrency::parallel_for_each(compute_domain, [=, p = std::forward<BinaryPredicate>(p)](auto&& tidx) restrict(amp) {
-			for (auto i = tidx.tile_origin[0]; i < (last1 - first1); i += compute_domain.size()) {
-				tile_static bool early_out;
-				if (tidx.tile_origin == tidx.global) {
-					early_out = positive(neq[0]);
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				if (early_out) return;
-
-				tile_static unsigned int ne;
-				if (tidx.tile_origin == tidx.global) {
-					ne = 0u;
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				const auto n = amp_algorithms::min<>()(tidx.tile_dim0 * 1, last1 - first1 - i);
-				if (tidx.local[0] < n) {
-					if (!p(*(first1 + i + tidx.local[0]), *(first2 + i + tidx.local[0]))) {
-						concurrency::atomic_fetch_inc(&ne);
-					}
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				if (positive(ne)) {
-					if (tidx.tile_origin == tidx.global) {
-						concurrency::atomic_fetch_inc(&neq[0]);
-					}
-					return;
-				}
-			}
-        });
-        return zero(neq[0]);
-    }
-
-    template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2>
-    inline bool equal(ConstRandomAccessIterator1 first1, ConstRandomAccessIterator1 last1, ConstRandomAccessIterator2 first2)
-    {
-        return amp_stl_algorithms::equal(first1, last1, first2, amp_algorithms::equal_to<>());
-    }
-
-	template<typename I, typename T, typename C>
-	inline std::pair<I, I> equal_range(I first, I last, T&& value, C&& cmp)
-	{
-		if (first == last) return std::make_pair(last, last);
-
-		const concurrency::array_view<amp_stl_algorithms::pair<Difference_type<I>, Difference_type<I>>> res(1);
-		concurrency::parallel_for_each(res.extent, [=](auto&&) restrict(amp) { res[0] = Value_type<decltype(res)>(last - first, last - first); });
-
-		const auto compute_domain = _details::Execution_parameters::tiled_domain(last - first);
-		concurrency::parallel_for_each(compute_domain, [=, value = std::forward<T>(value), cmp = std::forward<C>(cmp)](auto&& tidx) restrict(amp) {
-			tile_static bool early_out;
-			tile_static bool skip;
-			for (auto i = tidx.tile_origin[0]; i < (last - first); i += compute_domain.size()) {
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				const auto n = amp_algorithms::min<>()(tidx.tile_dim0 * 1, last - first - i);
-
-				if (tidx.tile_origin == tidx.global) {
-					early_out = (res[0].first < i) && (res[0].second < i);
-					skip = cmp(*(first + i + n - 1), value);
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				if (early_out) return;
-				if (skip) continue;
-
-				tile_static amp_stl_algorithms::pair<Difference_type<I>, Difference_type<I>> r;
-				if (tidx.tile_origin == tidx.global) {
-					r = decltype(r)(last - first, last - first);
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				if (tidx.local[0] < n) {
-					if (!cmp(*(first + i + tidx.local[0]), value)) {
-						concurrency::atomic_fetch_min(&r.first, i + tidx.local[0]);
-					}
-					if (cmp(value, *(first + i + tidx.local[0]))) {
-						concurrency::atomic_fetch_min(&r.second, i + tidx.local[0]);
-					}
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				if (tidx.tile_origin == tidx.global) {
-					concurrency::atomic_fetch_min(&res[0].first, r.first);
-					concurrency::atomic_fetch_min(&res[0].second, r.second);
-				}
-			}
-		});
-		return std::make_pair(first + res[0].first, first + res[0].second);
-	}
-
-	template<typename I, typename T>
-	inline std::pair<I, I> equal_range(I first, I last, T&& value)
-	{
-		return amp_stl_algorithms::equal_range(first, last, std::forward<T>(value), amp_algorithms::less<>());
-	}
-
-    //----------------------------------------------------------------------------
-    // fill, fill_n
-    //----------------------------------------------------------------------------
-
-    template<typename RandomAccessIterator, typename T>
-    inline void fill(RandomAccessIterator first, RandomAccessIterator last, T&& value)
-    {
-        amp_stl_algorithms::generate(first, last, [value = std::forward<T>(value)]() restrict(amp) { return value; });
-    }
-
-    template<typename RandomAccessIterator, typename Size, typename T>
-    inline RandomAccessIterator fill_n(RandomAccessIterator first, Size count, T&& value)
-    {
-        return amp_stl_algorithms::generate_n(first, count, [value = std::forward<T>(value)]() restrict(amp) { return value; });
-    }
-
-    //----------------------------------------------------------------------------
-    // find, find_if, find_if_not, find_end, find_first_of, adjacent_find
-    //----------------------------------------------------------------------------
-
-    template<typename ConstRandomAccessIterator, typename UnaryPredicate>
-    inline ConstRandomAccessIterator find_if(ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate&& p)
-    {
-        if (first == last) return last;
-
-        concurrency::array_view<Difference_type<ConstRandomAccessIterator>> ridx(1);
-        concurrency::parallel_for_each(ridx.extent, [=](auto&&) restrict(amp) { ridx[0] = last - first; });
-
-        const auto compute_domain = _details::Execution_parameters::tiled_domain(last - first);
-        concurrency::parallel_for_each(compute_domain, [=, p = std::forward<UnaryPredicate>(p)] (auto&& tidx) restrict(amp) {
-			for (auto i = tidx.tile_origin[0]; i < (last - first); i += compute_domain.size()) {
-				tile_static bool early_out;
-				if (tidx.tile_origin == tidx.global) {
-					early_out = ridx[0] < i;
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				if (early_out) return;
-
-				tile_static Difference_type<ConstRandomAccessIterator> r;
-				if (tidx.tile_origin == tidx.global) {
-					r = last - first;
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				const auto n = amp_stl_algorithms::min(tidx.tile_dim0*1, last - first - i);
-				if (tidx.local[0] < n) {
-					if (p(*(first + i + tidx.local[0]))) {
-						concurrency::atomic_fetch_min(&r, i + tidx.local[0]);
-					}
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				if (r != (last - first)) {
-					if (tidx.tile_origin == tidx.global) {
-						concurrency::atomic_fetch_min(&ridx[0], r);
-					}
-					return;
-				}
-			}
-        });
-
-        return first + ridx[0];
-    }
-
-    template<typename ConstRandomAccessIterator, typename UnaryPredicate>
-    inline ConstRandomAccessIterator find_if_not( ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryPredicate&& p)
-    {
-        return amp_stl_algorithms::find_if(first, last, [p = std::forward<UnaryPredicate>(p)](auto&& v) restrict(amp) { return !p(v); });
-    }
-
-    template<typename ConstRandomAccessIterator, typename T>
-    inline ConstRandomAccessIterator find( ConstRandomAccessIterator first, ConstRandomAccessIterator last, T&& value)
-    {
-        return amp_stl_algorithms::find_if(first, last, [=, value = std::forward<T>(value)] (auto&& curr_val) restrict(amp) {
-            return curr_val == value;
-        });
-    }
-
-    template<typename ConstRandomAccessIterator, typename Predicate>
-    inline ConstRandomAccessIterator adjacent_find(ConstRandomAccessIterator first, ConstRandomAccessIterator last, Predicate&& p)
-    {
-        if (first == last) return last;
-
-		concurrency::array_view<Difference_type<ConstRandomAccessIterator>> ridx(1);
-		concurrency::parallel_for_each(ridx.extent, [=](auto&&) restrict(amp) { ridx[0] = last - first; });
-
-		const auto compute_domain = _details::Execution_parameters::tiled_domain(last - first);
-		concurrency::parallel_for_each(compute_domain, [=, p = std::forward<Predicate>(p)](auto&& tidx) restrict(amp) {
-			for (auto i = tidx.tile_origin[0]; i < (last - first); i += compute_domain.size()) {
-				tile_static bool early_out;
-				if (tidx.tile_origin == tidx.global) {
-					early_out = ridx[0] < i;
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				if (early_out) return;
-
-				tile_static Difference_type<ConstRandomAccessIterator> r;
-				if (tidx.tile_origin == tidx.global) {
-					r = last - first;
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				const auto n = amp_stl_algorithms::min(tidx.tile_dim0 + 1, last - first - i);
-				if (tidx.local[0] < n) {
-					if (p(*(first + i + tidx.local[0]), *(first + i + tidx.local[0] + 1))) {
-						concurrency::atomic_fetch_min(&r, i + tidx.local[0]);
-					}
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				if (r != (last - first)) {
-					if (tidx.tile_origin == tidx.global) {
-						concurrency::atomic_fetch_min(&ridx[0], r);
-					}
-					return;
-				}
-			}
-		});
-
-        return first + ridx[0];
-    }
-
-    template<typename ConstRandomAccessIterator>
-    inline ConstRandomAccessIterator adjacent_find(ConstRandomAccessIterator first, ConstRandomAccessIterator last)
-    {
-        return amp_stl_algorithms::adjacent_find(first, last, amp_algorithms::equal_to<>());
-    }
-
-    //----------------------------------------------------------------------------
-    // for_each, for_each_no_return
-    //----------------------------------------------------------------------------
-
-    template<typename ConstRandomAccessIterator, typename UnaryFunction>
-    inline void for_each_no_return(ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryFunction&& f)
-    {
-        if (first == last) return;
-
-        concurrency::parallel_for_each(concurrency::extent<1>(last - first), [=, f = std::forward<UnaryFunction>(f)] (auto&& idx) restrict(amp) {
-            f(*(first + idx[0]));
-        });
-    }
-
-    // UnaryFunction CANNOT contain any array, array_view or textures. Needs to be blittable.
-    template<typename ConstRandomAccessIterator, typename UnaryFunction>
-    inline UnaryFunction for_each(ConstRandomAccessIterator first, ConstRandomAccessIterator last, UnaryFunction&& f)
-    {
-        if (first == last) return f;
-
-        concurrency::array_view<UnaryFunction> functor_av(1, &f);
-        for_each_no_return(first, last,[=] (auto&& val) restrict (amp) {
-            functor_av[{0}](val);
-        });
-
-        return f;
-    }
-
-    //----------------------------------------------------------------------------
-    // generate, generate_n
-    //
-    // The "Generator" functor needs to be callable as "g()" and must return a type
-    // that is assignable to RandomAccessIterator::value_type.  The functor needs
-    // to be blittable and cannot contain any array, array_view, or textures.
-    //----------------------------------------------------------------------------
-
-    template<typename RandomAccessIterator, typename Size, typename Generator>
-    inline RandomAccessIterator generate_n(RandomAccessIterator first, Size count, Generator&& g)
-    {
-        if (zero(count)) return first;
-
-        concurrency::parallel_for_each(concurrency::extent<1>(count), [=, g = std::forward<Generator>(g)] (auto&& idx) restrict(amp) {
-            *(first + idx[0]) = g();
-        });
-
-        return first + count;
-    }
-
-    template <typename RandomAccessIterator, typename Generator>
-    inline void generate(RandomAccessIterator first, RandomAccessIterator last, Generator&& g)
-    {
-        if (first == last) return;
-
-        amp_stl_algorithms::generate_n(first, last - first, std::forward<Generator>(g));
-    }
-
-    //----------------------------------------------------------------------------
-    // includes
-    //----------------------------------------------------------------------------
-
-	template<typename I1, typename I2, typename C>
-	inline bool includes(I1 first1, I1 last1, I2 first2, I2 last2, C&& cmp)
-	{	// TODO: not efficient, robust or clean yet. Properify!
-		if (first1 == last1) return false;
-		if (first2 == last2) return true;
-
-		const auto l = amp_stl_algorithms::lower_bound(first1, last1, first2, [](auto&& x, auto&& y) restrict(amp) { return x < *y; });
-		const auto u = amp_stl_algorithms::upper_bound(first1, last1, last2 - 1, [](auto&& x, auto&& y) restrict(amp) { return *x < y; });
-		if ((u - l) < (last2 - first2)) return false; // Pigeonhole principle.
-
-		concurrency::array_view<unsigned int> neq(1);
-		concurrency::parallel_for_each(neq.extent, [=](auto&&) restrict(amp) { neq[0] = 0u; });
-
-		const auto compute_domain = _details::Execution_parameters::tiled_domain(last2 - first2);
-		concurrency::parallel_for_each(compute_domain, [=, cmp = std::forward<C>(cmp)](auto&& tidx) restrict(amp) {
-			tile_static bool early_out;
-			for (decltype(last2 - first2) i = tidx.tile_origin[0]; i < (last2 - first2); i += compute_domain.size()) {
-				const auto n = amp_algorithms::min<>()(tidx.tile_dim0 * 1, last2 - first2 - i);
-				if (tidx.tile_origin == tidx.global) {
-					early_out = ((u - l - i) < n);
-					if (early_out) {
-						concurrency::atomic_fetch_inc(&neq[0]);
-					}
-					early_out = early_out || positive(neq[0]);
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				tile_static Difference_type<I1> offs[tidx.tile_dim0];
-				offs[tidx.local[0]] = i + tidx.local[0];
-
-				tile_static Value_type<I2> vals[tidx.tile_dim0];
-				_copy_single_tile(first2 + i, first2 + i + n, vals, tidx);
-
-				if (tidx.local[0] < n) {
-					while ((offs[tidx.local[0]] < (u - l)) && cmp(*(l + offs[tidx.local[0]]), vals[tidx.local[0]])) {
-						++offs[tidx.local[0]];
-					}
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				tile_static unsigned int not_done;
-				do {
-					tidx.barrier.wait_with_tile_static_memory_fence();
-
-					if (tidx.tile_origin == tidx.global) {
-						not_done = 0u;
-					}
-
-					tidx.barrier.wait_with_tile_static_memory_fence();
-
-					if (odd(tidx.local[0])) {
-						if (offs[tidx.local[0] - 1] == offs[tidx.local[0]]) {
-							++offs[tidx.local[0]];
-							concurrency::atomic_fetch_inc(&not_done);
+			return one(found.local());
+		}
+
+		// Non-standard, OutputIterator must yield an int reference, where the result will be
+		// stored. This allows the function to eschew synchronization
+		template<typename I1, typename I2, typename P>
+		inline void any_of_impl(I1 first, I1 last, I2 dest_first, P p)
+		{	// TODO: evaluate removing this.
+			concurrency::parallel_for_each(concurrency::extent<1>(1), [=](auto&&) restrict(amp) { *dest_first = 0; });
+
+			const auto compute_domain = Execution_parameters::tiled_domain(last - first);
+			const Difference_type<I1> work_per_tile = Execution_parameters::work_per_tile(last - first);
+
+			concurrency::parallel_for_each(compute_domain, [=, p = std::move(p)](auto&& tidx) restrict(amp) {
+				const AMP_ALG Difference_type<I1> t = tidx.tile[0] * work_per_tile;
+
+				AMP_ALG tile_exclusive_cache<bool, tidx.tile_dim0> done(AMP_ALG forward<decltype(tidx)>(tidx), [=](auto&& out) {
+					AMP_ALG forward<decltype(out)>(out) = AMP_ALG positive(dest_first[0]);
+				});
+
+				if (!done.local()) {
+					const AMP_ALG Difference_type<I1> n = AMP_ALG _min(work_per_tile, last - first - t);
+					const bool r = _any_of_in_tile_n(first + t, n, tidx, move(p));
+
+					uniform_invoke(tidx, [=](auto&&) {
+						if (r) {
+							concurrency::atomic_fetch_inc(&dest_first[0]);
 						}
-					}
-
-					tidx.barrier.wait_with_tile_static_memory_fence();
-
-					if (positive(tidx.local[0]) && even(tidx.local[0])) {
-						if (offs[tidx.local[0] - 1] == offs[tidx.local[0]]) {
-							++offs[tidx.local[0]];
-							concurrency::atomic_fetch_inc(&not_done);
-						}
-					}
-
-					tidx.barrier.wait_with_tile_static_memory_fence();
+					});
 				}
-				while (positive(not_done));
+			});
+		}
 
-				tile_static unsigned int ne;
-				if (tidx.tile_origin == tidx.global) {
-					ne = 0u;
-				}
+		template<typename I, typename P>
+		inline bool _any_of(I first, I last, P p)
+		{
+			if (first == last) return false;
 
-				tidx.barrier.wait_with_tile_static_memory_fence();
+			return _find_if(first, last, std::move(p)) != last;
+		}
 
-				if (tidx.local[0] < n) {
-					for (auto j = offs[tidx.local[0]]; ; ++j) {
-						if (((u - l) < j) || cmp(vals[tidx.local[0]], *(l + j))) {
-							concurrency::atomic_fetch_inc(&ne);
-							break;
-						}
-						if (!cmp(*(l + j), vals[tidx.local[0]])) {
-							break;
-						}
-					}
-				}
-				tidx.barrier.wait_with_tile_static_memory_fence();
+		template<typename I, typename P>
+		inline bool _none_of(I first, I last, P p)
+		{
+			return !_any_of(first, last, std::move(p));
+		}
 
-				if (positive(ne)) {
-					if ((tidx.tile_origin == tidx.global)) {
-						concurrency::atomic_fetch_inc(&neq[0]);
-					}
-					return;
-				}
-			}
-		});
+		//----------------------------------------------------------------------------
+		// copy, copy_if, copy_n
+		//----------------------------------------------------------------------------
 
-		return zero(neq[0]);
-	}
+		template<typename I1, typename I2, int tsz>
+		inline I2 _copy_in_tile_n(I1 first,
+								  Difference_type<I1> n,
+								  I2 dest_first,
+								  const concurrency::tiled_index<tsz>& tidx) restrict(amp)
+		{
+			if (!positive(n)) return dest_first;
 
-	template<typename I1, typename I2>
-	inline bool includes(I1 first1, I1 last1, I2 first2, I2 last2)
-	{
-		return amp_stl_algorithms::includes(first1, last1, first2, last2, amp_algorithms::less<>());
-	}
-    //----------------------------------------------------------------------------
-    // inner_product
-    //----------------------------------------------------------------------------
-
-    template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2, typename T, typename BinaryOperation1, typename BinaryOperation2>
-    inline T inner_product(ConstRandomAccessIterator1 first1, ConstRandomAccessIterator1 last1, ConstRandomAccessIterator2 first2, T&& value, BinaryOperation1&& binary_op1, BinaryOperation2&& binary_op2)
-    {
-        if (first1 == last1) return value;
-
-		const auto compute_domain = _details::Execution_parameters::tiled_domain(last1 - first1);
-        concurrency::array_view<T> tmp(compute_domain.size() / _details::Execution_parameters::tile_size());
-        concurrency::array_view<unsigned int> locks(tmp.extent);
-
-		static constexpr unsigned int locked = 1u;
-        static constexpr unsigned int unlocked = 0u;
-        concurrency::parallel_for_each(locks.extent, [=](auto&& idx) restrict(amp) { locks[idx] = locked; });
-
-        concurrency::parallel_for_each(compute_domain, [=, value = std::forward<T>(value), binary_op1 = std::forward<BinaryOperation1>(binary_op1), binary_op2 = std::forward<BinaryOperation2>(binary_op2)](auto&& tidx) restrict(amp) {
-			tile_static Value_type<ConstRandomAccessIterator1> vals[tidx.tile_dim0];
-			T partial_prod;
-
-			for (Difference_type<ConstRandomAccessIterator1> i = tidx.tile_origin[0]; i < (last1 - first1); i += compute_domain.size()) {
-				const auto n = amp_stl_algorithms::min(tidx.tile_dim0 * 1, last1 - first1 - i);
-
-				if (tidx.local[0] < n) {
-					vals[tidx.local[0]] = binary_op2(*(first1 + i + tidx.local[0]), *(first2 + i + tidx.local[0]));
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				const auto pp = _reduce_single_tile_unguarded(vals, tidx, binary_op1);
-
-				partial_prod = positive(i / compute_domain.size()) ? binary_op1(partial_prod, pp) : pp;
+			for (Difference_type<I1> i = tidx.local[0]; i < n; i += tidx.tile_dim0) {
+				dest_first[i] = first[i];
 			}
 
-			if (tidx.tile_origin == tidx.global) {
-				if (zero(tidx.tile[0])) {
-                    tmp[tidx.tile] = binary_op1(partial_prod, value);
-                }
-                else {
-                    auto s = unlocked;
-                    while (!concurrency::atomic_compare_exchange(&locks[tidx.tile - 1], &s, locked)) {
-                        s = unlocked;
-                    }
-                    tmp[tidx.tile] = binary_op1(partial_prod, tmp[tidx.tile - 1]);
-                }
-                locks[tidx.tile] = unlocked;
-            }
-        });
+			return dest_first + n;
+		}
 
-        return tmp[tmp.extent.size() - 1u];
-    }
+		template<typename I1, typename I2, int tsz>
+		inline I2 _copy_in_tile(I1 first, I1 last, I2 dest_first,
+								const concurrency::tiled_index<tsz>& tidx) restrict(amp)
+		{
+			return _copy_in_tile_n(first, last - first, dest_first, tidx);
+		}
 
-	template<typename I1, typename I2, typename T>
-	inline T inner_product(I1 first1, I1 last1, I2 first2, T&& value)
-	{
-		return amp_stl_algorithms::inner_product(first1, last1, first2, std::forward<T>(value), amp_algorithms::plus<>(), amp_algorithms::multiplies<>());
-	}
-    //----------------------------------------------------------------------------
-    // iota
-    //----------------------------------------------------------------------------
+		template<typename I1, typename I2>
+		inline I2 _copy(I1 first, I1 last, I2 dest_first)
+		{
+			if (first == last) return dest_first;
 
-    template<typename T> using has_plus = has<std::plus<>(T, T)>;
-    template<typename T> using has_minus = has<std::minus<>(T, T)>;
-    template<typename T> using has_multiplies = has<std::multiplies<>(T, T)>;
+			concurrency::copy(_details::create_section(first, last - first),
+							  _details::create_section(dest_first, last - first));
+			return dest_first + (last - first);
+		}
 
-    template<typename T> using fast_iota = std::enable_if_t<has_plus<T>::value && has_minus<T>::value && has_multiplies<T>::value>;
-    template<typename T> using slow_iota = std::enable_if_t<!has_minus<T>::value || !has_multiplies<T>::value>;
-
-    template<typename I, typename T, fast_iota<T>* = nullptr>
-    inline void iota_impl(I first, I last, T&& value)
-    {
-        auto increment = value;
-        increment = ++increment - value;
-
-        concurrency::parallel_for_each(concurrency::extent<1>(last - first), [=, value = std::forward<T>(value)](auto&& idx) restrict(amp) {
-            *(first + idx[0]) = value + T(idx[0]) * increment;  // This is numerically equivalent with incrementing only if T multiplication is exact.
-        });
-    }
-
-    template<typename I, typename T, slow_iota<T>* = nullptr>
-    inline void iota_impl(I first, I last, T&& value)
-    {
-        concurrency::parallel_for_each(concurrency::extent<1>(last - first), [=, value = std::forward<T>(value)](auto&& idx) restrict(amp) {
-            *(first + idx[0]) = value;
-            for (auto i = idx[0]; i; --i) {
-				++*(first + idx[0])
-			};
-        });
-    }
-
-    template<typename RandomAccessIterator, typename T>
-    inline void iota(RandomAccessIterator first, RandomAccessIterator last, T&& value)
-    {
-        // Using SFINAE based dispatch should work here: if T has multiplication and subtraction
-        // the fast version can be used, if not we provide a slow but standards conforming one.
-        // There is an intermediate solution, using scan, which only requires T to have addition
-        if (first == last) return;
-        iota_impl(first, last, std::forward<T>(value));
-    }
-
-    //----------------------------------------------------------------------------
-    // lexographical_compare
-    //----------------------------------------------------------------------------
-
-    //----------------------------------------------------------------------------
-    // lower_bound, upper_bound
-    //----------------------------------------------------------------------------
-
-    template<typename I, typename T, typename C>
-    inline I lower_bound(I first, I last, T&& value, C&& cmp)
-    {
-		return amp_stl_algorithms::partition_point(first, last, [value = std::forward<T>(value), cmp = std::forward<C>(cmp)](auto&& x) restrict(cpu, amp) {
-			return cmp(x, value);
-		});
-    }
-
-    template<typename I, typename T>
-    inline I lower_bound(I first, I last, T&& value)
-    {
-        return lower_bound(first, last, std::forward<T>(value), amp_algorithms::less<>());
-    }
-
-	template<typename I, typename T, typename C>
-	inline I upper_bound(I first, I last, T&& value, C&& cmp)
-	{
-		return amp_stl_algorithms::partition_point(first, last, [value = std::forward<T>(value), cmp = std::forward<C>(cmp)](auto&& x) restrict(cpu, amp) {
-			return !cmp(value, x);
-		});
-	}
-
-	template<typename I, typename T>
-	inline I upper_bound(I first, I last, T&& value)
-	{
-		return upper_bound(first, last, std::forward<T>(value), amp_algorithms::less<>());
-	}
-
-    //----------------------------------------------------------------------------
-    // merge, inplace_merge
-    //----------------------------------------------------------------------------
-
-    //----------------------------------------------------------------------------
-    // max, max_element, min, min_element, minmax_element
-    //----------------------------------------------------------------------------
-	template<typename I, typename C>
-	I _extremum_element(I first, I last, C&& cmp)
-	{	// TODO: Should be properified around the in-tile reduce step, somewhat unclean (after reduce overhaul).
-		//	   : Should really be using work-stealing, as opposed to the fixed pipeline propagation (after v1).
-		if (first == last) return last;
-
-		const auto compute_domain = _details::Execution_parameters::tiled_domain(last - first);
-		const concurrency::array_view<Difference_type<I>> ridx(compute_domain.size() / _details::Execution_parameters::tile_size());
-		concurrency::parallel_for_each(ridx.extent, [=](auto&& idx) restrict(amp) { ridx[idx] = last - first; });
-
-		concurrency::parallel_for_each(compute_domain, [=, cmp = std::forward<C>(cmp)](auto&& tidx) restrict(amp) {
-			using Val_idx = amp_stl_algorithms::pair<Value_type<I>, Difference_type<I>>;
-
-			tile_static Val_idx extrema[tidx.tile_dim0];
-			extrema[tidx.local[0]] = tidx.global[0] < (last - first) ? Val_idx(*(first + tidx.global[0]), tidx.global[0]) :
-									 (std::is_default_constructible<Value_type<I>>::value ? Val_idx(Value_type<I>(), 0) : Val_idx(*first, 0));
-
-			for (Difference_type<I> i = tidx.tile_origin[0] + compute_domain.size(); i < (last - first); i += compute_domain.size()) {
-				const auto n = amp_stl_algorithms::min(tidx.tile_dim0*1, last - first - i);
-				if (tidx.local[0] < n) {
-					if (cmp(*(first + i + tidx.local[0]), extrema[tidx.local[0]].first)) {
-						extrema[tidx.local[0]].first = *(first + i + tidx.local[0]);
-						extrema[tidx.local[0]].second = i + tidx.local[0];
-					}
-				}
-			}
-
-			tidx.barrier.wait_with_tile_static_memory_fence();
-
-			auto extremum = _reduce_single_tile_unguarded(extrema, tidx, [c = cmp](auto&& x, auto&& y) {
-				if (c(x.first, y.first)) return x;
-				if (c(y.first, x.first)) return y;
-				return Value_type<decltype(x)>(x.first, amp_stl_algorithms::min(x.second, y.second));
+		template<typename I1, typename I2, typename P, int tsz>
+		inline I2 _copy_if_single_tile_n(I1 first,
+										 Difference_type<I1> n,
+										 I2 dest_first,
+										 const concurrency::tiled_index<tsz>& tidx,
+										 P p) restrict(amp)
+		{	// This assumes n <= tidx.tile_dim0.
+			tile_exclusive_cache<atomic<Difference_type<I2>>, tsz> tile_off(tidx, [=](auto&& out) {
+				forward<decltype(out)>(out) = Difference_type<I2>(0);
 			});
 
-			tidx.barrier.wait_with_tile_static_memory_fence();
+			if (tidx.local[0] < n)  {
+				const Value_type<I1> x = first[tidx.local[0]];
+				if (p(x)) {
+					dest_first[tile_off.local()++] = x;
+				}
+			}
 
+			return dest_first + tile_off.local();
+		}
+
+		template<typename I1, typename I2, typename P, int tsz>
+		inline I2 _copy_if_in_tile_n(I1 first,
+									 Difference_type<I1> n,
+									 I2 dest_first,
+									 Reference<atomic<Difference_type<I2>>> dx,
+									 const concurrency::tiled_index<tsz>& tidx,
+									 P p) restrict(amp)
+		{	// TODO: investigate if this should be recast so as to minimise updating dx at the cost
+			// of one extra global read per copied element.
+			tile_exclusive_cache<Value_type<I2>[tidx.tile_dim0], tsz> tmp(tidx, [](auto&&){});
+			tile_exclusive_cache<Difference_type<I2>, tsz> tile_off(tidx, [](auto&& out) {
+				forward<decltype(out)>(out) = Difference_type<I2>(0);
+			});
+			//tile_static Value_type<I2> tmp[tidx.tile_dim0];
+			//tile_static Difference_type<I2> tile_off;
+
+			for (Difference_type<I1> i = 0; i < n; i += tidx.tile_dim0) {
+				const Difference_type<I1> m = _min(tidx.tile_dim0 * 1, n - i);
+				const auto last_copied = _copy_if_single_tile_n(first + i, m, tmp.local(), tidx, move(p));
+
+				if (last_copied != tmp.local()) {
+					const auto cnt = last_copied - tmp.local();
+					uniform_invoke(tidx, [=](auto&&) { tile_off.local() = dx.get().fetch_add(cnt); });
+
+					_copy_in_tile(tmp.local(), last_copied, dest_first + tile_off.local(), tidx);
+
+					uniform_invoke(tidx, [=](auto&&) { tile_off.local() += cnt; });
+				}
+			}
+
+			return dest_first + dx.get();
+		}
+
+		template<typename I1, typename I2, typename P>
+		inline I2 _copy_if(I1 first, I1 last, I2 dest_first, P p)
+		{
+			if (first == last) return dest_first;
+
+			concurrency::array_view<atomic<Difference_type<I2>>> o(1);
+			concurrency::parallel_for_each(o.extent, [=](auto&&) restrict(amp) { o[0] = AMP_ALG Difference_type<I2>(0); });
+
+			const auto compute_domain = Execution_parameters::tiled_domain(last - first);
+			const Difference_type<I1> work_per_tile = Execution_parameters::work_per_tile(last - first);
+
+			concurrency::parallel_for_each(compute_domain, [=, p = std::move(p)](auto&& tidx) restrict(amp) {
+				const AMP_ALG Difference_type<I1> t = tidx.tile[0] * work_per_tile;
+				const AMP_ALG Difference_type<I1> n = AMP_ALG _min(work_per_tile, last - first - t);
+				_copy_if_in_tile_n(first + t, n, dest_first, o[0], tidx, AMP_ALG move(p));
+			});
+
+			return dest_first + o[0];
+		}
+
+		template<typename I1, typename N, typename I2>
+		inline I2 _copy_n(I1 first, N count, I2 dest_first)
+		{
+			// copy() will handle the case where count == 0.
+			return _copy(first, first + count, dest_first);
+		}
+
+		//----------------------------------------------------------------------------
+		// count, count_if
+		//----------------------------------------------------------------------------
+
+		template<typename I, typename T>
+		inline Difference_type<I> _count(I first, I last, const T& value)
+		{
+			return _count_if(first, last, [=](auto&& x) restrict(amp) { return AMP_ALG forward<decltype(x)>(x) == value; });
+		}
+
+		template<typename I, typename P, int tsz>
+		inline Difference_type<I> _count_if_in_tile_n(I first,
+													  Difference_type<I> n,
+													  const concurrency::tiled_index<tsz>& tidx,
+													  P p) restrict(amp)
+		{
+			tile_exclusive_cache<Difference_type<I>[tidx.tile_dim0], tidx.tile_dim0> tmp(tidx, [=](auto&& out) {
+				AMP_ALG _fill_in_tile_n(AMP_ALG forward<decltype(out)>(out), tidx.tile_dim0, AMP_ALG Difference_type<I>(0), tidx);
+			});
+
+			for (Difference_type<I> i = tidx.local[0]; i < n; i += tidx.tile_dim0) {
+				tmp[tidx.local[0]] += Difference_type<I>(p(first[i]));
+			}
+
+			return tmp.reduce(amp_algorithms::plus<>());
+		}
+
+		template<typename I, typename P>
+		inline Difference_type<I> _count_if(I first, I last, P p)
+		{
+			if (first == last) return Difference_type<I>(0);
+
+			const auto tmp = Execution_parameters::temporary_buffer<Difference_type<I>>(last - first);
+
+			const auto d = Execution_parameters::tiled_domain(last - first);
+			const Difference_type<I> w = Execution_parameters::work_per_tile(last - first);
+
+			concurrency::parallel_for_each(d, [=, p = std::move(p)](auto&& tidx) restrict(amp) {
+				const AMP_ALG Difference_type<I> t = tidx.tile[0] * w;
+				const AMP_ALG Difference_type<I> n = AMP_ALG _min(w, last - first - t);
+
+				const AMP_ALG Difference_type<I> c = AMP_ALG _count_if_in_tile_n(first + t,
+																				 n,
+																				 AMP_ALG forward<decltype(tidx)>(tidx),
+																				 AMP_ALG move(p));
+
+				uniform_invoke(tidx, [=](auto&& tile) { tmp[tile] = c; });
+			});
+
+			return _reduce(cbegin(tmp), cend(tmp), Difference_type<I>(0), amp_algorithms::plus<>());
+		}
+
+		//----------------------------------------------------------------------------
+		// equal, equal_range
+		//----------------------------------------------------------------------------
+
+		template<typename I1, typename I2, typename P, int tsz>
+		inline bool _equal_in_tile_n(I1 first1,
+									 Difference_type<I1> n,
+									 I2 first2,
+									 const concurrency::tiled_index<tsz>& tidx,
+									 P p) restrict(amp)
+		{
+			if (!positive(n)) return true;
+
+			tile_exclusive_cache<bool, tidx.tile_dim0> eq(tidx, [](auto&& out) { out = true; });
+			for (Difference_type<I1> i = tidx.local[0]; (i < n) && eq.local(); i += tidx.tile_dim0) {
+				if (!p(first1[i], first2[i])) {
+					eq.local() = false;
+					break;
+				}
+			}
+
+			return eq.local();
+		}
+
+		template<typename I1, typename I2, typename P>
+		inline bool _equal(I1 first1, I1 last1, I2 first2, P p)
+		{
+			if (first1 == last1) return true;
+
+			const concurrency::array_view<unsigned int> neq(1);
+			concurrency::parallel_for_each(neq.extent, [=](auto&&) restrict(amp) { neq[0] = 0u; });
+
+			const auto d = Execution_parameters::tiled_domain(last1 - first1);
+			const Difference_type<I1> w = Execution_parameters::work_per_tile(last1 - first1);
+
+			concurrency::parallel_for_each(d, [=, p = std::move(p)](auto&& tidx) restrict(amp) {
+				if (AMP_ALG positive(neq[0])) return;
+
+				const AMP_ALG Difference_type<I1> t = tidx.tile[0] * w;
+				const AMP_ALG Difference_type<I1> n = AMP_ALG _min(w, last1 - first1 - t);
+
+				const bool eq = _equal_in_tile_n(first1 + t,
+												 n,
+												 first2 + t,
+												 AMP_ALG forward<decltype(tidx)>(tidx),
+												 AMP_ALG move(p));
+				if (!eq) uniform_invoke(AMP_ALG forward<decltype(tidx)>(tidx), [=](auto&&) { neq[0] = 1u; });
+			});
+			return zero(neq[0]);
+		}
+
+		template<typename I1, typename I2>
+		inline bool _equal(I1 first1, I1 last1, I2 first2)
+		{
+			return _equal(first1, last1, first2, amp_algorithms::equal_to<>());
+		}
+
+		template<typename I, typename T, typename C>
+		inline std::pair<I, I> _equal_range(I first, I last, const T& value, C cmp)
+		{	// TODO: optimise
+			if (first == last) return std::make_pair(last, last);
+
+			const I l = _lower_bound(first, last, value, cmp);
+			const I u = _upper_bound(l, last, value, std::move(cmp));
+
+ 			return std::make_pair(l, u);
+   		}
+
+		template<typename I, typename T>
+		inline std::pair<I, I> _equal_range(I first, I last, const T& value)
+		{
+			return _equal_range(first, last, value, amp_algorithms::less<>());
+		}
+
+		//----------------------------------------------------------------------------
+		// fill, fill_n
+		//----------------------------------------------------------------------------
+
+		template<typename I, typename T, int tsz>
+		inline void _fill_in_tile(I first, I last, const T& value,
+									  const concurrency::tiled_index<tsz>& tidx) restrict(amp)
+		{
+			_fill_in_tile_n(first, last - first, value, tidx);
+		}
+
+		template<typename I, typename T>
+		inline void _fill(I first, I last, const T& value)
+		{
+			_generate(first, last, [=]() restrict(amp) { return value; });
+		}
+
+		template<typename I, typename T, int tsz>
+		inline void _fill_in_tile_n(I first, Difference_type<I> n, const T& value,
+									const concurrency::tiled_index<tsz>& tidx) restrict(amp)
+		{
+			for (Difference_type<I> i = tidx.local[0]; i < n; i += tidx.tile_dim0) {
+				first[i] = value;
+			}
+		}
+
+		template<typename I, typename N, typename T>
+		inline I _fill_n(I first, N n, const T& value)
+		{
+			return _generate_n(first, n, [=]() restrict(amp) { return value; });
+		}
+
+		//----------------------------------------------------------------------------
+		// find, find_if, find_if_not, find_end, find_first_of, adjacent_find
+		//----------------------------------------------------------------------------
+
+		template<typename I, typename P, int tsz>
+		inline I _find_if_in_tile_n(I first,
+									Difference_type<I> n,
+									const concurrency::tiled_index<tsz>& tidx,
+									P p) restrict(amp)
+		{
+			if (!positive(n)) return first;
+
+			tile_exclusive_cache<Difference_type<I>, tidx.tile_dim0> dx(tidx, [=](auto&& out) { out = n; });
+			for (Difference_type<I> i = tidx.local[0]; i < dx.local(); i += tidx.tile_dim0) {
+				if (p(first[i])) concurrency::atomic_fetch_min(&dx.local(), i);
+			}
+
+			return first + dx.local();
+		}
+
+		template<typename I, typename P>
+		inline I _find_if(I first, I last, P p)
+		{
+			if (first == last) return last;
+
+			const auto tmp = Execution_parameters::temporary_buffer(last - first, last - first);
+
+			const auto d = Execution_parameters::tiled_domain(last - first);
+			const Difference_type<I> w = Execution_parameters::work_per_tile(last - first);
+
+			concurrency::parallel_for_each(d, [=, p = std::move(p)](auto&& tidx) restrict(amp) {
+				const AMP_ALG Difference_type<I> t = tidx.tile[0] * w;
+				const AMP_ALG Difference_type<I> n = AMP_ALG _min(w, last - first - t);
+
+				const I f = _find_if_in_tile_n(first + t, n, tidx, AMP_ALG move(p));
+
+				if (f != (first + t + n)) {
+					uniform_invoke(tidx, [=](auto&& tile) { tmp[tile] = f - first; });
+				}
+			});
+
+			return first + _reduce(cbegin(tmp), cend(tmp), last - first, [](auto&& x, auto&& y) restrict(amp) {
+				return AMP_ALG _min(AMP_ALG forward<decltype(x)>(x), AMP_ALG forward<decltype(y)>(y));
+			});
+		}
+
+		template<typename I, typename P, int tsz>
+		inline I _find_if_not_in_tile_n(I first,
+										Difference_type<I> n,
+										const concurrency::tiled_index<tsz>& tidx,
+										P p) restrict(amp)
+		{
+			return _find_if_in_tile_n(first, n, tidx, [=](auto&& x) {
+				return !p(AMP_ALG forward<decltype(x)>(x));
+			});
+		}
+
+		template<typename I, typename P>
+		inline I _find_if_not(I first, I last, P p)
+		{
+			return _find_if(first, last, [p = std::move(p)](auto&& x) restrict(amp) {
+				return !p(forward<decltype(x)>(x));
+			});
+		}
+
+		template<typename I, typename T>
+		inline I _find(I first, I last, const T& value)
+		{
+			return _find_if(first, last, [=](auto&& x) restrict(amp) {
+				return AMP_ALG forward<decltype(x)>(x) == value;
+			});
+		}
+
+		template<typename I, typename P, int tsz>
+		inline I _adjacent_find_in_tile_n(I first,
+										  Difference_type<I> n,
+										  const concurrency::tiled_index<tsz>& tidx,
+										  P p) restrict(amp)
+		{
+			tile_static atomic<Difference_type<I>> r;
 			if (tidx.tile_origin == tidx.global) {
-				if (positive(tidx.tile[0])) {
-					auto s = last - first;
-					while (concurrency::atomic_compare_exchange(&ridx[tidx.tile - 1], &s, ridx[tidx.tile - 1])) {
-						s = last - first;
-					}
-
-					if (cmp(*(first + ridx[tidx.tile - 1]), extremum.first)) {
-						extremum = Val_idx(*(first + ridx[tidx.tile - 1]), ridx[tidx.tile - 1]);
-					}
-					else if (!cmp(extremum.first, *(first + ridx[tidx.tile - 1]))) {
-						extremum.second = amp_stl_algorithms::min(extremum.second, ridx[tidx.tile - 1]);
-					}
-				}
-
-				ridx[tidx.tile] = extremum.second;
-			}
-		});
-
-		return first + ridx[ridx.extent.size() - 1];
-	}
-
-	template<typename T, typename C>
-	inline /*constexpr*/ const T& max(const T& x, const T& y, C&& cmp) restrict(cpu, amp)
-	{
-		return cmp(y, x) ? x : y;
-	}
-
-	template<typename T>
-	inline /*constexpr*/ const T& max(const T& x, const T& y) restrict(cpu, amp)
-	{
-		return amp_stl_algorithms::max(x, y, amp_algorithms::less<>());
-	}
-
-	template<typename I, typename C>
-	inline I max_element(I first, I last, C&& cmp)
-	{
-		return amp_stl_algorithms::_extremum_element(first, last, [cmp = std::forward<C>(cmp)](auto&& x, auto&& y) restrict(amp) {
-			return cmp(y, x);
-		});
-	}
-
-	template<typename I>
-	inline I max_element(I first, I last)
-	{
-		return amp_stl_algorithms::max_element(first, last, amp_algorithms::less<>());
-	}
-
-	template<typename T, typename C>
-	inline /*constexpr*/ const T& min(const T& x, const T& y, C&& cmp) restrict(cpu, amp)
-	{
-		return cmp(y, x) ? y : x;
-	}
-
-	template<typename T>
-	inline /*constexpr*/ const T& min(const T& x, const T& y) restrict(cpu, amp)
-	{
-		return amp_stl_algorithms::min(x, y, amp_algorithms::less<>());
-	}
-
-	template<typename I, typename C>
-	inline I min_element(I first, I last, C&& cmp)
-	{
-		return amp_stl_algorithms::_extremum_element(first, last, std::forward<C>(cmp));
-	}
-
-	template<typename I>
-	inline I min_element(I first, I last)
-	{
-		return amp_stl_algorithms::min_element(first, last, amp_algorithms::less<>());
-	}
-
-	template<typename T, typename C>
-	inline /*constexpr*/ amp_stl_algorithms::pair<const T, const T> minmax(const T& x, const T& y, C&& cmp) restrict(cpu, amp)
-	{
-		return cmp(y, x) ? amp_stl_algorithms::pair<const T, const T>(y, x) :
-						   amp_stl_algorithms::pair<const T, const T>(x, y);
-	}
-
-	template<typename T>
-	inline /*constexpr*/ amp_stl_algorithms::pair<const T, const T> minmax(const T& x, const T& y) restrict(cpu, amp)
-	{
-		return minmax(x, y, amp_algorithms::less<>());
-	}
-
-	template<typename T, typename D>
-	using Val_idx = amp_stl_algorithms::pair<T, D>;
-	template<typename T, typename D>
-	using Min_max = amp_stl_algorithms::pair<Val_idx<T, D>, Val_idx<T, D>>;
-
-	template<typename I, typename C>
-	Min_max<Value_type<I>, Difference_type<I>> _construct_minmax(I first, I x, I y, C&& cmp) restrict(cpu, amp)
-	{
-		using Mm = Min_max<Value_type<I>, Difference_type<I>>;
-		using VI = Val_idx<Value_type<I>, Difference_type<I>>;
-
-		if (cmp(*y, *x)) return Mm(VI(*y, y - first), VI(*x, x - first));
-		else return Mm(VI(*x, x - first), VI(*y, y - first));
-	}
-
-	template<typename T, typename D, typename C>
-	Min_max<T, D> _combine_minmax(const Min_max<T, D>& x, const Min_max<T, D>& y, C&& cmp) restrict(cpu, amp)
-	{
-		const auto m = cmp(y.first.first, x.first.first) ? y.first :
-					   cmp(x.first.first, y.first.first) ? x.first :
-					   (y.first.second < x.first.second) ? y.first : x.first;
-		const auto M = cmp(y.second.first, x.second.first) ? x.second :
-					   cmp(x.second.first, y.second.first) ? y.second :
-					   (y.second.second < x.second.second) ? x.second : y.second;
-		return Min_max<T, D>(m, M);
-	}
-
-	template<typename I, typename C>
-	inline std::pair<I, I> minmax_element(I first, I last, C&& cmp)
-	{	// TODO: Should be properified around the in-tile reduce step, somewhat unclean (after reduce overhaul).
-		//	   : Should really be using work-stealing, as opposed to the fixed pipeline propagation (after v1).
-		//	   : Pessimistic about picking the init-value (over-reads first and first + 1). Re-think.
-		if ((first == last) || (first == (last - 1))) return std::make_pair(first, first);
-
-		const auto compute_domain = _details::Execution_parameters::tiled_domain(last - first);
-
-		const concurrency::array_view<Difference_type<I>> midx(compute_domain.size() / _details::Execution_parameters::tile_size());
-		const concurrency::array_view<Difference_type<I>> Midx(compute_domain.size() / _details::Execution_parameters::tile_size());
-		concurrency::parallel_for_each(midx.extent, [=](auto&& idx) restrict(amp) {
-			midx[idx] = last - first;
-			Midx[idx] = last - first;
-		});
-
-		concurrency::parallel_for_each(compute_domain, [=, cmp = std::forward<C>(cmp)](auto&& tidx) restrict(amp) {
-			tile_static Min_max<Value_type<I>, Difference_type<I>> extrema[tidx.tile_dim0];
-			extrema[tidx.local[0]] = _construct_minmax(first, first, first + 1, cmp);
-
-			for (Difference_type<I> i = tidx.tile_origin[0]; i < (last - first); i += 2 * compute_domain.size()) {
-				const auto n = amp_stl_algorithms::min(tidx.tile_dim0 * 1, last - first - i);
-
-				if (tidx.local[0] < n) {
-					const auto o = (Difference_type<I>(i + compute_domain.size() + tidx.local[0]) < (last - first)) ? compute_domain.size() : 0;
-					const auto c = _construct_minmax(first, first + i + tidx.local[0], first + i + o + tidx.local[0], cmp);
-					extrema[tidx.local[0]] = _combine_minmax(extrema[tidx.local[0]], c, cmp);
-				}
+				r = n;
 			}
 
-			tidx.barrier.wait_with_tile_static_memory_fence();
-
-			auto extremum = _reduce_single_tile_unguarded(extrema, tidx, [c = cmp](auto&& x, auto&& y) { return _combine_minmax(x, y, c); });
-
-			if (tidx.tile_origin == tidx.global) {
-				if (positive(tidx.tile[0])) {
-					auto s = last - first;
-					while (concurrency::atomic_compare_exchange(&Midx[tidx.tile - 1], &s, Midx[tidx.tile - 1])) {
-						s = last - first;
-					}
-
-
-					using VI = std::remove_reference_t<decltype(extremum.first)>;
-					extremum = _combine_minmax(extremum, decltype(extremum)(VI(*(first + midx[tidx.tile - 1]), midx[tidx.tile - 1]),
-																			VI(*(first + Midx[tidx.tile - 1]), Midx[tidx.tile - 1])), cmp);
-				}
-				midx[tidx.tile] = extremum.first.second;
-				Midx[tidx.tile] = extremum.second.second;
+			Difference_type<I> f = tidx.local[0];
+			while (successor(f) < n) {
+				if (p(*(first + f), *(first + successor(f)))) break;
+				f += tidx.tile_dim0;
 			}
-		});
+			r.fetch_min(f);
 
-		return std::make_pair(first + midx[midx.extent.size() - 1],
-							  first + Midx[Midx.extent.size() - 1]);
-	}
+			return first + r;
+		}
 
-	template<typename I>
-	inline std::pair<I, I> minmax_element(I first, I last)
-	{
-		return amp_stl_algorithms::minmax_element(first, last, amp_algorithms::less<>());
-	}
+		template<typename I, typename P>
+		inline I _adjacent_find(I first, I last, P p)
+		{	// TODO: revisit this after implementing zip iterators, might clean it up a bit.
+			if (first == last) return last;
 
-    //----------------------------------------------------------------------------
-    // mismatch
-    //----------------------------------------------------------------------------
-	template<typename I1, typename I2, typename P>
-	inline std::pair<I1, I2> mismatch(I1 first1, I1 last1, I2 first2, P&& p)
-	{
-		if (first1 == last1) return std::make_pair(last1, first2);
+			concurrency::array_view<atomic<Difference_type<I>>> r(1);
+			concurrency::parallel_for_each(r.extent, [=](auto&&) restrict(amp) { r[0] = last - first; });
 
-		const concurrency::array_view<Difference_type<I1>> ridx(1);
-		concurrency::parallel_for_each(ridx.extent, [=](auto&&) restrict(amp) { ridx[0] = last1 - first1; });
+			const auto compute_domain = Execution_parameters::tiled_domain(last - first);
+			const Difference_type<I> work_per_tile = Execution_parameters::work_per_tile(last - first);
 
-		const auto compute_domain = _details::Execution_parameters::tiled_domain(last1 - first1);
-		concurrency::parallel_for_each(compute_domain, [=](auto&& tidx) restrict(amp) {
-			for (auto i = tidx.tile_origin[0]; i < (last1 - first1); i += compute_domain.size()) {
+			concurrency::parallel_for_each(compute_domain, [=, p = std::move(p)](auto&& tidx) restrict(amp) {
+				const Difference_type<I> t = tidx.tile[0] * work_per_tile;
+
+				if (r[0] < t) return;
+
+				const Difference_type<I> n = _min(work_per_tile, last - first - successor(t));
+				const I f = _adjacent_find_in_tile_n(first + t, successor(n), tidx, move(p));
+
+				if (f != (first + t + n)) {
+					if (tidx.tile_origin == tidx.global) {
+						r[0].fetch_min(f - first);
+					}
+				}
+			});
+
+			return first + r[0];
+		}
+
+		template<typename I>
+		inline I _adjacent_find(I first, I last)
+		{
+			return _adjacent_find(first, last, amp_algorithms::equal_to<>());
+		}
+
+		//----------------------------------------------------------------------------
+		// for_each, for_each_no_return
+		//----------------------------------------------------------------------------
+
+		template<typename I, typename F>
+		inline void _for_each_no_return(I first, I last, F f)
+		{
+			if (first == last) return;
+
+			concurrency::parallel_for_each(concurrency::extent<1>(last - first),
+										   [=, f = std::move(f)](auto&& idx) restrict(amp) {
+				f(first[idx[0]]);
+			});
+		}
+
+		// F CANNOT contain any array, array_view or textures. Needs to be blittable.
+		template<typename I, typename F>
+		inline F _for_each(I first, I last, F f)
+		{
+			if (first == last) return f;
+
+			concurrency::array_view<F> f_av(1, &f);
+			_for_each_no_return(first, last, [=](auto&& x) restrict(amp) {
+				functor_av[0](forward<decltype(x)>(x));
+			});
+
+			return f;
+		}
+
+		//----------------------------------------------------------------------------
+		// generate, generate_n
+		//
+		// The "Generator" functor needs to be callable as "g()" and must return a type
+		// that is assignable to RandomAccessIterator::value_type.  The functor needs
+		// to be blittable and cannot contain any array, array_view, or textures.
+		//----------------------------------------------------------------------------
+
+		template<typename I, typename G, int tsz>
+		inline I _generate_in_tile_n(I first, Difference_type<I> n, const concurrency::tiled_index<tsz>& tidx, G g) restrict(amp)
+		{
+			if (!positive(n)) return first;
+
+			for (Difference_type<I> i = tidx.local[0]; i < n; i += tidx.tile_dim0) {
+				first[i] = g();
+			}
+
+			return first + n;
+		}
+
+		template<typename I, typename N, typename G>
+		inline I _generate_n(I first, N n, G g)
+		{
+			if (!positive(n)) return first;
+
+			concurrency::parallel_for_each(concurrency::extent<1>(n),
+										   [=, g = std::move(g)](auto&& idx) restrict(amp) {
+				first[idx[0]] = g();
+			});
+
+			return first + n;
+		}
+
+		template<typename I, typename G, int tsz>
+		inline void _generate_in_tile(I first,
+									  I last,
+									  const concurrency::tiled_index<tsz>& tidx,
+									  G g) restrict(amp)
+		{
+			_generate_in_tile_n(first, last - first, tidx, move(g));
+		}
+
+		template<typename I, typename G>
+		inline void _generate(I first, I last, G g)
+		{
+			if (first == last) return;
+
+			_generate_n(first, last - first, std::move(g));
+		}
+
+		//----------------------------------------------------------------------------
+		// includes
+		//----------------------------------------------------------------------------
+
+		template<typename I1, typename I2, typename C>
+		inline bool _includes(I1 first1, I1 last1, I2 first2, I2 last2, C cmp)
+		{	// TODO: not efficient, robust or clean yet. Properify!
+			// The compute_domain should account for the size of the ranges (always search the haystack for the needle!)
+			if (first1 == last1) return false;
+			if (first2 == last2) return true;
+
+			const auto l = _lower_bound(first1, last1, first2, [](auto&& x, auto&& y) restrict(amp) { return x < *y; });
+			const auto u = _upper_bound(first1, last1, last2 - 1, [](auto&& x, auto&& y) restrict(amp) { return *x < y; });
+			if ((u - l) < (last2 - first2)) return false; // Pigeonhole principle.
+
+			concurrency::array_view<unsigned int> neq(1);
+			concurrency::parallel_for_each(neq.extent, [=](auto&&) restrict(amp) { neq[0] = 0u; });
+
+			const auto compute_domain = Execution_parameters::tiled_domain(last2 - first2);
+			concurrency::parallel_for_each(compute_domain, [=, cmp = std::move(cmp)](auto&& tidx) restrict(amp) {
 				tile_static bool early_out;
-				if (tidx.tile_origin == tidx.global) {
-					early_out = (ridx[0] < i);
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				if (early_out) return;
-
-				tile_static Difference_type<I1> r;
-				if (tidx.tile_origin == tidx.global) {
-					r = last1 - first1;
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				const auto n = amp_algorithms::min<>()(tidx.tile_dim0 * 1, last1 - first1 - i);
-				if (tidx.local[0] < n) {
-					if (!p(*(first1 + i + tidx.local[0]), *(first2 + i + tidx.local[0]))) {
-						concurrency::atomic_fetch_min(&ridx[0], i + tidx.local[0]);
-					}
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				if (r != (last1 - first1)) {
+				for (Difference_type<I2> i = tidx.tile_origin[0]; i < (last2 - first2); i += compute_domain.size()) {
+					const auto n = _min(tidx.tile_dim0 * 1, last2 - first2 - i);
 					if (tidx.tile_origin == tidx.global) {
-						concurrency::atomic_fetch_min(&ridx[0], r);
+						early_out = ((u - l - i) < n);
+						if (early_out) {
+							concurrency::atomic_fetch_inc(&neq[0]);
+						}
+						early_out = early_out || positive(neq[0]);
 					}
-					return;
-				}
-			}
-		});
 
-		return std::make_pair(first1 + ridx[0], first2 + ridx[0]);
-	}
+					// tidx.barrier.wait_with_tile_static_memory_fence();
 
-	template<typename I1, typename I2>
-	inline std::pair<I1, I2> mismatch(I1 first1, I1 last1, I2 first2)
-	{
-		return amp_stl_algorithms::mismatch(first1, last1, first2, amp_algorithms::equal_to<>());
-	}
-    //----------------------------------------------------------------------------
-    // move, move_backward
-    //----------------------------------------------------------------------------
+					tile_static Difference_type<I1> offs[tidx.tile_dim0];
+					offs[tidx.local[0]] = i + tidx.local[0];
 
-	template<typename I1, typename I2>
-	inline I2 move(I1 first, I1 last, I2 dest_first)
-	{	// Given current peculiarities of memory allocation in C++ AMP this is provided
-		// primarily for completion.
-		if (first == last) return dest_first;
+					tile_static Value_type<I2> vals[tidx.tile_dim0];
+					_copy_in_tile_n(first2 + i, n, vals, tidx);
 
-		concurrency::parallel_for_each(concurrency::extent<1>(last - first), [=](auto&& idx) restrict(amp) {
-			*(dest_first + idx[0]) = move(*(first + idx));
-		});
-
-		return dest_first + (last - first);
-	}
-
-    //----------------------------------------------------------------------------
-    // nth_element
-    //----------------------------------------------------------------------------
-
-    //----------------------------------------------------------------------------
-    // partial sum
-    //----------------------------------------------------------------------------
-
-	template<typename I1, typename I2, typename Op>
-	inline I2 partial_sum(I1 first, I1 last, I2 dest_first, Op&& op)
-	{	// This is practically an inclusive scan.
-		return amp_stl_algorithms::inclusive_scan(first, last, dest_first, Value_type<I1>(), std::forward<Op>(op));
-	}
-
-	template<typename I1, typename I2>
-	inline I2 partial_sum(I1 first, I1 last, I2 dest_first)
-	{
-		return amp_stl_algorithms::partial_sum(first, last, dest_first, amp_algorithms::plus<>());
-	}
-
-    //----------------------------------------------------------------------------
-    // partition, stable_partition, partition_point, is_partitioned
-    //----------------------------------------------------------------------------
-	template<typename I, int tsz>
-	inline void _reverse_single_tile(I first, I last, const concurrency::tiled_index<tsz>& tidx) restrict(amp)
-	{
-		if (first == last || first == (last - 1)) return;
-
-		for (auto i = tidx.local[0]; i < half_nonnegative(last - first); i += tidx.tile_dim0) {
-			amp_stl_algorithms::iter_swap(first + i, last - i - 1);
-		}
-
-		tidx.barrier.wait_with_tile_static_memory_fence();
-	}
-
-//	template<typename I, int tsz>
-//	inline I _rotate_single_tile(I first, I middle, I last, const concurrency::tiled_index<tsz>& tidx) restrict(amp)
-//	{
-//		if (first == middle) return last;
-//		if (middle == last) return first;
-//
-//		_reverse_single_tile(first, middle, tidx);
-//		_reverse_single_tile(middle, last, tidx);
-//		_reverse_single_tile(first, last, tidx);
-//
-//		return first + (last - middle);
-//	}
-	template<typename I, typename P, int tsz>
-	inline I _partition_single_tile_unguarded(I first, I last, const concurrency::tiled_index<tsz>& tidx, P&& pred) restrict(amp)
-	{
-		// This assumes that (last - first) <= tidx.tile_dim0. Will not work otherwise.
-		tile_static amp_stl_algorithms::pair<Difference_type<I>, Difference_type<I>> off;
-		if (tidx.tile_origin == tidx.global) {
-			off = decltype(off)(0u, last - first);
-		}
-
-		tidx.barrier.wait_with_tile_static_memory_fence();
-
-		const auto n = amp_stl_algorithms::min(tidx.tile_dim0 * 1, last - first);
-
-		Value_type<I> v;
-		decltype(off) o(0, 0);
-
-		if (tidx.local[0] < n) {
-			v = *(first + tidx.local[0]);
-			o.first = concurrency::atomic_fetch_add(&off.first, pred(v));
-			o.second = concurrency::atomic_fetch_sub(&off.second, !pred(v));
-		}
-
-		tidx.barrier.wait_with_tile_static_memory_fence();
-
-		if (tidx.local[0] < n) {
-			if (pred(v)) {
-				*(first + o.first) = v;
-			}
-			else {
-				*(first + o.second - 1) = v;
-			}
-		}
-
-		tidx.barrier.wait_with_tile_static_memory_fence();
-
-		return first + off.first;
- 	}
-
-	template<typename I1, typename I2, int tsz>
-	inline I2 _copy_single_tile(I1 first1, I1 last1, I2 first2, const concurrency::tiled_index<tsz>& tidx) restrict(amp)
-	{
-		for (auto i = tidx.local[0]; i < (last1 - first1); i += tidx.tile_dim0) {
-			*(first2 + i) = *(first1 + i);
-		}
-
-		tidx.barrier.wait_with_tile_static_memory_fence();
-
-		return first2 + (last1 - first1);
-	}
-
-	template<typename I1, typename I2, int tsz>
-	inline decltype(auto) _swap_ranges_single_tile(I1 first1, I1 last1, I2 first2, I2 last2, const concurrency::tiled_index<tsz>& tidx) restrict(amp)
-	{
-		const auto n = amp_algorithms::min<>()(last1 - first1, last2 - first2);
-		for (auto i = tidx.local[0]; i < n; i += tidx.tile_dim0) {
-			amp_stl_algorithms::iter_swap(first1 + i, first2 + i);
-		}
-
-		tidx.barrier.wait_with_tile_static_memory_fence();
-
-		return amp_stl_algorithms::pair<Difference_type<I1>, Difference_type<I2>>(n, n);
-	}
-
-	template<typename I, typename P>
-	inline I partition(I first, I last, P&& pred)
-	{	// TODO: this will not work with ranges that need more than max_tiles tiles to be processed. Properify.
-		if (first == last) return last;
-
-		const concurrency::array_view<Difference_type<I>> p_points(_details::Execution_parameters::tile_cnt(last - first));
-		const auto compute_domain = _details::Execution_parameters::tiled_domain(last - first);
-
-		amp_stl_algorithms::fill_n(amp_stl_algorithms::begin(p_points), p_points.extent.size(), last - first);
-
-		concurrency::parallel_for_each(compute_domain, [=, pred = std::forward<P>(pred)](auto&& tidx) restrict(amp) {
-			const auto n = amp_algorithms::min<>()(tidx.tile_dim0 * 1, (last - first - tidx.tile_origin[0]));
-
-			tile_static Value_type<I> vals[tidx.tile_dim0];
-			_copy_single_tile(first + tidx.tile_origin[0], first + tidx.tile_origin[0] + n, vals, tidx);
-
-			auto p_point = _partition_single_tile_unguarded(vals, vals + n, tidx, pred) - vals;
-
-			tile_static Difference_type<I> off;
-			if (tidx.tile_origin == tidx.global) {
-				if (positive(tidx.tile[0])) {
-					off = last - first;
-					while (concurrency::atomic_compare_exchange(&p_points[predecessor(tidx.tile[0])], &off, p_points[predecessor(tidx.tile[0])])) {
-						off = last - first;
+					if (tidx.local[0] < n) {
+						while ((offs[tidx.local[0]] < (u - l)) && cmp(*(l + offs[tidx.local[0]]), vals[tidx.local[0]])) {
+							++offs[tidx.local[0]];
+						}
 					}
-				}
-				else {
-					off = Difference_type<I>(0);
-				}
-			}
 
-			tidx.barrier.wait_with_tile_static_memory_fence();
+					// tidx.barrier.wait_with_tile_static_memory_fence();
 
-			if (positive(p_point)) {
-				if ((off != tidx.tile_origin[0])) {
-					auto a = _swap_ranges_single_tile(first + off, first + tidx.tile_origin[0], vals, vals + p_point, tidx);
-					_swap_ranges_single_tile(vals, vals + a.second, vals + a.second, vals + p_point, tidx);
-				}
-				_copy_single_tile(vals, vals + n, first + tidx.tile_origin[0], tidx);
-			}
+					tile_static unsigned int not_done;
+					do {
+						// tidx.barrier.wait_with_tile_static_memory_fence();
 
-			tidx.barrier.wait_with_tile_static_memory_fence();
+						if (tidx.tile_origin == tidx.global) {
+							not_done = 0u;
+						}
 
-			if (tidx.tile_origin == tidx.global) {
-				p_points[tidx.tile] = off + p_point;
-			}
-		});
-		return first + p_points[predecessor(p_points.extent.size())];
-	}
+						// tidx.barrier.wait_with_tile_static_memory_fence();
 
-	template<typename I, typename P>
-	inline I partition_point(I first, I last, P&& pred)
-	{
-		if (first == last) return last;
+						if (odd(tidx.local[0])) {
+							if (offs[tidx.local[0] - 1] == offs[tidx.local[0]]) {
+								++offs[tidx.local[0]];
+								concurrency::atomic_fetch_inc(&not_done);
+							}
+						}
 
-		// This is NOT OPTIMAL YET. Will be fixed.
-		const concurrency::array_view<Difference_type<I>> ridx(1);
-		concurrency::parallel_for_each(ridx.extent, [=](auto&&) restrict(amp) { ridx[0] = last - first; });
+						// tidx.barrier.wait_with_tile_static_memory_fence();
 
-		const auto compute_domain = _details::Execution_parameters::tiled_domain(last - first);
-		concurrency::parallel_for_each(compute_domain, [=, pred = std::forward<P>(pred)](auto&& tidx) restrict(amp) {
-			tile_static bool early_out;
-			tile_static bool skip;
-			for (auto i = tidx.tile_origin[0]; i < (last - first); i += compute_domain.size()) {
-				tidx.barrier.wait_with_tile_static_memory_fence();
+						if (positive(tidx.local[0]) && even(tidx.local[0])) {
+							if (offs[tidx.local[0] - 1] == offs[tidx.local[0]]) {
+								++offs[tidx.local[0]];
+								concurrency::atomic_fetch_inc(&not_done);
+							}
+						}
 
-				const auto n = amp_algorithms::min<>()(tidx.tile_dim0 * 1, last - first - i);
-				if (tidx.tile_origin == tidx.global) {
-					early_out = ridx[0] < i;
-					skip = pred(*(first + i)) && pred(*(first + i + n - 1));
-				}
+						// tidx.barrier.wait_with_tile_static_memory_fence();
+					} while (positive(not_done));
 
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				if (early_out) return;
-				if (skip) continue;
-
-				tile_static Difference_type<I> r;
-				if (tidx.tile_origin == tidx.global) r = last - first;
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				if ((tidx.local[0] < n) && !pred(*(first + i + tidx.local[0]))) {
-					concurrency::atomic_fetch_min(&r, i + tidx.local[0]);
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				if (r != (last - first)) {
+					tile_static unsigned int ne;
 					if (tidx.tile_origin == tidx.global) {
-						concurrency::atomic_fetch_min(&ridx[0], r);
+						ne = 0u;
 					}
-					return;
+
+					// tidx.barrier.wait_with_tile_static_memory_fence();
+
+					if (tidx.local[0] < n) {
+						for (auto j = offs[tidx.local[0]];; ++j) {
+							if (((u - l) < j) || cmp(vals[tidx.local[0]], *(l + j))) {
+								concurrency::atomic_fetch_inc(&ne);
+								break;
+							}
+							if (!cmp(*(l + j), vals[tidx.local[0]])) {
+								break;
+							}
+						}
+					}
+					// tidx.barrier.wait_with_tile_static_memory_fence();
+
+					if (positive(ne)) {
+						if ((tidx.tile_origin == tidx.global)) {
+							concurrency::atomic_fetch_inc(&neq[0]);
+						}
+						return;
+					}
 				}
-			}
-		});
+			});
 
-		return first + ridx[0];
-	}
+			return zero(neq[0]);
+		}
 
-	template<typename I, typename P>
-	inline bool is_partitioned(I first, I last, P&& pred)
-	{
-		return last == amp_stl_algorithms::find_if(amp_stl_algorithms::find_if_not(first, last, std::forward<P>(pred)), last, std::forward<P>(pred));
-	}
+		template<typename I1, typename I2>
+		inline bool _includes(I1 first1, I1 last1, I2 first2, I2 last2)
+		{
+			return _includes(first1, last1, first2, last2, amp_algorithms::less<>());
+		}
+		//----------------------------------------------------------------------------
+		// inner_product
+		//----------------------------------------------------------------------------
 
-    //----------------------------------------------------------------------------
-    // reduce
-    //----------------------------------------------------------------------------
+		template<typename I1, typename I2, typename Binary_op1, typename Binary_op2, int tsz>
+		inline decltype(auto) _inner_product_in_tile_n(I1 first1,
+													   Difference_type<I1> n,
+													   I2 first2,
+													   const concurrency::tiled_index<tsz>& tidx,
+													   Binary_op1 op1,
+													   Binary_op2 op2) restrict(amp)
+		{	// NOTA BENE: this is a non-standard interface, as it does not include an initial value.
+			using T1 = Codomain<Binary_op2, Value_type<I1>, Value_type<I2>>;
+			using T2 = Codomain<Binary_op2, Codomain<Binary_op2, T1, T1>, T1>;
 
-	template<typename I, typename Op, int tsz>
-	inline decltype(auto) _reduce_single_tile_unguarded(I first, const concurrency::tiled_index<tsz>& tidx, Op&& op) restrict(amp)
-	{	// This assumes that it is fed tsz worth of data, otherwise results are undefined.
-		const concurrency::array_view<Value_type<I>> d(tsz, &*first); // Hack around lambda capture deficiencies in restrict(amp) contexts.
+			const Difference_type<I1> w = rounded_up_quotient(n, tidx.tile_dim0);
+			Difference_type<I1> l = tidx.local[0] * w;
 
-		amp_algorithms::_details::static_for<half_nonnegative(tsz),
-											 0u,
-											 amp_algorithms::_details::Inc::div,
-											 2u>()([=, op = op](auto&& h) {
-			if (tidx.local[0] < h) {
-				d[tidx.local[0]] = op(d[tidx.local[0]], d[tidx.local[0] + h]);
-			}
+			tile_static T2 tmp[tidx.tile_dim0];
+			if (l < n) {
+				const Difference_type<I1> m = _min(l + w, n);
 
-			tidx.barrier.wait_with_tile_static_memory_fence();
-		});
-
-		return d[0];
-	}
-
-    template<typename ConstRandomAccessIterator, typename T, typename BinaryOperation>
-    inline T reduce(ConstRandomAccessIterator first, ConstRandomAccessIterator last, T&& identity_element, BinaryOperation&& op)
-    {
-		if (first == last) return identity_element;
-
-		using Result = amp_stl_algorithms::pair<Value_type<ConstRandomAccessIterator>, unsigned int>;
-
-		const auto compute_domain = _details::Execution_parameters::tiled_domain(last - first);
-
-		const concurrency::array_view<T> res(1);
-
-		static constexpr unsigned int not_done = 0u;
-		static constexpr unsigned int done = 1u;
-		const concurrency::array_view<Result> tmp(compute_domain / compute_domain.get_tile_extent().size());
-		amp_stl_algorithms::fill(amp_stl_algorithms::begin(tmp), amp_stl_algorithms::end(tmp), Result(identity_element, not_done));
-
-		concurrency::parallel_for_each(compute_domain, [=, identity_element = std::forward<T>(identity_element), op = std::forward<BinaryOperation>(op)](auto&& tidx) restrict(amp) {
-			tile_static T vals[tidx.tile_dim0];
-			vals[tidx.local[0]] = identity_element;
-			for (auto i = tidx.tile_origin[0]; i < (last - first); i += compute_domain.size()) {
-				const auto n = amp_stl_algorithms::min(tidx.tile_dim0 * 1, last - first - i);
-
-				if (tidx.local[0] < n) {
-					vals[tidx.local[0]] = op(vals[tidx.local[0]], *(first + i + tidx.local[0]));
+				tmp[tidx.local[0]] = op2(first1[l], first2[l]);
+				while (++l != m) {
+					tmp[tidx.local[0]] = op1(tmp[tidx.local[0]], op2(first1[l], first2[l]));
 				}
 			}
 
-			tidx.barrier.wait_with_tile_static_memory_fence();
+			return _reduce_single_tile_n(tmp, rounded_up_quotient(n, w), tidx, move(op1));
+		}
 
-			const auto r = _reduce_single_tile_unguarded(vals, tidx, op);
+		template<typename I1, typename I2, typename T, typename Binary_op1, typename Binary_op2>
+		inline T _inner_product(I1 first1, I1 last1, I2 first2, T value, Binary_op1 op1, Binary_op2 op2)
+		{	// TODO: this should be using work-stealing / dynamic(random) pairing.
+			//     : should do reduction across tiles, once it's ironed out.
+			//     : should, can and will be shortened.
+			if (first1 == last1) return value;
 
+			concurrency::array_view<T> r(1);
+
+			using T_D = pair<T, atomic<Difference_type<I1>>>;
+			const auto tmp = Execution_parameters::temporary_buffer<T_D>(last1 - first1);
+			_fill_n(begin(tmp), tmp.extent.size(), make_pair(value, last1 - first1));
+
+			const auto compute_domain = Execution_parameters::tiled_domain(last1 - first1);
+			const Difference_type<I1> work_per_tile = Execution_parameters::work_per_tile(last1 -
+																						  first1);
+
+			concurrency::parallel_for_each(compute_domain,
+										   [=,
+				                            op1 = std::move(op1),
+											op2 = std::move(op2)](auto&& tidx) restrict(amp) {
+				const Difference_type<I1> t = tidx.tile[0] * work_per_tile;
+				const Difference_type<I1> n = _min(work_per_tile, last1 - first1 - t);
+
+				T x = _inner_product_in_tile_n(first1 + t, n, first2 + t, tidx, op1, move(op2));
+
+				if (tidx.tile_origin == tidx.global) {
+					if (positive(tidx.tile[0])) {
+						while (tmp[predecessor(tidx.tile[0])].second == (last1 - first1));
+					}
+
+					const T x_pre = positive(tidx.tile[0]) ? tmp[predecessor(tidx.tile[0])].first
+															   : value;
+					x = op1(x_pre, x);
+					if ((t + n) != (last1 - first1)) {
+						tmp[tidx.tile] = make_pair(x, tidx.tile[0]);
+					}
+					else {
+						r[0] = x;
+					}
+				}
+			});
+
+			return r[0];
+		}
+
+		template<typename I1, typename I2, typename T>
+		inline T _inner_product(I1 first1, I1 last1, I2 first2, T value)
+		{
+			return _inner_product(first1,
+								  last1,
+								  first2,
+								  std::move(value),
+								  amp_algorithms::plus<>(),
+								  amp_algorithms::multiplies<>());
+		}
+
+		//----------------------------------------------------------------------------
+		// iota
+		//----------------------------------------------------------------------------
+
+		template<typename T> using has_plus = has<std::plus<>(T, T)>;
+		template<typename T> using has_minus = has<std::minus<>(T, T)>;
+		template<typename T> using has_multiplies = has<std::multiplies<>(T, T)>;
+
+		template<typename T> using fast_iota = std::enable_if_t<has_plus<T>::value &&
+																has_minus<T>::value &&
+																has_multiplies<T>::value>;
+		template<typename T> using slow_iota = std::enable_if_t<!has_minus<T>::value ||
+																!has_multiplies<T>::value>;
+
+		template<typename I, typename T, fast_iota<T>* = nullptr>
+		inline void iota_impl(I first, I last, T value)
+		{
+			T dx = value;
+			dx = ++dx - value;
+
+			concurrency::parallel_for_each(concurrency::extent<1>(last - first),
+										   [=,
+				                            dx = std::move(dx),
+										    value = std::move(value)](auto&& idx) restrict(amp) {
+				// This is numerically equivalent with incrementing only if T multiplication is exact.
+				first[idx[0]] = value + T(idx[0]) * dx;
+			});
+		}
+
+		template<typename I, typename T, slow_iota<T>* = nullptr>
+		inline void iota_impl(I first, I last, T value)
+		{
+			concurrency::parallel_for_each(concurrency::extent<1>(last - first),
+										   [=,
+											value = std::move(value)](auto&& idx) restrict(amp) {
+				first[idx[0]] = value;
+
+				Difference_type<I> i = idx[0];
+				while (i--) ++first[idx[0]];
+			});
+		}
+
+		template<typename I, typename T>
+		inline void _iota(I first, I last, T value)
+		{
+			// Using SFINAE based dispatch should work here: if T has multiplication and subtraction
+			// the fast version can be used, if not we provide a slow but standards conforming one.
+			// There is an intermediate solution, using scan, which only requires T to have addition
+			if (first == last) return;
+			iota_impl(first, last, std::move(value));
+		}
+
+		//----------------------------------------------------------------------------
+		// lexographical_compare
+		//----------------------------------------------------------------------------
+
+		template<typename I1, typename I2, typename C, int tsz>
+		inline bool _lexicographical_compare_in_tile_n(I1 first1,
+													   Difference_type<I1> n1,
+													   I2 first2,
+													   Difference_type<I2> n2,
+													   const concurrency::tiled_index<tsz>& tidx,
+													   C cmp) restrict(amp)
+		{
+			if (!positive(n2)) return false;
+			else if (!positive(n1)) return true;
+
+			tile_static pair<atomic<Difference_type<I1>>, atomic<Difference_type<I1>>> tlg;
 			if (tidx.tile_origin == tidx.global) {
-				if (positive(tidx.tile[0])) {
-					auto s = done;
-					while (!concurrency::atomic_compare_exchange(&tmp[predecessor(tidx.tile[0])].second, &s, tmp[predecessor(tidx.tile[0])].second)) {
-						s = done;
-					};
+				tlg = make_pair(n1, n1);
+			}
+
+			for (Difference_type<I1> i = tidx.local[0]; i < n1 && i < n2; i += tidx.tile_dim0) {
+				if (cmp(first2[i], first1[i])) {
+					tlg.second.fetch_min(i);
+					break;
 				}
 
-				if (tidx.tile[0] != predecessor(tmp.extent.size())) {
-					tmp[tidx.tile[0]] = Result(op(tmp[predecessor(tidx.tile[0])].first, r), done * 1);
+				if (cmp(first1[i], first2[i])) {
+					tlg.first.fetch_min(i);
+					break;
+				}
+			}
+
+			if (tlg.first < tlg.second) return true;
+			if (tlg.second < tlg.first) return false;
+			return n1 < n2;
+		}
+
+		template<typename I1, typename I2, typename C>
+		inline bool _lexicographical_compare(I1 first1, I1 last1, I2 first2, I2 last2, C cmp)
+		{
+			if (first2 == last2) return false;
+			else if (first1 == last1) return true;
+
+			const concurrency::array_view<pair<atomic<Difference_type<I1>>,
+											   atomic<Difference_type<I2>>>> lg(1);
+			concurrency::parallel_for_each(lg.extent, [=](auto&&) restrict(amp) {
+				lg[0] = make_pair(last1 - first1, last1 - first1);
+			});
+
+			const auto compute_domain = Execution_parameters::tiled_domain(last1 - first1);
+			const Difference_type<I1> work_per_tile = Execution_parameters::work_per_tile(last1 -
+																						  first1);
+
+			concurrency::parallel_for_each(compute_domain,
+										   [=, cmp = std::move(cmp)](auto&& tidx) restrict(amp) {
+				const Difference_type<I1> t = tidx.tile[0] * work_per_tile;
+				if ((t < (last1 - first1)) && (t < (last2 - first2))) {
+					tile_static bool early_out; early_out = false; // Temporary workaround.
+					if (tidx.tile_origin == tidx.global) {
+						early_out = (lg[0].first < t) || (lg[0].second < t);
+					}
+
+					if (!early_out) {
+						const Difference_type<I1> n1 = _min(work_per_tile, last1 - first1 - t);
+						const Difference_type<I2> n2 = _min(work_per_tile, last2 - first2 - t);
+
+						const auto is_less = _lexicographical_compare_in_tile_n(first1 + t,
+																				n1,
+																				first2 + t,
+																				n2,
+																				forward<decltype(tidx)>(tidx),
+																				move(cmp));
+
+						if (tidx.tile_origin == tidx.global) {
+							if (is_less) lg[0].first.fetch_min(t);
+							else lg[0].second.fetch_min(t);
+						}
+					}
+				}
+			});
+
+			if (lg[0].first < lg[0].second) return true;
+			if (lg[0].second < lg[0].first) return false;
+			return (last1 - first1) < (last2 - first2);
+		}
+
+		template<typename I1, typename I2>
+		inline bool _lexicographical_compare(I1 first1, I1 last1, I2 first2, I2 last2)
+		{
+			return _lexicographical_compare(first1, last1, first2, last2, amp_algorithms::less<>());
+		}
+
+		//----------------------------------------------------------------------------
+		// lower_bound, upper_bound
+		//----------------------------------------------------------------------------
+
+		template<typename I, typename T, typename C>
+		inline I _lower_bound(I first, I last, const T& value, C cmp)
+		{
+			return _partition_point(first, last, [=, cmp = std::move(cmp)](auto&& x) restrict(cpu, amp) {
+				return cmp(AMP_ALG forward<decltype(x)>(x), value);
+			});
+		}
+
+		template<typename I, typename T>
+		inline I _lower_bound(I first, I last, const T& value)
+		{
+			return _lower_bound(first, last, value, amp_algorithms::less<>());
+		}
+
+		template<typename I, typename T, typename C>
+		inline I _upper_bound(I first, I last, const T& value, C cmp)
+		{
+			return _partition_point(first, last, [=, cmp = std::move(cmp)](auto&& x) restrict(cpu, amp) {
+				return !cmp(value, AMP_ALG forward<decltype(x)>(x));
+			});
+		}
+
+		template<typename I, typename T>
+		inline I _upper_bound(I first, I last, const T& value)
+		{
+			return _upper_bound(first, last, value, amp_algorithms::less<>());
+		}
+
+		//----------------------------------------------------------------------------
+		// merge, inplace_merge
+		//----------------------------------------------------------------------------
+
+		template<typename I1, typename I2, typename N, typename C>
+		inline pair<Difference_type<I1>, Difference_type<I2>> _co_rank_n(I1 first1,
+																		 Difference_type<I1> n1,
+															   			 I2 first2,
+																		 Difference_type<I2> n2,
+																		 N idx,
+																		 C cmp) restrict(amp)
+		{	// TODO: clean-up && flatten a bit.
+			if (zero(idx)) return make_pair(0, 0);
+
+			Difference_type<I1> i1 = _min(idx, n1);
+			Difference_type<I2> i2 = idx - i1;
+			Difference_type<I1> i1_l = _max(0, idx - n2);
+			Difference_type<I2> i2_l = 0;
+
+			while (true) {
+				if (positive(i1) && (i2 < n2) && cmp(first2[i2], first1[predecessor(i1)])) {
+					const Difference_type<I1> h = rounded_up_quotient(i1 - i1_l,
+																	  Difference_type<I1>(2));
+					i2_l = i2;
+					i1 -= h;
+					i2 += h;
+				}
+				else if (positive(i2) && (i1 < n1) && !cmp(first2[predecessor(i2)], first1[i1])) {
+					const Difference_type<I2> h = rounded_up_quotient(i2 - i2_l,
+																	  Difference_type<I2>(2));
+					i1_l = i1;
+					i1 += h;
+					i2 -= h;
 				}
 				else {
-					res[0] = op(tmp[predecessor(tidx.tile[0])].first, r);
+					return make_pair(i1, i2);
 				}
 			}
-		});
+		}
 
-		return res[0];
-    }
+		template<typename I1, typename I2, typename I3, typename C, int tsz>
+		inline I3 _compute_co_ranks_in_tile_n(I1 first1,
+											  Difference_type<I1> n1,
+											  I2 first2,
+											  Difference_type<I2> n2,
+											  I3 dest_first,
+											  const concurrency::tiled_index<tsz>& tidx,
+											  C cmp) restrict(amp)
+		{
+			const auto m = _min(tidx.tile_dim0 * 1,
+								successor(rounded_up_quotient(n1 + n2, twice(tidx.tile_dim0))));
 
-    //----------------------------------------------------------------------------
-    // remove, remove_if, remove_copy, remove_copy_if
-    //----------------------------------------------------------------------------
-
-    template<typename RandomAccessIterator, typename T>
-    inline RandomAccessIterator remove(RandomAccessIterator first, RandomAccessIterator last, T&& value)
-    {
-        return amp_stl_algorithms::remove_if(first, last, [=, value = std::forward<T>(value)](auto&& v) restrict(amp) { return v == value; });
-    }
-
-    template<typename RandomAccessIterator, typename UnaryPredicate>
-    inline RandomAccessIterator remove_if(RandomAccessIterator first, RandomAccessIterator last, UnaryPredicate&& pred)
-    {
-        if (first == last) return last;
-
-        static constexpr auto tsz = _details::Execution_parameters::tile_size();
-        concurrency::array_view<unsigned int> locks(_details::Execution_parameters::tile_cnt(last - first));
-        concurrency::array_view<Difference_type<RandomAccessIterator>> off(1);
-
-        static constexpr unsigned int locked = 1u;
-        static constexpr unsigned int unlocked = 0u;
-        concurrency::parallel_for_each(locks.extent, [=](auto&& idx) restrict(amp) {
-            if (zero(idx[0])) off[0] = Difference_type<RandomAccessIterator>(0);
-            locks[idx] = locked;
-        });
-
-        const auto compute_domain = _details::Execution_parameters::tiled_domain(last - first);
-        concurrency::parallel_for_each(compute_domain, [=, pred = std::forward<UnaryPredicate>(pred)](auto&& tidx) restrict(amp) {
-            for (Difference_type<RandomAccessIterator> i = tidx.tile_origin[0]; i < (last - first); i += compute_domain.size()) {
-                const auto n = amp_stl_algorithms::min(tidx.tile_dim0 * 1, last - first - i);
-
-				tile_static Value_type<RandomAccessIterator> vals[tidx.tile_dim0];
-				_copy_single_tile(first + i, first + i + n, vals, tidx);
-
-				tile_static Difference_type<RandomAccessIterator> tile_off;
-				if (tidx.tile_origin == tidx.global) {
-					concurrency::atomic_exchange(&locks[i / tsz], unlocked); // Values cached, release.
-					tile_off = Difference_type<RandomAccessIterator>(0);
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-				Difference_type<RandomAccessIterator> o(0);
-				if ((tidx.local[0] < n) && !pred(vals[tidx.local[0]])) {
-					o = concurrency::atomic_fetch_inc(&tile_off);
-				}
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-                if (zero(tile_off)) continue;
-
-				tidx.barrier.wait_with_tile_static_memory_fence();
-
-                if (tidx.tile_origin == tidx.global) {
-                    tile_off = concurrency::atomic_fetch_add(&off[0], tile_off);
-					auto s = unlocked;
-					while (!concurrency::atomic_compare_exchange(&locks[tile_off / tsz], &s, locked)) {
-                        s = unlocked;
-                    }
-                }
-
-                tidx.barrier.wait_with_tile_static_memory_fence();
-
-                if ((tidx.local[0] < n) && !pred(vals[tidx.local[0]])) {
-					*(first + tile_off + o) = vals[tidx.local[0]];
-				}
-
-                tidx.barrier.wait_with_tile_static_memory_fence();
-
-                if (tidx.tile_origin == tidx.global) {
-					concurrency::atomic_exchange(&locks[tile_off / tsz], unlocked);
-				}
-            }
-        });
-        return first + off[0];
-    }
-
-    template<typename ConstRandomAccessIterator,typename RandomAccessIterator, typename T>
-    inline RandomAccessIterator remove_copy(ConstRandomAccessIterator first, ConstRandomAccessIterator last, RandomAccessIterator dest_first, T&& value)
-    {
-        return amp_stl_algorithms::copy_if(first, last, dest_first, [=, value = std::forward<T>(value)](auto&& v) restrict(amp) { return (v != value); });
-    }
-
-    template<typename ConstRandomAccessIterator,typename RandomAccessIterator, typename UnaryPredicate>
-    inline RandomAccessIterator remove_copy_if(ConstRandomAccessIterator first, ConstRandomAccessIterator last, RandomAccessIterator dest_first, UnaryPredicate&& p)
-    {
-        return amp_stl_algorithms::copy_if(first, last, dest_first, [=, p = std::forward<UnaryPredicate>(p)](auto&& v) restrict(amp) { return !p(v); });
-    }
-
-    //----------------------------------------------------------------------------
-    // replace, replace_if, replace_copy, replace_copy_if
-    //----------------------------------------------------------------------------
-
-    template<typename RandomAccessIterator, typename T>
-    inline void replace(RandomAccessIterator first, RandomAccessIterator last, T&& old_value, T&& new_value)
-    {
-        amp_stl_algorithms::replace_if(first, last, [=, old_value = std::forward<T>(old_value)](auto&& v) restrict(amp) { return v == old_value; }, std::forward<T>(new_value));
-    }
-
-    template<typename RandomAccessIterator, typename UnaryPredicate, typename T>
-    inline void replace_if(RandomAccessIterator first, RandomAccessIterator last, UnaryPredicate&& p, T&& new_value)
-    {
-        if (first == last) return;
-
-        concurrency::parallel_for_each(concurrency::extent<1>(last - first), [=, new_value = std::forward<T>(new_value), p = std::forward<UnaryPredicate>(p)](auto&& idx) restrict(amp) {
-            if (p(*(first + idx[0]))) {
-				*(first + idx[0]) = new_value;
+			if (tidx.local[0] < m) {
+				const auto l = _min(tidx.local[0] * twice(tidx.tile_dim0), n1 + n2);
+				dest_first[tidx.local[0]] = _co_rank_n(first1, n1, first2, n2, l, move(cmp));
 			}
-        });
-    }
 
-    template<typename ConstRandomAccessIterator,typename RandomAccessIterator, typename T>
-    inline RandomAccessIterator replace_copy(ConstRandomAccessIterator first, ConstRandomAccessIterator last, RandomAccessIterator dest_first, T&& old_value, T&& new_value)
-    {
-        return amp_stl_algorithms::replace_copy_if(first, last, dest_first, [=, old_value = std::forward<T>(old_value)](auto&& v) restrict(amp) { return (v == old_value); }, std::forward<T>(new_value));
-    }
+			return dest_first + m;
+		}
 
-    template<typename ConstRandomAccessIterator,typename RandomAccessIterator, typename UnaryPredicate, typename T>
-    inline RandomAccessIterator replace_copy_if(ConstRandomAccessIterator first, ConstRandomAccessIterator last, RandomAccessIterator dest_first, UnaryPredicate&& p, T&& new_value )
-    {
-        concurrency::parallel_for_each(concurrency::extent<1>(last - first), [=, new_value = std::forward<T>(new_value), p = std::forward<UnaryPredicate>(p)](auto&& idx) restrict(amp) {
-            *(dest_first + idx[0]) = p(*(first + idx[0])) ? new_value : *(first + idx[0]);
-        });
+		template<typename I1, typename I2, typename I3, typename C, int tsz>
+		inline I3 _make_bitonic_range_n(I1 first1,
+										Difference_type<I1> n1,
+									    I2 first2,
+										Difference_type<I2> n2,
+									    I3 dest_first,
+										Difference_type<I3> n3,
+									    const concurrency::tiled_index<tsz>& tidx,
+										C cmp) restrict(amp)
+		{
+			dest_first = _reverse_copy_in_tile_n(first1, n1, dest_first, tidx);
+			dest_first = _copy_in_tile_n(first2, n2, dest_first, tidx);
 
-        return dest_first + (last - first);
-    }
+			return dest_first + n3;
+		}
 
-    //----------------------------------------------------------------------------
-    // reverse, reverse_copy
-    //----------------------------------------------------------------------------
+		template<typename I, typename C, int tsz>
+		inline I _bitonic_merge_single_tile_n(I first,
+											  Difference_type<I> m,
+											  Difference_type<I> n,
+											  const concurrency::tiled_index<tsz>& tidx,
+											  C cmp,
+											  std::false_type) restrict(amp)
+		{	// General case, ensure stability via additional processing.
+			tile_static unsigned int id[twice(tidx.tile_dim0)];
+			_fill_in_tile_n(id, m, 0u, tidx);
+			_fill_in_tile_n(id + m, n - m, 1u, tidx);
 
-    template<typename RandomAccessIterator>
-    inline void reverse(RandomAccessIterator first, RandomAccessIterator last)
-    {
-        if (first == last || first == (last - 1)) return;
+			const concurrency::array_view<Value_type<I>> d(n, &*first);
+			const concurrency::array_view<unsigned int> i(n, id);
 
-        concurrency::parallel_for_each(concurrency::extent<1>(half_nonnegative(last - first)), [=] (auto&& idx) restrict(amp) {
-            amp_stl_algorithms::iter_swap(first + idx[0], last - idx[0] - 1);
-        });
-    }
+			static_for<tidx.tile_dim0, 0, Inc::div, 2>()([=](auto&& h) {
+				// If tidx.tile_dim0 is not even (i.e. h is not even) results are undefined.
+				const Difference_type<I> x = even_division_remainder(tidx.local[0], h) +
+											 (tidx.local[0] >> binary_logarithm(h)) * twice(h);
+				const Difference_type<I> y = x + h;
 
-    template<typename ConstRandomAccessIterator, typename RandomAccessIterator>
-    inline RandomAccessIterator reverse_copy(ConstRandomAccessIterator first, ConstRandomAccessIterator last, RandomAccessIterator dest_first)
-    {
-        if (first == last) return dest_first;
-
-        concurrency::parallel_for_each(concurrency::extent<1>(last - first), [=](auto&& idx) restrict(amp) {
-            *(dest_first + idx[0]) = *(last - idx[0] - 1);
-        });
-
-        return dest_first + (last - first);
-    }
-
-    //----------------------------------------------------------------------------
-    // rotate, rotate_copy
-    //----------------------------------------------------------------------------
-
-    template<typename I>
-    inline I rotate(I first, I middle, I last)
-    {
-		// TODO: this is nice and clean but single-invocation block-swap might be preferable.
-		//	   : First and second reverses can and should be collapsed into a single p_f_e.
-        if (first == middle) return last;
-        if (middle == last) return first;
-
-        amp_stl_algorithms::reverse(first, middle);
-        amp_stl_algorithms::reverse(middle, last);
-        amp_stl_algorithms::reverse(first, last);
-
-        return first + (last - mid);
-    }
-    template<typename ConstRandomAccessIterator, typename RandomAccessIterator>
-    inline RandomAccessIterator rotate_copy(ConstRandomAccessIterator first, ConstRandomAccessIterator middle, ConstRandomAccessIterator last, RandomAccessIterator dest_first)
-    {
-        concurrency::parallel_for_each(concurrency::extent<1>(last - first), [=](auto&& idx) restrict(amp) {
-            if (idx[0] < (middle - first)) {
-				*(dest_first + idx[0] + (last - middle)) = *(first + idx[0]);
-			}
-			else {
-				*(dest_first + idx[0] - (middle - first)) = *(first + idx[0]);
-			}
-        });
-        return dest_first + (last - first);
-    }
-
-	//----------------------------------------------------------------------------
-	// inclusive_scan, exclusive_scan
-	// inplace_inclusive_scan, inplace_exclusive_scan
-	//----------------------------------------------------------------------------
-
-	// These are all non-standard, but scan is fundamental enough to warrant presence
-
-	template<typename I, typename Op, int tsz>
-	inline Codomain<Op, Value_type<I>, Value_type<I>> _scan_single_tile_inclusive(I first, const Value_type<I>& identity_element, const concurrency::tiled_index<tsz>& tidx, Op&& op) restrict(amp)
-	{
-		unsigned int s = 0;
-		concurrency::array_view<unsigned int> swapped(1, &s);
-
-		concurrency::array_view<Value_type<I>> d0(tidx.tile_dim0, &*first);
-
-		tile_static Value_type<I> buf[tidx.tile_dim0];
-		concurrency::array_view<Value_type<I>> d1(tidx.tile_dim0, buf);
-
-		amp_algorithms::_details::static_for<1u, tidx.tile_dim0, amp_algorithms::_details::Inc::mul, 2u>()([=](auto&& h) {
-			const auto& in = one(swapped[0]) ? d1 : d0;
-			const auto& out = one(swapped[0]) ? d0 : d1;
-
-			if (h <= tidx.local[0]) {
-				out[tidx.local[0]] = op(in[tidx.local[0] - h], in[tidx.local[0]]);
-			}
-			_copy_single_tile(amp_stl_algorithms::cbegin(in), amp_stl_algorithms::cbegin(in) + h, amp_stl_algorithms::begin(out), tidx);
-
-			swapped[0] = !swapped[0]; // A bit unclean.
-		});
-
-		return d0[predecessor(tidx.tile_dim0)];
-	}
-
-	template<typename I1, typename I2, typename Op>
-	inline I2 inclusive_scan(I1 first, I1 last, I2 dest_first, const Value_type<I1>& identity_element, Op&& op)
-	{	// TODO: this does not work when more than max_tiles are needed to process the range.
-		if (first == last) return dest_first;
-
-		const auto compute_domain = _details::Execution_parameters::tiled_domain(last - first);
-
-		concurrency::array_view<Difference_type<I1>> done(compute_domain.size() / compute_domain.get_tile_extent().size());
-		amp_stl_algorithms::fill_n(amp_stl_algorithms::begin(done), compute_domain.size(), last - first);
-
-		concurrency::parallel_for_each(compute_domain, [=, op = std::forward<Op>(op)](auto&& tidx) restrict(amp) {
-			const auto n = amp_stl_algorithms::min(tidx.tile_dim0 * 1, last - first - tidx.tile_origin[0]);
-
-			tile_static Value_type<I1> vals[tidx.tile_dim0];
-			_copy_single_tile(first + tidx.tile_origin[0], first + tidx.tile_origin[0] + n, vals, tidx);
-			_fill_single_tile(vals + n, vals + tidx.tile_dim0, identity_element, tidx);
-
-			if (positive(tidx.tile[0])) {
-				if (tidx.tile_origin == tidx.global) {
-					auto t = predecessor(tidx.tile[0]);
-					while (!concurrency::atomic_compare_exchange(&done[predecessor(tidx.tile[0])], &t, predecessor(tidx.tile[0]))) {
-						t = predecessor(tidx.tile[0]);
+				if (y < n) {
+					if (cmp(d[y], d[x])) {
+						_swap(d[y], d[x]);
+						_swap(i[y], i[x]);
 					}
-					vals[0] = op(vals[0], *(dest_first + predecessor(tidx.tile_origin[0])));
+					else if (!cmp(d[x], d[y])) {
+						_compare_and_exchange(i[x], i[y], amp_algorithms::less<>());
+					}
+				}
+			});
+
+			return first + n;
+		}
+
+		template<typename I, typename C, int tsz>
+		inline I _bitonic_merge_single_tile_n(I first,
+											  Difference_type<I>,
+											  Difference_type<I> n,
+									    	  const concurrency::tiled_index<tsz>& tidx,
+											  C cmp,
+											  std::true_type) restrict(amp)
+		{	// Special case, stability is ensured by default.
+			const concurrency::array_view<Value_type<I>> d(n, &*first);
+
+			static_for<tidx.tile_dim0, 0, Inc::div, 2>()([=](auto&& h) {
+				// If tidx.tile_dim0 is not even (i.e. h is not even) results are undefined.
+				AMP_ALG _bitonic_compare_exchange(AMP_ALG begin(d), n, AMP_ALG forward<decltype(h)>(h), tidx.local[0], cmp);
+			});
+
+			return first + n;
+		}
+
+		template<typename I1, typename I2, typename I3, typename C, int tsz>
+		inline I3 _merge_single_tile_n(I1 first1,
+									   Difference_type<I1> n1,
+									   I2 first2,
+									   Difference_type<I2> n2,
+									   I3 dest_first,
+									   const concurrency::tiled_index<tsz>& tidx,
+									   C cmp) restrict(amp)
+		{
+			if (!positive(n1)) return _copy_in_tile_n(first2, n2, dest_first, tidx);
+			if (!positive(n2)) return _copy_in_tile_n(first1, n1, dest_first, tidx);
+
+			tile_static Value_type<I3> tmp[twice(tidx.tile_dim0)];
+
+			_make_bitonic_range_n(first1, n1, first2, n2, tmp, twice(tidx.tile_dim0), tidx, cmp);
+
+			_bitonic_merge_single_tile_n(tmp, n1, n1 + n2, tidx, move(cmp), std::is_scalar<Value_type<I3>>());
+
+			return _copy_in_tile_n(tmp, n1 + n2, dest_first, tidx);
+		}
+
+		template<typename I1, typename I2, typename I3, typename C, int tsz>
+		inline I3 _merge_in_tile_n(I1 first1,
+								   Difference_type<I1> n1,
+								   I2 first2,
+								   Difference_type<I2> n2,
+							       I3 dest_first,
+								   const concurrency::tiled_index<tsz>& tidx,
+								   C cmp) restrict(amp)
+		{
+			while (positive(n1) && positive(n2)) {
+				tile_static pair<Difference_type<I1>, Difference_type<I2>> cr[tidx.tile_dim0];
+				const auto l_cr = _compute_co_ranks_in_tile_n(first1, n1, first2, n2, cr, tidx, cmp);
+
+				for (auto i = 0; i != predecessor(l_cr - cr); ++i) {
+					first1 += cr[i].first;
+					first2 += cr[i].second;
+
+					dest_first = _merge_single_tile_n(first1,
+													  cr[successor(i)].first - cr[i].first,
+													  first2,
+													  cr[successor(i)].second - cr[i].second,
+													  dest_first,
+													  tidx,
+													  cmp);
+				}
+
+				n1 -= cr[predecessor(l_cr - cr)].first;
+				n2 -= cr[predecessor(l_cr - cr)].second;
+			}
+
+			dest_first = _copy_in_tile_n(first1, n1, dest_first, tidx);
+			dest_first = _copy_in_tile_n(first2, n2, dest_first, tidx);
+
+			return dest_first;
+		}
+
+		template<typename I1, typename I2, typename I3, typename C>
+		inline I3 _merge(I1 first1, I1 last1, I2 first2, I2 last2, I3 dest_first, C cmp)
+		{
+			if (first1 == last1) return _copy(first2, last2, dest_first);
+			if (first2 == last2) return _copy(first1, last1, dest_first);
+
+			const Difference_type<I3> sz = (last1 - first1) + (last2 - first2);
+
+			const auto compute_domain = Execution_parameters::tiled_domain(sz);
+			const Difference_type<I3> work_per_tile = Execution_parameters::work_per_tile(sz);
+
+			concurrency::parallel_for_each(compute_domain,
+										   [=, cmp = std::move(cmp)](auto&& tidx) restrict(amp) {
+				const AMP_ALG Difference_type<I3> t = tidx.tile[0] * work_per_tile;
+				if (t < sz) {
+					const AMP_ALG Difference_type<I3> n = AMP_ALG _min(work_per_tile, sz - t);
+
+					using Co_rank = AMP_ALG pair<AMP_ALG Difference_type<I1>, AMP_ALG Difference_type<I2>>;
+					AMP_ALG tile_exclusive_cache<Co_rank[2], tidx.tile_dim0> cr(tidx, [](auto&&){});
+					AMP_ALG uniform_invoke(tidx, [=, cr = cr](auto&&) {
+						cr[0] = _co_rank_n(first1, last1 - first1, first2, last2 - first2, t, cmp);
+						cr[1] = _co_rank_n(first1, last1 - first1, first2, last2 - first2, t + n, cmp);
+					});
+			/*		tile_static pair<Difference_type<I1>, Difference_type<I2>> f1_f2;
+					tile_static pair<Difference_type<I1>, Difference_type<I2>> l1_l2;
+
+					if (tidx.tile_origin == tidx.global) {
+						f1_f2 = _co_rank_n(first1, last1 - first1, first2, last2 - first2, t, cmp);
+						l1_l2 = _co_rank_n(first1, last1 - first1, first2, last2 - first2, t + n, cmp);
+					}*/
+
+					_merge_in_tile_n(first1 + cr[0].first,
+									 cr[1].first - cr[0].first,
+									 first2 + cr[0].second,
+									 cr[1].second - cr[0].second,
+									 dest_first + t,
+									 AMP_ALG forward<decltype(tidx)>(tidx),
+									 AMP_ALG move(cmp));
+				}
+			});
+
+			return dest_first + sz;
+		}
+
+		template<typename I1, typename I2, typename I3>
+		inline I3 _merge(I1 first1, I1 last1, I2 first2, I2 last2, I3 dest_first)
+		{
+			return _merge(first1, last1, first2, last2, dest_first, amp_algorithms::less<>());
+		}
+
+		template<typename I, typename C>
+		inline void _bitonic_compare_exchange(I first,
+											  Difference_type<I> n,
+											  Difference_type<I> h,
+											  Difference_type<I> idx,
+											  C cmp) restrict(cpu, amp)
+		{
+			const Difference_type<I> ix = even_division_remainder(idx, h) +
+										  (idx >> binary_logarithm(h)) * twice(h);
+			const Difference_type<I> iy = ix + h;
+
+			if (iy < n) _compare_and_exchange(first[ix], first[iy], move(cmp));
+		}
+
+		template<typename I, typename C, int tsz>
+		inline void _bitonic_merge_in_tile_n(I first,
+											 Difference_type<I> n,
+											 const concurrency::tiled_index<tsz>& tidx,
+											 C cmp) restrict(amp)
+		{
+			const Difference_type<I> n2 = round_up_to_next_binary_power(n);
+			for (Difference_type<I> h = half_nonnegative(n2); positive(h); h = half_nonnegative(h)) {
+				for (Difference_type<I> i = tidx.local[0]; i < half_nonnegative(n2); i += tidx.tile_dim0) {
+					_bitonic_compare_exchange(first, n, h, i, cmp);
 				}
 			}
+		}
 
-			tidx.barrier.wait_with_tile_static_memory_fence();
+		template<typename I, typename C>
+		inline void _bitonic_merge_n(I first, Difference_type<I> m, Difference_type<I> n, C cmp)
+		{	// TODO: cleanup and properify.
+			if (!positive(m) || !positive(n)) return;
 
-			const auto s = _scan_single_tile_inclusive(vals, identity_element, tidx, op);
+			_reverse(first, first + m);
 
-			if (tidx.tile_origin == tidx.global) {
-				*(dest_first + tidx.tile_origin[0] + predecessor(n)) = s;
-				done[tidx.tile] = tidx.tile[0];
+			const concurrency::extent<1> d(half_nonnegative(round_up_to_next_binary_power(n)));
+			const Difference_type<I> w = Execution_parameters::work_per_tile(n);
+
+			for (Difference_type<I> h = d.size(); w <= h; h = half_nonnegative(h)) {
+				concurrency::parallel_for_each(d, [=](auto&& idx) restrict(amp) {
+					_bitonic_compare_exchange(first, n, h, idx[0], cmp);
+				});
 			}
 
-			_copy_single_tile(vals, vals + predecessor(n), dest_first + tidx.tile_origin[0], tidx);
-		});
-		return dest_first + (last - first);
-	}
-
-	template<typename I1, typename I2, typename Op>
-	inline I2 exclusive_scan(I1 first, I1 last, I2 dest_first, const Value_type<I1>& identity_element, Op&& op)
-	{
-		amp_stl_algorithms::inclusive_scan(first, last - 1, dest_first + 1, identity_element, std::forward<Op>(op));
-		concurrency::parallel_for_each(concurrency::extent<1>(1), [=, op = std::forward<Op>(op)](auto&&) restrict(amp) { *dest_first = identity_element; });
-		return dest_first + (last - first);
-	}
-
-	template<typename I, typename Op>
-	inline I inplace_inclusive_scan(I first, I last, const Value_type<I>& identity_element, Op&& op)
-	{
-		return amp_stl_algorithms::inclusive_scan(first, last, first, identity_element, std::forward<Op>(op));
-	}
-
-	template<typename I, typename Op>
-	inline I inplace_exclusive_scan(I first, I last, const Value_type<I>& identity_element, Op&& op)
-	{
-		return amp_stl_algorithms::exclusive_scan(first, last, first, identity_element, std::forward<Op>(op));
-	}
-
-	//----------------------------------------------------------------------------
-	// exclusive_segmented_scan, inclusive_segmented_scan,
-	// inplace_exclusive_segmented_scan, inplace_inclusive_segmented_scan
-	//----------------------------------------------------------------------------
-
-    //----------------------------------------------------------------------------
-    // search, search_n, binary_search
-    //----------------------------------------------------------------------------
-
-	template<typename I, typename T, typename C>
-	inline bool binary_search(I first, I last, T&& value, C&& cmp)
-	{
-		if (first == last) return false;
-
-		const concurrency::array_view<unsigned int> found(1);
-		const auto p_point = amp_stl_algorithms::partition_point(first, last, [=, value = std::forward<T>(value), cmp = std::forward<C>(cmp)](auto&& x) restrict(amp) { return cmp(x, value);});
-		concurrency::parallel_for_each(found.extent, [=, value = std::forward<T>(value)](auto&&) restrict(amp) { found[0] = *p_point == value; });
-
-		return found[0] != 0u;
-	}
-
-	template<typename I, typename T>
-	inline bool binary_search(I first, I last, T&& value)
-	{
-		return amp_stl_algorithms::binary_search(first, last, std::forward<T>(value), amp_algorithms::less<>());
-	}
-
-    //----------------------------------------------------------------------------
-    // set_difference, set_intersection, set_symetric_distance, set_union
-    //----------------------------------------------------------------------------
-
-    //----------------------------------------------------------------------------
-    // shuffle, random_shuffle
-    //----------------------------------------------------------------------------
-
-    //----------------------------------------------------------------------------
-    // is_sorted, is_sorted_until, sort, partial_sort, partial_sort_copy, stable_sort
-    //----------------------------------------------------------------------------
-
-    template<typename ConstRandomAccessIterator, typename Compare>
-    inline ConstRandomAccessIterator is_sorted_until(ConstRandomAccessIterator first, ConstRandomAccessIterator last, Compare&& comp)
-    {
-        if (first == last) return last;
-
-        const auto it = amp_stl_algorithms::adjacent_find(first, last, [comp = std::forward<Compare>(comp)](auto&& a, auto&& b) restrict(amp) { return !(comp(a, b)); });
-        return it == last ? it : std::next(it);
-    }
-
-    template<typename ConstRandomAccessIterator>
-    inline bool is_sorted(ConstRandomAccessIterator first, ConstRandomAccessIterator last)
-    {
-        return amp_stl_algorithms::is_sorted_until(first, last, amp_algorithms::less_equal<>()) == last;
-    }
-
-    template<typename ConstRandomAccessIterator, typename Compare>
-    inline bool is_sorted(ConstRandomAccessIterator first, ConstRandomAccessIterator last, Compare&& comp)
-    {
-        return amp_stl_algorithms::is_sorted_until(first, last, std::forward<Compare>(comp)) == last;
-    }
-
-    template<typename ConstRandomAccessIterator>
-    inline ConstRandomAccessIterator is_sorted_until(ConstRandomAccessIterator first, ConstRandomAccessIterator last)
-    {
-        return amp_stl_algorithms::is_sorted_until(first, last, amp_algorithms::less_equal<>());
-    }
-
-	template<typename T, typename C>
-	inline constexpr const T& _median_of_3_xy(const T& x, const T& y, const T& z, C&& cmp) restrict(cpu, amp)
-	{
-		return !cmp(z, y) ? y : amp_stl_algorithms::max(x, z, forward<C>(cmp));
-	}
-
-	template<typename T, typename C>
-	inline constexpr const T& _median_of_3(const T& x, const T& y, const T& z, C&& cmp) restrict(cpu, amp)
-	{
-		return cmp(y, x) ? _median_of_3_xy(y, x, z, forward<C>(cmp)) : _median_of_3_xy(x, y, z, forward<C>(cmp));
-	}
-
-	template<typename I, typename C>
-	inline array_view_iterator<const Value_type<I>> _median_of_3_random_amp(I first, I last, C&& cmp)
-	{
-		static std::mt19937_64 g;
-		std::uniform_int_distribution<Difference_type<I>> d(0, last - first - 1);
-
-		concurrency::array_view<Value_type<I>> m(1);
-		concurrency::parallel_for_each(m.extent, [=, cmp = std::forward<C>(cmp), x = d(g), y = d(g), z = d(g)](auto&&) restrict(amp) {
-			m[0] = _median_of_3(*(first + x), *(first + y), *(first + z), cmp);
-		});
-
-		return m;
-	}
-
-	template<typename I, typename T, int tsz>
-	void _fill_single_tile(I first, I last, T&& value, const concurrency::tiled_index<tsz>& tidx) restrict(amp)
-	{
-		for (Difference_type<I> i = tidx.local[0]; i < (last - first); i += tidx.tile_dim0) {
-			*(first + i) = forward<T>(value);
+			const auto compute_domain = Execution_parameters::tiled_domain(n);
+			concurrency::parallel_for_each(compute_domain,
+										   [=, cmp = std::move(cmp)](auto&& tidx) restrict(amp) {
+				const Difference_type<I> t = tidx.tile[0] * w;
+				if (t < n) {
+					const Difference_type<I> m = _min(w, n - t);
+					_bitonic_merge_in_tile_n(first + t, m, forward<decltype(tidx)>(tidx), move(cmp));
+				}
+			});
 		}
 
-		tidx.barrier.wait_with_tile_static_memory_fence();
-	}
+		template<typename I, typename C>
+		inline void _inplace_merge(I first, I middle, I last, C cmp)
+		{	// TODO: this assumes that we can always get a buffer. Adding the O(NlogN) unbuffered
+			// variant is straightforward, but is left for a future version. Furthermore this is
+			// not at all optimised yet, and requires tuning.
+			if ((first == last) || (middle == last)) return;
 
-	template<typename I, typename T, typename C, int tsz>
-	inline decltype(auto) _partition_3_way_single_tile(I first, I last, const concurrency::tiled_index<tsz>& tidx, T&& piv, C&& cmp) restrict(amp)
-	{	// This will only work if (last - first) <= tidx.tile_dim0.
-		Value_type<I> v = (tidx.local[0] < (last - first)) ? *(first + tidx.local[0]) :
-						  (std::is_default_constructible<Value_type<I>>::value ? Value_type<I>() : *first);
-		Difference_type<I> l(0);
-		Difference_type<I> g(0);
-		if (tidx.local[0] < (last - first)) {
-			if (cmp(v, forward<T>(piv))) ++l;
-			if (cmp(forward<T>(piv), v)) ++g;
+			const Difference_type<I> buf_sz = rounded_up_quotient(last - first, 2);
+			const concurrency::array_view<Value_type<I>> tmp(buf_sz);
+
+			const concurrency::array_view<pair<Difference_type<I>, Difference_type<I>>> cr(1);
+			concurrency::parallel_for_each(cr.extent, [=](auto&&) restrict(amp) {
+				cr[0] = _co_rank_n(first, middle - first, middle, last - middle, buf_sz, cmp);
+			});
+
+			const Difference_type<I> n = (middle - first) - cr[0].first;
+
+			middle = _rotate(first + cr[0].first, middle, middle + cr[0].second);
+			_merge(first,
+				   first + cr[0].first,
+				   first + cr[0].first,
+				   first + cr[0].first + cr[0].second,
+				   begin(tmp),
+				   cmp);
+
+			_copy(cbegin(tmp), cend(tmp), first);
+			_move(middle, last, begin(tmp));
+
+			_merge(cbegin(tmp),
+				   cbegin(tmp) + n,
+				   cbegin(tmp) + n,
+				   cbegin(tmp) + (last - middle),
+				   middle,
+				   move(cmp));
+
+			//_bitonic_merge_n(first, middle - first, last - first, std::move(cmp));
 		}
 
-		tile_static Difference_type<I> e_tile;
-		tile_static Difference_type<I> g_tile;
-		if (tidx.tile_origin == tidx.global) {
-			e_tile = Difference_type<I>(0);
-			g_tile = Difference_type<I>(last - first);
+		template<typename I>
+		inline void _inplace_merge(I first, I middle, I last)
+		{
+			_inplace_merge(first, middle, last, amp_algorithms::less<>());
 		}
 
-		tidx.barrier.wait_with_tile_static_memory_fence();
+		//----------------------------------------------------------------------------
+		// max, max_element, min, min_element, minmax_element
+		//----------------------------------------------------------------------------
 
-		if (tidx.local[0] < (last - first)) {
-			l = concurrency::atomic_fetch_add(&e_tile, l);
-			g = concurrency::atomic_fetch_sub(&g_tile, g);
-
+		template<typename T, typename U, typename C>
+		inline decltype(auto) _compare_select(T&& x, U&& y, C cmp) restrict(amp)
+		{
+			return cmp(AMP_ALG forward<T>(x), AMP_ALG forward<U>(y)) ? AMP_ALG forward<T>(x) : AMP_ALG forward<U>(y);
 		}
 
-		tidx.barrier.wait_with_tile_static_memory_fence();
+		template<typename C1, typename C2>
+		struct Pair_comparator {
+			Pair_comparator(C1 c1, C2 c2) restrict(cpu, amp) : cmp(move(c1), move(c2)) {};
 
-		if (tidx.local[0] < (last - first)) {
-			if (cmp(v, forward<T>(piv))) *(first + l++) = v;
-			if (cmp(forward<T>(piv), v)) *(first + g-- - 1) = v;
+			template<typename T, typename U>
+			bool operator()(T&& x, U&& y) const restrict(cpu, amp)
+			{
+				if (cmp.first(AMP_ALG forward<decltype(x)>(x).first,
+							  AMP_ALG forward<decltype(y)>(y).first)) return true;
+				if (cmp.first(AMP_ALG forward<decltype(y)>(y).first,
+							  AMP_ALG forward<decltype(x)>(x).first)) return false;
+				return cmp.second(AMP_ALG forward<decltype(x)>(x).second,
+								  AMP_ALG forward<decltype(y)>(y).second);
+			}
+
+			pair<C1, C2> cmp;
+		};
+
+		template<typename I, typename C1, typename C2, int tsz>
+		inline I _extremum_element_in_tile_n(I first,
+											 Difference_type<I> n,
+											 const concurrency::tiled_index<tsz>& tidx,
+											 C1 cmp1,
+											 C2 cmp2) restrict(amp)
+		{
+			tile_static AMP_ALG pair<AMP_ALG Value_type<I>, AMP_ALG Difference_type<I>> tmp[tidx.tile_dim0];
+			tmp[tidx.local[0]] = make_pair(*first, 0);
+
+			for (Difference_type<I> i = tidx.local[0]; i < n; i += tidx.tile_dim0) {
+				tmp[tidx.local[0]] = AMP_ALG _compare_select(tmp[tidx.local[0]],
+															 AMP_ALG make_pair(first[i], i),
+															 AMP_ALG Pair_comparator<C1, C2>(cmp1, cmp2));
+			}
+
+			const auto x = _reduce_single_tile_unguarded(tmp, tidx, [=](auto&& x, auto&& y) {
+				return AMP_ALG _compare_select(AMP_ALG forward<decltype(x)>(x),
+											   AMP_ALG forward<decltype(y)>(y),
+											   AMP_ALG Pair_comparator<C1, C2>(cmp1, cmp2));
+			});
+
+			return first + x.second;
 		}
-		_fill_single_tile(first + e_tile, first + g_tile, forward<T>(piv), tidx);
 
-		return amp_stl_algorithms::pair<Difference_type<I>, Difference_type<I>>(e_tile, g_tile);
-	}
+		//template<typename I, typename C1, typename C2>
+		//inline bool _update_extremum_across_tiles(I first,
+		//										  atomic<Difference_type<I>>& extremum_idx,
+		//										  I candidate,
+		//										  C1 cmp1,
+		//										  C2 cmp2) restrict(amp)
+		//{
+		//	Difference_type<I> cur_idx = extremum_idx;
 
-	template<typename I1, typename I2, typename C>
-	inline std::pair<I1, I1> _partition_3_way_unguarded(I1 first, I1 last, I2 piv, C&& cmp)
-	{	// This does not work for cases in which we need more than max_tiles. Shall be fixed (alongside partition).
-		// It also needs to be properified (too long / not abstract enough).
-		using Offsets = amp_stl_algorithms::pair<Difference_type<I1>, Difference_type<I1>>;
+		//	if (cmp1(first[cur_idx], *candidate)) return true;
 
-		const auto compute_domain = _details::Execution_parameters::tiled_domain(last - first);
-		const concurrency::array_view<Offsets> eg_off(compute_domain.size() / _details::Execution_parameters::tile_size());
-		amp_stl_algorithms::fill_n(amp_stl_algorithms::begin(eg_off), eg_off.extent.size(), Offsets(last - first, last - first));
+		//	if (extremum_idx.compare_exchange_strong(cur_idx, candidate - first)) {
+		//		if (cmp1(*(first + cur_idx), *candidate)) extremum_idx = cur_idx;
+		//		else if (cmp1(*candidate, *(first + cur_idx))) extremum_idx = candidate - first;
+		//		else extremum_idx = _compare_select(candidate - first, cur_idx, cmp2);
 
-		concurrency::parallel_for_each(compute_domain, [=, cmp = std::forward<C>(cmp)](auto&& tidx) restrict(amp) {
-			const auto n = amp_stl_algorithms::min(tidx.tile_dim0 * 1, last - first - tidx.tile_origin[0]);
+		//		return true;
+		//	}
+		//	else {
+		//		if (cmp1(first[cur_idx], *candidate)) return true;
+		//	}
+		//	return false;
+		//}
 
-			tile_static Value_type<I1> vals[tidx.tile_dim0];
-			_copy_single_tile(first + tidx.tile_origin[0], first + tidx.tile_origin[0] + n, vals, tidx);
+		template<typename I, typename C1, typename C2>
+		inline I _extremum_element(I first, I last, C1 cmp1, C2 cmp2)
+		{	// TODO: sort out the identity_element for the reduce step.
+			if (first == last) return last;
 
-			auto eg = _partition_3_way_single_tile(vals, vals + n, tidx, *piv, cmp);
+			const auto tmp = Execution_parameters::temporary_buffer<pair<Value_type<I>,
+																		 Difference_type<I>>>(last -
+																							  first);
+			const auto d = Execution_parameters::tiled_domain(last - first);
+			const Difference_type<I> w = Execution_parameters::work_per_tile(last - first);
 
-			tile_static Offsets tile_eg;
-			if (tidx.tile_origin == tidx.global) {
-				if (positive(tidx.tile[0])) {
-					tile_eg.second = last - first;
-					while (concurrency::atomic_compare_exchange(&eg_off[predecessor(tidx.tile[0])].second, &tile_eg.second, eg_off[predecessor(tidx.tile[0])].second)) {
-						tile_eg.second = last - first;
+			concurrency::parallel_for_each(d, [=](auto&& tidx) restrict(amp) {
+				const AMP_ALG Difference_type<I> t = tidx.tile[0] * w;
+				const AMP_ALG Difference_type<I> n = AMP_ALG _min(w, last - first - t);
+
+				const I ix = AMP_ALG _extremum_element_in_tile_n(first + t,
+															     n,
+															     AMP_ALG forward<decltype(tidx)>(tidx),
+															     AMP_ALG move(cmp1),
+															     AMP_ALG move(cmp2));
+				if (tidx.tile_origin == tidx.global) {
+					tmp[tidx.tile] = AMP_ALG make_pair(*ix, ix - first);
+				}
+			});
+			const auto x = _reduce(cbegin(tmp),
+								   cend(tmp),
+								   *cbegin(tmp),
+								   [=,
+									cmp1 = std::move(cmp1),
+									cmp2 = std::move(cmp2)](auto&& x, auto&& y) restrict(amp) {
+				return AMP_ALG _compare_select(AMP_ALG forward<decltype(x)>(x),
+											   AMP_ALG forward<decltype(y)>(y),
+											   AMP_ALG Pair_comparator<C1, C2>(AMP_ALG move(cmp1),
+																			   AMP_ALG move(cmp2)));
+			});
+			return first + x.second;
+		}
+
+		template<typename T, typename C>
+		inline constexpr const T& _max(const T& x, const T& y, C cmp) restrict(cpu, amp)
+		{
+			return cmp(y, x) ? x : y;
+		}
+
+		template<typename T>
+		inline constexpr const T& _max(const T& x, const T& y) restrict(cpu, amp)
+		{
+			return _max(x, y, amp_algorithms::less<>());
+		}
+
+		template<typename I, typename C>
+		inline I _max_element(I first, I last, C cmp)
+		{	// This is wrong but aligned with the standard - for max_element
+			// we should return the last extremum if there are multiple extrema.
+			return _extremum_element(first,
+									 last,
+									 [cmp = std::move(cmp)](auto&& x, auto&& y) restrict(amp) {
+				return cmp(AMP_ALG forward<decltype(y)>(y), AMP_ALG forward<decltype(x)>(x));
+			},
+									 amp_algorithms::less<>());
+		}
+
+		template<typename I>
+		inline I _max_element(I first, I last)
+		{
+			return _max_element(first, last, amp_algorithms::less<>());
+		}
+
+		template<typename T, typename C>
+		inline constexpr const T& _min(const T& x, const T& y, C cmp) restrict(cpu, amp)
+		{
+			return cmp(y, x) ? y : x;
+		}
+
+		template<typename T>
+		inline constexpr const T& _min(const T& x, const T& y) restrict(cpu, amp)
+		{
+			return _min(x, y, amp_algorithms::less<>());
+		}
+
+		template<typename I, typename C>
+		inline I _min_element(I first, I last, C cmp)
+		{
+			return _extremum_element(first, last, std::move(cmp), amp_algorithms::less<>());
+		}
+
+		template<typename I>
+		inline I _min_element(I first, I last)
+		{
+			return _min_element(first, last, amp_algorithms::less<>());
+		}
+
+		template<typename T, typename C>
+		inline constexpr decltype(auto) _minmax(const T& x, const T& y, C cmp) restrict(cpu, amp)
+		{
+			return cmp(y, x) ? make_pair(y, x) : make_pair(x, y);
+		}
+
+		template<typename T>
+		inline constexpr decltype(auto) _minmax(const T& x, const T& y) restrict(cpu, amp)
+		{
+			return _minmax(x, y, amp_algorithms::less<>());
+		}
+
+		template<typename T, typename D>
+		using Min_max = pair<pair<T, D>, pair<T, D>>;
+
+		template<typename I, typename C1, typename C2>
+		inline Min_max<Value_type<I>, Difference_type<I>> _construct_minmax(I first,
+																			I ix,
+																			I iy,
+																			C1 cmp1,
+																			C2 cmp2) restrict(amp)
+		{
+			return _minmax(make_pair(*ix, ix - first),
+						   make_pair(*iy, iy - first),
+						   Pair_comparator<C1, C2>(move(cmp1), move(cmp2)));
+		}
+
+		template<typename T, typename D, typename C1, typename C2>
+		inline Min_max<T, D> _combine_minmax(const Min_max<T, D>& x,
+											 const Min_max<T, D>& y,
+											 C1 cmp1,
+											 C2 cmp2) restrict(cpu, amp)
+		{
+			const Pair_comparator<C1, C2> cmp(AMP_ALG move(cmp1), AMP_ALG move(cmp2));
+			return make_pair(_min(x.first, y.first, cmp), _max(x.second, y.second, cmp));
+		}
+
+		template<typename I, typename C1, typename C2, int tsz>
+		inline pair<I, I> _minmax_element_in_tile_n(I first,
+													Difference_type<I> n,
+													const concurrency::tiled_index<tsz>& tidx,
+													C1 cmp1,
+													C2 cmp2) restrict(amp)
+		{	// TODO refactor into SoA form.
+			if (n < Difference_type<I>(1)) return make_pair(first, first);
+
+			using Min_max_t = Min_max<Value_type<I>, Difference_type<I>>;
+
+			Min_max_t x = _construct_minmax(first, first, first + 1, cmp1, cmp2);
+			for (Difference_type<I> i = tidx.local[0]; i < n; i += twice(tidx.tile_dim0)) {
+				const Difference_type<I> m = _min(tidx.tile_dim0 * 1, predecessor(n - i));
+				const Min_max_t y = _construct_minmax(first, first + i, first + i + m, cmp1, cmp2);
+				x = _combine_minmax(x, y, cmp1, cmp2);
+			}
+
+			tile_exclusive_cache<Min_max_t[tidx.tile_dim0], tidx.tile_dim0> tmp(tidx, [=](auto&& out) {
+				out[tidx.local[0]] = x;
+			});
+
+			const auto min_max_x = tmp.reduce([=](auto&& x, auto&& y) {
+				return AMP_ALG _combine_minmax(AMP_ALG forward<decltype(x)>(x),
+									           AMP_ALG forward<decltype(y)>(y),
+									           AMP_ALG move(cmp1),
+									           AMP_ALG move(cmp2));
+			});
+
+			return make_pair(first + min_max_x.first.second, first + min_max_x.second.second);
+		}
+
+		template<typename I, typename C>
+		inline std::pair<I, I> _minmax_element(I first, I last, C cmp)
+		{
+			if ((first == last) || (std::next(first) == last)) return std::make_pair(first, first);
+
+			const auto tmp = Execution_parameters::temporary_buffer<Min_max<Value_type<I>,
+																	Difference_type<I>>>(last - first);
+
+			const auto d = Execution_parameters::tiled_domain(last - first);
+			const Difference_type<I> w = Execution_parameters::work_per_tile(last - first);
+
+			concurrency::parallel_for_each(d, [=](auto&& tidx) restrict(amp) {
+				const AMP_ALG Difference_type<I> t = tidx.tile[0] * w;
+				const AMP_ALG Difference_type<I> n = AMP_ALG _min(w, last - first - t);
+
+				const auto min_max = AMP_ALG _minmax_element_in_tile_n(first + t,
+																	   n,
+																	   AMP_ALG forward<decltype(tidx)>(tidx),
+																	   cmp,
+																	   amp_algorithms::less<>());
+				uniform_invoke(tidx, [=](auto&& tile) {
+					tmp[tile] = AMP_ALG make_pair(AMP_ALG make_pair(*min_max.first, min_max.first - first),
+												  AMP_ALG make_pair(*min_max.second, min_max.second - first));
+				});
+			});
+
+			const auto mM = _reduce(cbegin(tmp),
+									cend(tmp),
+									*cbegin(tmp),
+									[=, cmp = std::move(cmp)](auto&& x, auto&& y) restrict(amp) {
+				return _combine_minmax(AMP_ALG forward<decltype(x)>(x),
+						  			   AMP_ALG forward<decltype(y)>(y),
+									   AMP_ALG move(cmp),
+									   amp_algorithms::less<>());
+			});
+			return std::make_pair(first + mM.first.second, first + mM.second.second);
+		}
+
+		template<typename I>
+		inline std::pair<I, I> _minmax_element(I first, I last)
+		{
+			return _minmax_element(first, last, amp_algorithms::less<>());
+		}
+
+		//----------------------------------------------------------------------------
+		// mismatch
+		//----------------------------------------------------------------------------
+
+		template<typename I1, typename I2, typename P, int tsz>
+		inline amp_stl_algorithms::pair<I1, I2> _mismatch_in_tile_n(I1 first1,
+																	Difference_type<I1> n,
+																	I2 first2,
+																	const concurrency::tiled_index<tsz>& tidx,
+																    P p) restrict(amp)
+		{
+			Difference_type<I1> dx = n;
+			for (Difference_type<I1> i = tidx.local[0]; i < n; i += tidx.tile_dim0) {
+				if (!p(first1[i], first2[i])) {
+					dx = i;
+					break;
+				}
+			}
+			tile_exclusive_cache<Difference_type<I1>[tidx.tile_dim0], tidx.tile_dim0> tmp(tidx, [=](auto&& out) {
+				out[tidx.local[0]] = dx;
+			});
+			dx = tmp.reduce([](auto&& x, auto&& y) { return AMP_ALG _min(AMP_ALG forward<decltype(x)>(x),
+																         AMP_ALG forward<decltype(y)>(y)); });
+			return make_pair(first1 + dx, first2 + dx);
+		}
+
+		template<typename I1, typename I2, typename P>
+		inline std::pair<I1, I2> _mismatch(I1 first1, I1 last1, I2 first2, P p)
+		{
+			if (first1 == last1) return std::make_pair(last1, first2);
+
+			const concurrency::array_view<atomic<Difference_type<I1>>> r(1);
+			concurrency::parallel_for_each(r.extent, [=](auto&&) restrict(amp) {
+				r[0] = last1 - first1;
+			});
+
+			const auto compute_domain = Execution_parameters::tiled_domain(last1 - first1);
+			const Difference_type<I1> work_per_tile = Execution_parameters::work_per_tile(last1 -
+																						  first1);
+
+			concurrency::parallel_for_each(compute_domain, [=](auto&& tidx) restrict(amp) {
+				const Difference_type<I1> t = tidx.tile[0] * work_per_tile;
+				const Difference_type<I1> n = _min(work_per_tile, last1 - first1 - t);
+
+				const pair<I1, I2> mm = _mismatch_in_tile_n(first1 + t,
+												            n,
+												            first2 + t,
+												            forward<decltype(tidx)>(tidx),
+												            move(p));
+
+				if (mm.first != (first1 + t + n)) {
+					if (tidx.tile_origin == tidx.global) {
+						r[0].fetch_min(mm.first - first1);
 					}
-					tile_eg.first = eg_off[predecessor(tidx.tile[0])].first;
+				}
+			});
+
+			return std::make_pair(first1 + r[0], first2 + r[0]);
+		}
+
+		template<typename I1, typename I2>
+		inline std::pair<I1, I2> _mismatch(I1 first1, I1 last1, I2 first2)
+		{
+			return _mismatch(first1, last1, first2, amp_algorithms::equal_to<>());
+		}
+		//----------------------------------------------------------------------------
+		// move, move_backward
+		//----------------------------------------------------------------------------
+
+		template<typename I1, typename I2>
+		inline I2 _move(I1 first, I1 last, I2 dest_first)
+		{	// Given current peculiarities of memory allocation in C++ AMP this is provided
+			// primarily for completeness.
+			if (first == last) return dest_first;
+
+			concurrency::parallel_for_each(concurrency::extent<1>(last - first),
+										   [=](auto&& idx) restrict(amp) {
+				dest_first[idx[0]] = AMP_ALG move(first[idx[0]]);
+			});
+
+			return dest_first + (last - first);
+		}
+
+		//----------------------------------------------------------------------------
+		// nth_element
+		//----------------------------------------------------------------------------
+
+		template<typename I, typename C>
+		inline void _odd_even_sort_one_tile(I first, I last, C cmp)
+		{
+			concurrency::parallel_for_each(Execution_parameters::tiled_domain(last - first),
+										   [=, cmp = std::move(cmp)](auto&& tidx) restrict(amp) {
+				const AMP_ALG Difference_type<I> n = AMP_ALG _min(tidx.tile_dim0 * 1, last - first);
+
+				AMP_ALG _pbsn_sort_single_tile_n(first, n, AMP_ALG forward<decltype(tidx)>(tidx), AMP_ALG move(cmp));
+			});
+		}
+
+		template<typename I, typename C>
+		inline void _nth_element(I first, I nth, I last, C cmp)
+		{	// TODO: move to three-way partitioning.
+			if (nth == last) return;
+
+			while (Execution_parameters::tile_size() < (last - first)) {
+				const Value_type<I> pivot = _median_of_3_random_amp(first, last, cmp);
+
+				const I eq0 = _partition(first, last, [=](auto&& x) restrict(cpu, amp) { return cmp(x, pivot); });
+				const I eq1 = _partition(eq0, last, [=](auto&& x) restrict(cpu, amp) { return !cmp(pivot, x); });
+
+				if (eq0 <= nth && nth < eq1) return;
+
+				if (nth < eq0) {
+					last = eq0;
 				}
 				else {
-					tile_eg = Offsets(0, 0);
+					first = eq1;
 				}
 			}
 
-			tidx.barrier.wait_with_tile_static_memory_fence();
+			if ((last - first) > Difference_type<I>(1)) { // TODO: use dedicated single tile sort here.
+				_odd_even_sort_one_tile(first, last, std::move(cmp));
+			}
+		}
 
-			if (positive(eg.second)) {
-				if (tile_eg.first != tidx.tile_origin[0]) {
-					const auto a = _swap_ranges_single_tile(first + tile_eg.first, first + tidx.tile_origin[0], vals, vals + eg.first, tidx);
-					const auto b = _swap_ranges_single_tile(first + amp_stl_algorithms::max(tile_eg.first + a.first, tile_eg.second),
-															first + tidx.tile_origin[0], vals, vals + eg.second, tidx);
-					_reverse_single_tile(vals, vals + eg.second, tidx);
-				}
-				_copy_single_tile(vals, vals + n, first + tidx.tile_origin[0], tidx);
+		template<typename I>
+		inline void _nth_element(I first, I nth, I last)
+		{
+			_nth_element(first, nth, last, amp_algorithms::less<>());
+		}
+
+		//----------------------------------------------------------------------------
+		// partial sum
+		//----------------------------------------------------------------------------
+
+		template<typename I1, typename I2, typename Op>
+		inline I2 _partial_sum(I1 first, I1 last, I2 dest_first, Op op)
+		{	// This is practically an inclusive scan. It is overassuming in what regards Value_type<I1>
+			// and the role of its default value as identity element by rapport with Op.
+			return _inclusive_scan(first, last, dest_first, Value_type<I1>(), std::move(op)).second;
+		}
+
+		template<typename I1, typename I2>
+		inline I2 _partial_sum(I1 first, I1 last, I2 dest_first)
+		{
+			return _partial_sum(first, last, dest_first, amp_algorithms::plus<>());
+		}
+
+		//----------------------------------------------------------------------------
+		// partition, stable_partition, partition_point, is_partitioned
+		//----------------------------------------------------------------------------
+
+		template<typename I, typename P, int tsz>
+		inline I _partition_single_tile_n(I first,
+										  Difference_type<I> n,
+										  const concurrency::tiled_index<tsz>& tidx,
+										  P p) restrict(amp)
+		{	// TODO: cleanup, properify.
+			if (!positive(n)) return first;
+
+			tile_exclusive_cache<atomic<Difference_type<I>>, tidx.tile_dim0> dxl(tidx, [](auto&& out) { AMP_ALG forward<decltype(out)>(out) = 0; });
+			tile_exclusive_cache<atomic<Difference_type<I>>, tidx.tile_dim0> dxu(tidx, [=](auto&& out) { AMP_ALG forward<decltype(out)>(out) = n; });
+			if (tidx.local[0] < n) {
+				const Value_type<I> x = first[tidx.local[0]];
+				const Difference_type<I> dx = p(x) ? dxl.local()++ : --dxu.local();
+				first[dx] = x;
 			}
 
-			tidx.barrier.wait_with_tile_static_memory_fence();
+			return first + dxl.local();
+		}
 
+		template<typename I, typename P, int tsz>
+		inline I _partition_in_tile_n(I first,
+									  Difference_type<I> n,
+									  const concurrency::tiled_index<tsz>& tidx,
+									  P p) restrict(amp)
+		{
+			while (positive(n)) {
+				const Difference_type<I> m = _min(tidx.tile_dim0 * 1, n);
+				const I f = _partition_single_tile_n(first, m, tidx, p);
+				const Difference_type<I> o = m - (f - first);
+				_swap_ranges_in_tile_n(f, o, make_reverse_iterator(first + n), _min(o, n - m), tidx);
+				first = f;
+				n -= m;
+			}
+			return first;
+		}
+
+		template<typename I1, typename I2, typename P>
+		inline I1 _partition_tiles(I1 first1, I1 last1, I2 dest_first, P p)
+		{
+			if (first1 == last1) return last1;
+
+			const auto d = Execution_parameters::tiled_domain(last1 - first1);
+			const Difference_type<I1> w = Execution_parameters::work_per_tile(last1 - first1);
+
+			concurrency::parallel_for_each(d, [=, p = std::move(p)](auto&& tidx) restrict(amp) {
+				const AMP_ALG Difference_type<I1> t = tidx.tile[0] * w;
+				const AMP_ALG Difference_type<I1> n = AMP_ALG _min(w, last1 - first1 - t);
+
+				const I1 tile_pp = _partition_in_tile_n(first1 + t,
+													    n,
+													    AMP_ALG forward<decltype(tidx)>(tidx),
+													    AMP_ALG move(p));
+				AMP_ALG uniform_invoke(tidx, [=](auto&& tile) { dest_first[tile] = tile_pp - (first1 + t); });
+			});
+			return first1 + _reduce(dest_first,
+									dest_first + Execution_parameters::tile_cnt(last1 - first1),
+									Difference_type<I1>(0),
+									amp_algorithms::plus<>());
+		}
+
+		template<typename I1, typename I2, int tsz>
+		inline bool _merge_partitioned_tiles_in_tile(I1 first1,
+													 Difference_type<I1> t0,
+													 Difference_type<I1> t1,
+													 Difference_type<I1> w,
+													 I2 first2,
+													 const concurrency::tiled_index<tsz>& tidx) restrict(amp)
+		{
+			const AMP_ALG Difference_type<I1> tx = t0 * w;
+			const AMP_ALG Difference_type<I1> ty = t1 * w;
+
+			const AMP_ALG Difference_type<I1> px = first2[t0];
+			const AMP_ALG Difference_type<I2> py = first2[t1];
+
+			const AMP_ALG Difference_type<I1> n = AMP_ALG _min(w - px, py);
+			_swap_ranges_in_tile_n(make_reverse_iterator(first1 + tx + px + n),
+								   n,
+								   make_reverse_iterator(first1 + ty + py),
+								   n,
+								   AMP_ALG forward<decltype(tidx)>(tidx));
+			if (AMP_ALG positive(n)) {
+				AMP_ALG uniform_invoke(tidx, [=](auto&&) {
+					first2[t0] += n;
+					first2[t1] -= n;
+				});
+			}
+
+			return AMP_ALG positive(n);
+		}
+
+		template<typename I1, typename I2, typename G, int tsz>
+		inline bool _pairwise_merge_partitioned_tiles(I1 first1,
+													  Difference_type<I1> w,
+													  I2 first2,
+													  Difference_type<I2> t_cnt,
+													  const concurrency::tiled_index<tsz>& tidx,
+													  G g) restrict(amp)
+		{
+			const AMP_ALG pair<Difference_type<I2>,
+							   Difference_type<I2>> t0_t1 = g(tidx.tile[0]);
+			if (t0_t1.second < t_cnt) {
+				return _merge_partitioned_tiles_in_tile(first1,
+														t0_t1.first,
+														t0_t1.second,
+														w,
+														first2,
+														tidx);
+			}
+			return false;
+		}
+
+		template<typename I1, typename I2, typename G>
+		inline bool _merge_partitioned_tiles_step(I1 first1, I1 last1, I2 first2, G g)
+		{
+			const auto d = Execution_parameters::tiled_domain(last1 - first1);
+			const Difference_type<I1> w = Execution_parameters::work_per_tile(last1 - first1);
+			const Difference_type<I1> t_cnt = Execution_parameters::tile_cnt(last1 - first1);
+
+			const auto tmp = Execution_parameters::temporary_buffer(last - first, 0u);
+
+			const concurrency::array_view<atomic<unsigned int>> r(1);
+			_fill_n(begin(r), r.extent.size(), 0u);
+
+			concurrency::parallel_for_each(d, [=, g = std::move(g)](auto&& tidx) restrict(amp) {
+				const bool s = _pairwise_merge_partitioned_tiles(first1,
+																 w,
+																 first2,
+																 t_cnt,
+																 AMP_ALG forward<decltype(tidx)>(tidx),
+																 AMP_ALG move(g));
+
+				uniform_invoke(tidx, [=](auto&& tile) { tmp[tile] = s; });
+			});
+
+			return _any_of(cbegin(tmp), cend(tmp), [](auto&& x) restrict(cpu, amp) { return positive(x); });
+		}
+
+		//template<typename I1, typename I2>
+		//inline void _odd_even_merge_partitioned_tiles(I1 first1, I1 last1, I2 first2)
+		//{
+		//	bool done;
+		////	unsigned int cnt = 0u;
+		//	do {
+		//		// Even.
+		//		done = _merge_partitioned_tiles_step(first1, last1, first2, [](auto&& tile) restrict(amp) {
+		//			const AMP_ALG Difference_type<I1> t0 = AMP_ALG twice(tile);
+		//			const AMP_ALG Difference_type<I1> t1 = AMP_ALG successor(t0);
+		//			return AMP_ALG make_pair(t0, t1);
+		//		});
+		//		// Odd.
+		//		done = done && _merge_partitioned_tiles_step(first1, last1, first2, [](auto&& tile) restrict(amp) {
+		//			const AMP_ALG Difference_type<I1> t0 = AMP_ALG successor(AMP_ALG twice(tile));
+		//			const AMP_ALG Difference_type<I1> t1 = AMP_ALG successor(t0);
+		//			return AMP_ALG make_pair(t0, t1);
+		//		});
+		////		++cnt;
+		//	} while (!done);
+
+		////	std::cout << cnt << std::endl;
+		////	std::cin.get();
+		//}
+
+		//template<typename I1, typename I2>
+		//inline void _brick_merge_partitioned_tiles(I1 first1, I1 last1, I2 first2)
+		//{
+		//	if (first1 == last1) return;
+
+		//	const auto d = Execution_parameters::tiled_domain(last1 - first1);
+		//	const Difference_type<I1> w = Execution_parameters::work_per_tile(last1 - first1);
+		//	const Difference_type<I1> t_cnt = rounded_up_quotient(last1 - first1, w);
+
+		//	for (Difference_type<I1> h = t_cnt / 1.22; positive(h); h /= 1.22) {
+		//		// Even.
+		//		_merge_partitioned_tiles_step(first1, last1, first2, [=](auto&& tile) restrict(amp) {
+		//			const AMP_ALG Difference_type<I1> t0 = (tile / h) * AMP_ALG twice(h) +
+		//												   (tile % h);
+		//			const AMP_ALG Difference_type<I1> t1 = t0 + h;
+		//			return AMP_ALG make_pair(t0, t1);
+		//		});
+		//		// Odd.
+		//		_merge_partitioned_tiles_step(first1, last1, first2, [=](auto&& tile) restrict(amp) {
+		//			const AMP_ALG Difference_type<I1> t0 = (tile / h) * AMP_ALG twice(h) +
+		//												   (tile % h) + h;
+		//			const AMP_ALG Difference_type<I1> t1 = t0 + h;
+		//			return AMP_ALG make_pair(t0, t1);
+		//		});
+		//	}
+		//	//_odd_even_merge_partitioned_tiles(first1, last1, first2);
+		//}
+
+		template<typename I1, typename I2>
+		inline bool _pbsn_merge_partitioned_tiles_step(I1 first1, I1 last1, I2 first2)
+		{	// TODO: cleanup, all the merging network based algos should take a pair coord generator.
+			const Difference_type<I2> t_cnt = Execution_parameters::tile_cnt(last1 - first1);
+			const Difference_type<I2> next_pot_sz = round_up_to_next_binary_power(t_cnt);
+
+			const auto d = Execution_parameters::tiled_domain(half_nonnegative(next_pot_sz) *
+															  Execution_parameters::tile_size());
+			const Difference_type<I1> w = Execution_parameters::work_per_tile(last1 - first1);
+
+			const auto tmp = Execution_parameters::temporary_buffer(d.size(), 0);
+
+			Difference_type<I2> h = round_up_to_next_binary_power(t_cnt);
+			while (h > 1) {
+				const Difference_type<I2> mask = h - 1;
+				const Difference_type<I2> half_h = half_nonnegative(h);
+				const Difference_type<I2> b_log = binary_logarithm(half_h);
+
+				concurrency::parallel_for_each(d, [=](auto&& tidx) restrict(amp) {
+					const AMP_ALG Difference_type<I2> t0 = AMP_ALG even_division_remainder(tidx.tile[0], half_h) +
+					 									   (tidx.tile[0] >> b_log) * h;
+					const AMP_ALG Difference_type<I2> t1 = t0 ^ mask;
+					if (t1 < t_cnt) {
+						const bool nm = _merge_partitioned_tiles_in_tile(first1,
+																		 t0,
+														                 t1,
+														                 w,
+														                 first2,
+														                 AMP_ALG forward<decltype(tidx)>(tidx));
+						if (nm) uniform_invoke(tidx, [=](auto&& tile) { tmp[tile] = 1u; });
+					}
+				});
+
+				h = half_nonnegative(h);
+			}
+			return _reduce(cbegin(tmp), cend(tmp), 0u, amp_algorithms::plus<>());
+		}
+		template<typename I1, typename I2>
+		inline void _pbsn_merge_partitioned_tiles(I1 first1, I1 last1, I2 first2)
+		{
+			if ((last1 - first1) < Execution_parameters::tile_size()) return;
+
+			bool not_merged;
+			//unsigned int i = 0;
+			do {
+				//++i;
+				not_merged = _pbsn_merge_partitioned_tiles_step(first1, last1, first2);
+			} while (not_merged);
+			//if (i < binary_logarithm(round_up_to_next_binary_power(Execution_parameters::tile_cnt(last1 - first1)))) std::cout << "Early out: " << i << std::endl;
+		}
+
+		template<typename I1, typename I2>
+		inline void _merge_partitioned_tiles(I1 first1, I1 last1, I2 first2)
+		{	// This just forwards to the merger of choice.
+			//_brick_merge_partitioned_tiles(first1, last1, first2);
+			_pbsn_merge_partitioned_tiles(first1, last1, first2);
+		}
+
+		template<typename I, typename P>
+		inline I _partition(I first, I last, P p)
+		{	// TODO: cleanup, linearize bottom step.
+			if (first == last) return last;
+
+			const auto tmp = Execution_parameters::temporary_buffer(last - first, Difference_type<I>(0));
+
+			const I pp = _partition_tiles(first, last, begin(tmp), std::move(p));
+			if (Execution_parameters::tile_size() < (last - first)) {
+				_merge_partitioned_tiles(first, last, begin(tmp));
+			}
+
+			return pp;
+		}
+
+		template<typename I, typename P, int tsz>
+		inline I _partition_point_single_tile_n(I first,
+												Difference_type<I> n,
+												const concurrency::tiled_index<tsz>& tidx,
+												P p) restrict(amp)
+		{
+			tile_exclusive_cache<Difference_type<I>[tidx.tile_dim0], tidx.tile_dim0> pp(tidx, [=](auto&& out){
+				out[tidx.local[0]] = (tidx.local[0] < n) ? (p(first[tidx.local[0]]) * AMP_ALG successor(tidx.local[0]))
+														 : AMP_ALG Difference_type<I>(0);
+			});
+
+			return first + pp.reduce([](auto&& x, auto&& y) { return AMP_ALG _max(AMP_ALG forward<decltype(x)>(x),
+																				  AMP_ALG forward<decltype(y)>(y)); });
+		}
+
+		template<typename I, typename P, int tsz>
+		inline I _partition_point_in_tile_n(I first,
+											Difference_type<I> n,
+											const concurrency::tiled_index<tsz>& tidx,
+											P p) restrict(amp)
+		{
+			tile_exclusive_cache<Difference_type<I>, tidx.tile_dim0> lb(tidx, [](auto&& out) { out = 0; });
+			tile_exclusive_cache<Difference_type<I>, tidx.tile_dim0> ub(tidx, [=](auto&& out) { out = n; });
+			tile_exclusive_cache<Value_type<I>[tidx.tile_dim0], tidx.tile_dim0> tmp(tidx, [](auto&&){});
+
+			Difference_type<I> w = rounded_up_quotient(n, tidx.tile_dim0);
+			Difference_type<I> m = n;
+
+			while (w > Difference_type<I>(1)) {
+				if ((tidx.local[0] * w) < m) {
+					const Difference_type<I> l = lb + tidx.local[0] * w;
+					const Difference_type<I> o = _min(w, m - tidx.local[0] * w);
+
+					tmp[tidx.local[0]] = first[l];
+
+					const Value_type<I> u = ((tidx.local[0] * w + o) != m) ? tmp[successor(tidx.local[0])]
+																		   : first[l + predecessor(o)];
+					if (p(u)) concurrency::atomic_fetch_max(&lb.local(), l + o);
+					if (!p(tmp[tidx.local[0]])) concurrency::atomic_fetch_min(&ub.local(), l);
+				}
+
+				m = ub - lb;
+				w = rounded_up_quotient(m, tidx.tile_dim0);
+			}
+
+			return _partition_point_single_tile_n(first + lb, ub - lb, tidx, move(p));
+		}
+
+		template<typename I, typename P>
+		inline I _partition_point(I first, I last, P p)
+		{
+			if (first == last) return last;
+
+			const concurrency::array_view<Difference_type<I>> r(1);
+			concurrency::parallel_for_each(r.extent, [=](auto&&) restrict(amp) { r[0] = last - first; });
+
+			const auto d = Execution_parameters::tiled_domain(last - first);
+			const Difference_type<I> w = Execution_parameters::work_per_tile(last - first);
+
+			concurrency::parallel_for_each(d, [=, p = std::move(p)](auto&& tidx) restrict(amp) {
+				const AMP_ALG Difference_type<I> t = tidx.tile[0] * w;
+				const AMP_ALG Difference_type<I> n = AMP_ALG _min(w, last - first - t);
+
+				if (r[0] < t || p(first[t + AMP_ALG predecessor(n)])) return;
+				else if (!p(first[t])) {
+					uniform_invoke(AMP_ALG forward<decltype(tidx)>(tidx), [=](auto&&) {
+						concurrency::atomic_fetch_min(&r[0], t);
+					});
+				}
+				else {
+					const I pp = _partition_point_in_tile_n(first + t,
+															n,
+															AMP_ALG forward<decltype(tidx)>(tidx),
+															AMP_ALG move(p));
+
+					if (pp != (first + t + n)) {
+						uniform_invoke(AMP_ALG forward<decltype(tidx)>(tidx), [=](auto&&) {
+							concurrency::atomic_fetch_min(&r[0], pp - first);
+						});
+					}
+				}
+			});
+
+			return first + r[0];
+		}
+
+		template<typename I, typename P>
+		inline bool _is_partitioned(I first, I last, P p)
+		{
+			return last == _find_if(_find_if_not(first, last, p), last, p);
+		}
+
+		//----------------------------------------------------------------------------
+		// reduce
+		//----------------------------------------------------------------------------
+
+		template<typename I, typename Op, int tsz>
+		inline decltype(auto) _reduce_single_tile_unguarded(I first,
+														    const concurrency::tiled_index<tsz>& tidx,
+															Op op) restrict(amp)
+		{	// This assumes that it is fed tsz worth of data, otherwise results are undefined.
+			const concurrency::array_view<Value_type<I>> d(tsz, &*first); // Hack around lambda capture deficiencies in restrict(amp) contexts.
+
+			static_for<half_nonnegative(tsz), 0u, Inc::div, 2u>()([=](auto&& h) {
+				if (tidx.local[0] < AMP_ALG Difference_type<I>(AMP_ALG forward<decltype(h)>(h))) {
+					d[tidx.local[0]] = op(d[tidx.local[0]], d[tidx.local[0] + h]);
+				}
+			});
+
+			return d[0];
+		}
+
+		template<typename I, typename Op, int tsz>
+		inline decltype(auto) _reduce_single_tile_n(I first,
+													Difference_type<I> n,
+													const concurrency::tiled_index<tsz>& tidx,
+													Op op) restrict(amp)
+		{
+			if (n == tidx.tile_dim0) {
+				return _reduce_single_tile_unguarded(first, tidx, move(op));
+			}
+
+			const concurrency::array_view<Value_type<I>> d(n, &*first);
+			static_for<half_nonnegative(tsz), 0u, Inc::div, 2u>()([=](Difference_type<I> h) {
+				if ((tidx.local[0] + h) < n) {
+					if (tidx.local[0] < h) {
+						d[tidx.local] = op(d[tidx.local], d[tidx.local + h]);
+					}
+				}
+			});
+
+			return d[0];
+		}
+
+		template<typename I, typename T, typename Binary_op, int tsz>
+		inline T _reduce_in_tile_n(I first,
+								   Difference_type<I> n,
+								   const T& identity_element,
+								   const concurrency::tiled_index<tsz>& tidx,
+								   Binary_op op) restrict(amp)
+		{
+			T r = identity_element;
+			for (Difference_type<I> i = tidx.local[0]; i < n; i += tidx.tile_dim0) {
+				r = op(r, first[i]);
+			}
+			tile_exclusive_cache<T[tidx.tile_dim0], tidx.tile_dim0> tmp(tidx, [=](auto&& out) {
+				AMP_ALG forward<decltype(out)>(out)[tidx.local[0]] = r;
+			});
+			return tmp.reduce(move(op));
+		}
+
+		template<typename I1, typename I2, typename T, typename Binary_op>
+		inline I2 _reduce_outer(I1 first, I1 last, I2 dest_first, const T& identity_element, Binary_op op)
+		{
+			const auto d = Execution_parameters::tiled_domain(last - first);
+			const Difference_type<I1> w = Execution_parameters::work_per_tile(last - first);
+
+			concurrency::parallel_for_each(d, [=, op = std::move(op)](auto&& tidx) restrict(amp) {
+				const AMP_ALG Difference_type<I1> t = tidx.tile[0] * w;
+				const AMP_ALG Difference_type<I1> n = AMP_ALG _min(w, last - first - t);
+
+				const T r = AMP_ALG _reduce_in_tile_n(first + t,
+													  n,
+											          identity_element,
+											          AMP_ALG forward<decltype(tidx)>(tidx),
+											          op);
+
+				AMP_ALG uniform_invoke(tidx, [=](auto&& tile) { dest_first[tile] = r; });
+			});
+
+			return dest_first + Execution_parameters::tile_cnt(last - first);
+		}
+
+		template<typename I, typename T, typename Binary_op>
+		inline T _reduce_inner(I first, I last, const T& identity_element, Binary_op op)
+		{
+			T r;
+			const auto d = Execution_parameters::tiled_domain(Execution_parameters::tile_size()); // 1 tile.
+			concurrency::parallel_for_each(d, [=, r = ref(r)](auto&& tidx) restrict(amp) {
+				const T x = _reduce_in_tile_n(first,
+											  last - first,
+											  identity_element,
+											  AMP_ALG forward<decltype(tidx)>(tidx),
+											  AMP_ALG move(op));
+				uniform_invoke(tidx, [=](auto&&) { r.get() = x; });
+			});
+
+			return r;
+		}
+
+		template<typename I, typename T, typename Binary_op>
+		inline T _reduce(I first, I last, const T& identity_element, Binary_op op)
+		{	// TODO: clean up, properify, optimise.
+			// Investigate chained propagation vs iterative finalization - the former is shoddy on
+			// Intel.
+			if (first == last) return identity_element;
+
+			const auto tmp = Execution_parameters::temporary_buffer<Value_type<I>>(last - first);
+			_reduce_outer(first, last, begin(tmp), identity_element, op);
+			return _reduce_inner(begin(tmp), end(tmp), identity_element, std::move(op));
+		}
+
+		//----------------------------------------------------------------------------
+		// remove, remove_if, remove_copy, remove_copy_if
+		//----------------------------------------------------------------------------
+
+		template<typename I, typename T>
+		inline I _remove(I first, I last, const T& value)
+		{
+			return _remove_if(first, last, [=](auto&& x) restrict(amp) {
+				return forward<decltype(x)>(x) == value;
+			});
+		}
+
+		template<typename I, typename P>
+		inline I _remove_if(I first, I last, P p)
+		{
+			if (first == last) return last;
+
+			return _partition(first,
+							  last,
+							  [p = std::move(p)](auto&& x) restrict(amp) {
+				return !p(forward<decltype(x)>(x));
+			});
+		}
+
+		template<typename I1, typename I2, typename T>
+		inline I2 _remove_copy(I1 first, I1 last, I2 dest_first, const T& value)
+		{
+			return _copy_if(first,
+							last,
+							dest_first,
+							[=](auto&& x) restrict(amp) {
+				return forward<decltype(x)>(x) != value;
+			});
+		}
+
+		template<typename I1, typename I2, typename P>
+		inline I2 _remove_copy_if(I1 first, I1 last, I2 dest_first, P p)
+		{
+			return _copy_if(first,
+							last,
+							dest_first,
+							[=, p = std::move(p)](auto&& x) restrict(amp) {
+				return !p(forward<decltype(x)>(x));
+			});
+		}
+
+		//----------------------------------------------------------------------------
+		// replace, replace_if, replace_copy, replace_copy_if
+		//----------------------------------------------------------------------------
+
+		template<typename I, typename T>
+		inline void _replace(I first, I last, const T& old_value, const T& new_value)
+		{
+			_replace_if(first,
+						last,
+						[=](auto&& x) restrict(amp) { return forward<decltype(x)>(x) == old_value; },
+						new_value);
+		}
+
+		template<typename I, typename P, typename T>
+		inline void _replace_if(I first, I last, P p, const T& new_value)
+		{
+			if (first == last) return;
+
+			concurrency::parallel_for_each(concurrency::extent<1>(last - first),
+										   [=, p = std::move(p)](auto&& idx) restrict(amp) {
+				if (p(first[idx[0]])) {
+					first[idx[0]] = new_value;
+				}
+			});
+		}
+
+		template<typename I1, typename I2, typename T>
+		inline I2 _replace_copy(I1 first, I1 last, I2 dest_first, const T& old_value, const T& new_value)
+		{
+			return _replace_copy_if(first,
+									last,
+									dest_first,
+									[=](auto&& x) restrict(amp) {
+				return forward<decltype(x)>(x) == old_value;
+			},
+									new_value);
+		}
+
+		template<typename I1, typename I2, typename P, typename T>
+		inline I2 _replace_copy_if(I1 first, I1 last, I2 dest_first, P p, const T& new_value)
+		{
+			concurrency::parallel_for_each(concurrency::extent<1>(last - first),
+										   [=, p = std::move(p)](auto&& idx) restrict(amp) {
+				dest_first[idx[0]] = p(first[idx[0]]) ? new_value : first[idx[0]];
+			});
+
+			return dest_first + (last - first);
+		}
+
+		//----------------------------------------------------------------------------
+		// reverse, reverse_copy
+		//----------------------------------------------------------------------------
+
+		template<typename I>
+		inline void _reverse(I first, I last)
+		{
+			if ((first == last) || ((last - first) == Difference_type<I>(1))) return;
+
+			concurrency::parallel_for_each(concurrency::extent<1>(half_nonnegative(last - first)),
+										   [=](auto&& idx) restrict(amp) {
+				_iter_swap(first + idx[0], last - AMP_ALG successor(idx[0]));
+			});
+		}
+
+		template<typename I1, typename I2, int tsz>
+		inline I2 _reverse_copy_in_tile_n(I1 first,
+										  Difference_type<I1> n,
+										  I2 dest_first,
+									      const concurrency::tiled_index<tsz>& tidx) restrict(amp)
+		{
+			if (!positive(n)) return dest_first;
+
+			for (Difference_type<I1> i = tidx.local[0]; i < n; i += tidx.tile_dim0) {
+				dest_first[i] = first[predecessor(n) - i];
+			}
+
+			return dest_first + n;
+		}
+
+		template<typename I1, typename I2, int tsz>
+		inline I2 _reverse_copy_single_tile(I1 first,
+											I1 last,
+											I2 dest_first,
+											const concurrency::tiled_index<tsz>& tidx) restrict(amp)
+		{
+			return _reverse_copy_single_tile_n(first, last - first, dest_first, tidx);
+		}
+
+		template<typename I1, typename I2>
+		inline I2 _reverse_copy(I1 first, I1 last, I2 dest_first)
+		{
+			if (first == last) return dest_first;
+
+			concurrency::parallel_for_each(concurrency::extent<1>(last - first),
+										   [=](auto&& idx) restrict(amp) {
+				dest_first[idx[0]] = last[-successor(idx[0])];
+			});
+
+			return dest_first + (last - first);
+		}
+
+		//----------------------------------------------------------------------------
+		// rotate, rotate_copy
+		//----------------------------------------------------------------------------
+
+		template<typename I, int tsz>
+		inline I _rotate_single_tile_n(I first,
+									   I middle,
+									   Difference_type<I> n,
+									   const concurrency::tiled_index<tsz>& tidx) restrict(amp)
+		{
+			const auto m = n - (middle - first);
+			if (tidx.local[0] < n) {
+				_swap(first[tidx.local[0]], first[(tidx.local[0] + m) % n]);
+			}
+			return first + m;
+		}
+
+		template<typename I>
+		inline I _rotate(I first, I middle, I last)
+		{
+			// TODO: this is nice and clean but single-invocation block-swap might be preferable.
+			//	   : First and second reverses can and should be collapsed into a single p_f_e.
+			if (first == middle) return last;
+			if (middle == last) return first;
+
+			_reverse(first, middle);
+			_reverse(middle, last);
+			_reverse(first, last);
+
+			return first + (last - middle);
+		}
+
+		template<typename I1, typename I2, int tsz>
+		inline I2 _rotate_copy_in_tile_n(I1 first,
+										 Difference_type<I1> mid,
+										 Difference_type<I1> n,
+										 I2 dest_first,
+										 const concurrency::tiled_index<tsz>& tidx) restrict(amp)
+		{
+			dest_first = _copy_in_tile_n(first, mid, dest_first, tidx);
+			return _copy_in_tile_n(first + mid, n - mid, dest_first, tidx);
+		}
+
+		template<typename I1, typename I2>
+		inline I2 _rotate_copy(I1 first, I1 middle, I1 last, I2 dest_first)
+		{
+			dest_first = _copy_n(first, middle - first, dest_first);
+			return _copy_n(middle, last - middle, dest_first);
+		}
+
+		//----------------------------------------------------------------------------
+		// inclusive_scan, exclusive_scan
+		// inplace_inclusive_scan, inplace_exclusive_scan
+		//----------------------------------------------------------------------------
+
+		// These are all non-standard, but scan is fundamental enough to warrant presence
+
+		template<typename I1, typename I2, typename T, typename Op, int tsz>
+		inline /*pair<Value_type<I>, Difference_type<I>>*/ auto _exclusive_scan_single_tile_n(I1 first,
+																							  Difference_type<I1> n,
+																							  I2 dest_first,
+																							  const T& identity_element,
+																							  const concurrency::tiled_index<tsz>& tidx,
+																							  Op op) restrict(amp)
+		{
+			tile_exclusive_cache<Value_type<I2>[tidx.tile_dim0], tidx.tile_dim0> tmp(tidx, [](auto&&){});
+			_copy_in_tile_n(first, n, tmp.local(), tidx);
+
+			static_for<1u, tidx.tile_dim0, Inc::mul, 2u>()([=](auto&& h) {
+				tmp[tidx.local[0]] = (tidx.local[0] < h) ? tmp[tidx.local[0]]
+													     : op(tmp[tidx.local[0] - h], tmp[tidx.local[0]]);
+			});
+			*dest_first = identity_element;//uniform_invoke(tidx, [=](auto&&) { *dest_first = identity_element; }); // Temporarily disabled.
+			_copy_in_tile_n(tmp.local(), predecessor(n), dest_first + 1, tidx);
+
+			return tmp[predecessor(n)];	//make_pair(tmp[out * n + predecessor(n)], n); // Return scan value and offset to last written.
+		}
+
+		template<typename I1, typename I2, typename Op, int tsz>
+		inline /*pair<Value_type<I>, Difference_type<I>>*/ auto _inclusive_scan_single_tile_n(I1 first,
+																							  Difference_type<I1> n,
+																							  I2 dest_first,
+																							  const concurrency::tiled_index<tsz>& tidx,
+																							  Op op) restrict(amp)
+		{
+			tile_exclusive_cache<Value_type<I2>[tidx.tile_dim0], tidx.tile_dim0> tmp(tidx, [](auto&&){});
+			_copy_in_tile_n(first, n, tmp.local(), tidx);
+
+			static_for<1u, tidx.tile_dim0, Inc::mul, 2u>()([=](auto&& h) {
+				tmp[tidx.local[0]] = (tidx.local[0] < h) ? tmp[tidx.local[0]]
+													     : op(tmp[tidx.local[0] - h], tmp[tidx.local[0]]);
+			});
+			_copy_in_tile_n(tmp.local(), n, dest_first, tidx);
+
+			return tmp[predecessor(n)];//make_pair(tmp[out * n + predecessor(n)], n); // Return scan value and offset to last written.
+		}
+
+
+		template<typename I1, typename I2, typename Op, int tsz>
+		inline decltype(auto) _scan_single_tile_inclusive(I1 first,
+														  I2 dest_first,
+														  const concurrency::tiled_index<tsz>& tidx,
+														  Op op) restrict(amp)
+		{
+			return _inclusive_scan_single_tile_n(first, tidx.tile_dim0, dest_first, tidx, move(op));
+		}
+
+		template<typename I, typename Op, int tsz>
+		inline decltype(auto) _scan_single_tile_exclusive(I first,
+														  const Value_type<I>& identity_element,
+														  const concurrency::tiled_index<tsz>& tidx,
+														  Op op) restrict(amp)
+		{
+			return _exclusive_scan_single_tile_n(first, tidx.tile_dim0, identity_element, tidx, move(op));
+		}
+
+		template<typename I1, typename I2, typename T, typename Op, int tsz>
+		inline Value_type<I2> _reduce_rows_n(I1 first,
+											 Difference_type<I1> n,
+											 I2 dest_first,
+											 const T& identity_element,
+											 const concurrency::tiled_index<tsz>& tidx,
+											 Op op) restrict(amp)
+		{
+			const Difference_type<I1> w = rounded_up_quotient(n, tidx.tile_dim0);
+			const Difference_type<I1> l = tidx.local[0] * w;
+			const Difference_type<I1> m = _min(w, n - l);
+
+			T x = identity_element;
+			for (Difference_type<I1> i = 0; i < m; ++i) {
+				x = op(x, first[l + i]);
+			}
+			dest_first[tidx.local[0]] = x;
+
+			tile_exclusive_cache<Value_type<I2>[tidx.tile_dim0], tsz> tmp(tidx, [=](auto&& out) {
+				out[tidx.local[0]] = x;
+			});
+			return tmp.reduce(move(op));
+		}
+
+		template<typename I1, typename I2, typename I3, typename Op, int tsz>
+		inline I3 _scan_rows_n(I1 first1,
+							   Difference_type<I1> n,
+							   I2 first2,
+							   I3 dest_first,
+							   const concurrency::tiled_index<tsz>& tidx,
+							   Op op) restrict(amp)
+		{
+			const Difference_type<I1> w = rounded_up_quotient(n, tidx.tile_dim0);
+			const Difference_type<I1> l = tidx.local[0] * w;
+
+		//	if (l < n) {
+				const Difference_type<I1> m = _min(w, n - l);
+				Value_type<I3> x = first2[tidx.local[0]];
+				for (Difference_type<I1> i = 0; i < m; ++i) {
+					x = op(x, first1[l + i]);
+					dest_first[l + i] = x;
+				}
+		//	}
+
+			return dest_first + n;
+		}
+
+		template<typename I1, typename I2, typename T, typename Op>
+		inline std::pair<I2, I2> _inclusive_scan_many_to_one_work_assignment_unguarded(I1 first,
+																					   I1 last,
+																					   I2 dest_first,
+																					   const T& identity_element,
+																					   Op op)
+		{	// WIP: investigation of StreamScan.
+			const concurrency::array_view<atomic<Difference_type<I1>>> ta(1);
+			_fill_n(begin(ta), 1, Difference_type<I1>(0));
+
+			const auto tmp = Execution_parameters::temporary_buffer<pair<Value_type<I2>, atomic<Difference_type<I1>>>>(last - first);//, make_pair(T(identity_element), last - first));
+			_fill_n(begin(tmp), tmp.extent.size(), make_pair(identity_element, last - first));
+
+			const auto d = Execution_parameters::tiled_domain(last - first);
+			const Difference_type<I1> w = Execution_parameters::work_per_tile(last - first);
+
+			concurrency::parallel_for_each(d, [=, op = std::move(op)](auto&& tidx) restrict(amp) {
+				AMP_ALG tile_exclusive_cache<AMP_ALG Difference_type<I1>, tidx.tile_dim0> linear_tile(tidx, [=](auto&& out) {
+					AMP_ALG forward<decltype(out)>(out) = ta[0]++;
+				});
+				const AMP_ALG Difference_type<I1> t = linear_tile.local() * w;
+				const AMP_ALG Difference_type<I1> n = AMP_ALG _min(w, last - first - t);
+
+				const T s = *_inclusive_scan_in_tile_n(first + t, n, dest_first + t, AMP_ALG forward<decltype(tidx)>(tidx), op).first;
+
+				if (AMP_ALG positive(linear_tile.local())) {
+					AMP_ALG tile_exclusive_cache<AMP_ALG Value_type<I2>, tidx.tile_dim0> pre(tidx, [=, linear_tile = linear_tile](auto&& out) {
+						while (tmp[AMP_ALG predecessor(linear_tile.local())].second == (last - first));
+						AMP_ALG forward<decltype(out)>(out) = tmp[AMP_ALG predecessor(linear_tile.local())].first;
+					});
+					AMP_ALG uniform_invoke(tidx, [=, pre = pre, linear_tile = linear_tile](auto&&) { tmp[linear_tile.local()] = AMP_ALG make_pair(op(pre.local(), s), linear_tile.local()); });
+					AMP_ALG _transform_in_tile_n(dest_first + t, n, dest_first + t, AMP_ALG forward<decltype(tidx)>(tidx), [=, pre = pre](auto&& x) { return op(x, pre.local()); });
+				}
+				else {
+					uniform_invoke(tidx, [=](auto&&) { tmp[0] = AMP_ALG make_pair(s, 0); });
+				}
+			});
+
+			return std::make_pair(dest_first + predecessor(last - first),
+								  dest_first + (last - first));
+		}
+
+		template<typename I1, typename I2, typename T, typename Op>
+		inline I2 _reduce_tiles(I1 first, I1 last, I2 dest_first, const T& identity_element, Op op)
+		{
+			return _reduce_outer(first, last, dest_first, identity_element, std::move(op));
+		}
+
+		template<typename I, typename T, typename Op>
+		inline std::pair<I, I> _exclusive_scan_reduced_tiles(I first, I last, const T& identity_element, Op op)
+		{
+			const auto d = Execution_parameters::tiled_domain(Execution_parameters::tile_size()); // 1 tile.
+			concurrency::parallel_for_each(d, [=, op = std::move(op)](auto&& tidx) restrict(amp) {
+				_exclusive_scan_in_tile_n(first,
+										  last - first,
+										  first,
+										  identity_element,
+										  AMP_ALG forward<decltype(tidx)>(tidx),
+										  AMP_ALG move(op));
+			});
+		/*	std::vector<Value_type<I>> foo(first, last);
+			::testtools::scan_cpu_exclusive(std::begin(foo), std::end(foo), first, op);*/
+			return std::make_pair(std::prev(last), last);
+		}
+
+		template<typename I1, typename I2, typename T, typename U, typename Op, int tsz>
+		inline pair<I2, I2> _partial_exclusive_scan_in_tile_n(I1 first,
+													          Difference_type<I1> n,
+													          I2 dest_first,
+													          const T& previous,
+													          const U& identity_element,
+													          const concurrency::tiled_index<tsz>& tidx,
+													          Op op) restrict(amp)
+		{
+			tile_exclusive_cache<Value_type<I2>[tidx.tile_dim0], tidx.tile_dim0> tmp(tidx, [](auto&&){});
+
+			T pre = previous;
+			for (Difference_type<I1> i = 0; i < n; i += tidx.tile_dim0) {
+				const Difference_type<I1> m = _min(tidx.tile_dim0 * 1, n - i);
+
+				_copy_in_tile_n(first + i, m, tmp.local(), tidx);
+
+				uniform_invoke(tidx, [=](auto&&) { tmp[0] = op(pre, tmp[0]); });
+				T nxt = _exclusive_scan_single_tile_n(tmp.local(), m, identity_element, tidx, op);
+				uniform_invoke(tidx, [=](auto&&) { tmp[0] = pre; });
+				pre = nxt;
+
+				_copy_in_tile_n(tmp.local(), m, dest_first + i, tidx);
+			}
+
+			return make_pair(dest_first + predecessor(n), dest_first + n);
+		}
+
+		template<typename I1, typename I2, typename T, typename Op, int tsz>
+		inline pair<I2, I2> _exclusive_scan_in_tile_n(I1 first,
+													  Difference_type<I1> n,
+													  I2 dest_first,
+													  const T& identity_element,
+													  const concurrency::tiled_index<tsz>& tidx,
+													  Op op) restrict(amp)
+		{
+			tile_exclusive_cache<Value_type<I2>[tidx.tile_dim0], tidx.tile_dim0> tmp(tidx, [](auto&&){});
+
+			T pre = identity_element;
+			for (Difference_type<I1> i = 0; i < n; i += tidx.tile_dim0) {
+				const Difference_type<I1> m = _min(tidx.tile_dim0 * 1, n - i);
+
+				const T s = _exclusive_scan_single_tile_n(first + i, m, tmp.local(), identity_element, tidx, op);
+				dest_first = _transform_in_tile_n(tmp.local(), m, dest_first, tidx, [=](auto&& x) { return op(pre, x); });
+				pre = op(pre, s);
+			}
+
+			return make_pair(dest_first + predecessor(n), dest_first + n);
+		}
+
+		template<typename I1, typename I2, typename T, typename Op, int tsz>
+		inline pair<I2, I2> _partial_inclusive_scan_in_tile_n(I1 first,
+													          Difference_type<I1> n,
+													          I2 dest_first,
+													          const T& previous,
+													          const concurrency::tiled_index<tsz>& tidx,
+													          Op op) restrict(amp)
+		{
+			tile_exclusive_cache<Value_type<I2>[tidx.tile_dim0], tidx.tile_dim0> tmp(tidx, [](auto&&){});
+
+			T pre = previous;
+			for (Difference_type<I1> i = 0; i < n; i += tidx.tile_dim0) {
+				const Difference_type<I1> m = _min(tidx.tile_dim0 * 1, n - i);
+
+				const T s = _inclusive_scan_single_tile_n(first + i, m, tmp.local(), tidx, op);
+				_transform_in_tile_n(tmp.local(), m, dest_first + i, tidx, [=](auto&& x) { return op(pre, x); });
+				pre = op(pre, s);
+			}
+
+			return make_pair(dest_first + predecessor(n), dest_first + n);
+		}
+
+		template<typename I1, typename I2, typename Op, int tsz>
+		inline pair<I2, I2> _inclusive_scan_in_tile_n(I1 first,
+													  Difference_type<I1> n,
+													  I2 dest_first,
+													  const concurrency::tiled_index<tsz>& tidx,
+													  Op op) restrict(amp)
+		{
+			tile_exclusive_cache<Value_type<I2>[tidx.tile_dim0], tidx.tile_dim0> tmp(tidx, [](auto&&) {});
+
+			Difference_type<I1> m = _min(tidx.tile_dim0 * 1, n);
+			Value_type<I2> pre = _inclusive_scan_single_tile_n(first, m, dest_first, tidx, op);
+			for (Difference_type<I1> i = m; i < n; i += tidx.tile_dim0) {
+				m = _min(tidx.tile_dim0 * 1, n - i);
+				const Value_type<I2> s = _inclusive_scan_single_tile_n(first + i, m, tmp.local(), tidx, op);
+				_transform_in_tile_n(tmp.local(), m, dest_first + i, tidx, [=](auto&& x) { return op(pre, x); });
+				pre = op(pre, s);
+			}
+
+			return make_pair(dest_first + predecessor(n), dest_first + n);
+		}
+
+		template<typename I1, typename I2, typename I3, typename T, typename Op>
+		inline std::pair<I2, I2> _scan_tiles(I1 first1,
+											 I1 last1,
+											 I2 first2,
+											 I3 dest_first,
+											 const T& identity_element,
+											 Op op)
+		{
+			const auto d = Execution_parameters::tiled_domain(last1 - first1);
+			const Difference_type<I1> w = Execution_parameters::work_per_tile(last1 - first1);
+
+			concurrency::parallel_for_each(d, [=, op = std::move(op)](auto&& tidx) restrict(amp) {
+				const AMP_ALG Difference_type<I1> t = tidx.tile[0] * w;
+				const AMP_ALG Difference_type<I1> n = AMP_ALG _min(w, last1 - first1 - t);
+
+				_partial_inclusive_scan_in_tile_n(first1 + t,
+												  n,
+												  dest_first + t,
+												  first2[tidx.tile[0]],
+												  AMP_ALG forward<decltype(tidx)>(tidx),
+												  AMP_ALG move(op));
+			});
+			return std::make_pair(dest_first + predecessor(last1 - first1),
+								  dest_first + (last1 - first1));
+		}
+
+		template<typename I1, typename I2, typename T, typename Op>
+		inline std::pair<I2, I2> _inclusive_scan(I1 first,
+												 I1 last,
+												 I2 dest_first,
+												 const T& identity_element,
+												 Op op)
+		{	// TODO: refactor, into single function.
+			// TODO: this is not the fastest possible scan,
+			//       revisit the single-pass scan (StreamScan).
+			if (first == last) return std::make_pair(dest_first, dest_first);
+
+			const auto tmp = Execution_parameters::temporary_buffer<T>(last - first);
+			_reduce_tiles(first, last, begin(tmp), identity_element, op);
+			_exclusive_scan_reduced_tiles(begin(tmp), end(tmp), identity_element, op);
+			_scan_tiles(first, last, cbegin(tmp), dest_first, identity_element, std::move(op));
+
+			return std::make_pair(dest_first + predecessor(last - first),
+								  dest_first + (last - first));
+		}
+
+		template<typename I1, typename I2, typename T>
+		inline std::pair<I2, I2> _inclusive_scan(I1 first,
+												 I1 last,
+												 I2 dest_first,
+												 const T& identity_element)
+		{
+			return _inclusive_scan(first, last, dest_first, identity_element, amp_algorithms::plus<>());
+		}
+
+		template<typename I1, typename I2, typename Op>
+		inline std::pair<I2, I2> _exclusive_scan(I1 first,
+												 I1 last,
+												 I2 dest_first,
+												 const Value_type<I1>& identity_element,
+												 Op op)
+		{	// TODO: optimise.
+			_inclusive_scan(first, std::prev(last), std::next(dest_first), identity_element, std::move(op));
+			_fill_n(dest_first, Difference_type<I2>(1), identity_element);
+			return std::make_pair(dest_first + predecessor(predecessor(last - first)),
+								  dest_first + predecessor(last - first));
+		}
+
+		template<typename I, typename T, typename Op>
+		inline std::pair<I, I> _inplace_inclusive_scan(I first,
+													   I last,
+													   const T& identity_element,
+													   Op op)
+		{
+			return _inclusive_scan(first, last, first, identity_element, std::move(op));
+		}
+
+		template<typename I, typename T>
+		inline std::pair<I, I> _inplace_inclusive_scan(I first, I last, const T& identity_element)
+		{
+			return _inplace_inclusive_scan(first, last, identity_element, amp_algorithms::plus<>());
+		}
+
+		template<typename I, typename T, typename Op>
+		inline std::pair<I, I> _inplace_exclusive_scan(I first,
+													   I last,
+													   const T& identity_element,
+													   Op op)
+		{	// TEMPORARY PLACEHOLDER, NOT EFFICIENT
+			_inplace_inclusive_scan(first, last, identity_element, std::move(op));
+			_rotate(first, last - Difference_type<I>(1), last);
+			_fill_n(first, Difference_type<I>(1), identity_element);
+			return std::make_pair(first + predecessor(predecessor(last - first)),
+								  first + predecessor(last - first));
+		}
+
+		template<typename I, typename T>
+		inline std::pair<I, I> _inplace_exclusive_scan(I first, I last, const T& identity_element)
+		{
+			return _inplace_exclusive_scan(first, last, identity_element, amp_algorithms::plus<>());
+		}
+
+		//----------------------------------------------------------------------------
+		// exclusive_segmented_scan, inclusive_segmented_scan,
+		// inplace_exclusive_segmented_scan, inplace_inclusive_segmented_scan
+		//----------------------------------------------------------------------------
+
+		//----------------------------------------------------------------------------
+		// search
+		//----------------------------------------------------------------------------
+
+		//----------------------------------------------------------------------------
+		// search_n
+		//----------------------------------------------------------------------------
+
+		template<typename I1, typename I2, typename T, typename P>
+		inline decltype(auto) _compute_prefixes_search_n(I1 first,
+														 I1 last,
+														 I2 dest_first,
+														 const T& value,
+														 P p)
+		{	// TODO: use linearized tile indices.
+			const auto d = Execution_parameters::tiled_domain(last - first);
+			const Difference_type<I1> w = Execution_parameters::work_per_tile(last - first);
+
+			const auto tmp = Execution_parameters::temporary_buffer<atomic<Difference_type<I1>>>(last - first);
+			_fill_n(begin(tmp), tmp.extent.size(), last - first);
+
+			concurrency::parallel_for_each(d, [=, p = std::move(p)](auto&& tidx) restrict(amp) {
+				const AMP_ALG Difference_type<I1> t = tidx.tile[0] * w;
+
+				const AMP_ALG Difference_type<I1> n = AMP_ALG _min(w, last - first - t);
+				const auto rf = _find_if_not_in_tile_n(make_reverse_iterator(first + t + n),
+													   n,
+													   AMP_ALG forward<decltype(tidx)>(tidx),
+													   [=](auto&& x) {
+					return p(AMP_ALG forward<decltype(x)>(x), value);
+				});
+
+				uniform_invoke(tidx, [=](auto&& tile) {
+					const AMP_ALG Difference_type<I1> suffix = rf - AMP_ALG make_reverse_iterator(first + t + n);
+					AMP_ALG Difference_type<I1> prefix = 0;
+					if (AMP_ALG positive(AMP_ALG forward<decltype(tile)>(tile)) && (suffix == n)) {
+						do {
+							prefix = tmp[AMP_ALG predecessor(AMP_ALG forward<decltype(tile)>(tile))];
+						} while (prefix == (last - first));
+					}
+					tmp[AMP_ALG forward<decltype(tile)>(tile)] = prefix + suffix;
+				});
+			});
+			return _move(begin(tmp), end(tmp), dest_first);
+		}
+
+		template<typename I, typename N, typename T, typename P>
+		inline I _search_n(I first, I last, N count, const T& value, P p)
+		{	// TODO: cleanup, properify.
+			if (!positive(count)) return first;
+			if ((last - first) < count) return last;
+			if (one(count)) return _find(first, last, value);
+
+			const auto d = Execution_parameters::tiled_domain(last - first);
+			const Difference_type<I> w = Execution_parameters::work_per_tile(last - first);
+
+			const auto tmp = Execution_parameters::temporary_buffer<Difference_type<I>>(last - first);
+			_compute_prefixes_search_n(first, last, begin(tmp), value, p);
+
+			const auto tmp1 = Execution_parameters::temporary_buffer(last - first, last - first);
+
+			const auto eq = [=](auto&& x) restrict(amp) { return p(AMP_ALG forward<decltype(x)>(x), value); };
+			concurrency::parallel_for_each(d, [=, p = std::move(p)](auto&& tidx) restrict(amp) {
+				const AMP_ALG Difference_type<I> t = tidx.tile[0] * w;
+				const AMP_ALG Difference_type<I> n = AMP_ALG _min(w, last - first - t);
+
+				AMP_ALG tile_exclusive_cache<AMP_ALG Difference_type<I>, tidx.tile_dim0> prefix(tidx, [=](auto&& out) {
+					AMP_ALG forward<decltype(out)>(out) = AMP_ALG positive(tidx.tile[0]) ? tmp[AMP_ALG predecessor(tidx.tile[0])] : 0;
+				});
+				AMP_ALG tile_exclusive_cache<bool, tidx.tile_dim0> done(tidx, [=, prefix = prefix](auto&& out) {
+					AMP_ALG forward<decltype(out)>(out) = (prefix + n) < count;
+				});
+
+				if (done) return;
+
+				AMP_ALG tile_exclusive_cache<AMP_ALG Difference_type<I>, tidx.tile_dim0> suffix(tidx, [=](auto&& out) {
+					AMP_ALG forward<decltype(out)>(out) = tmp[tidx.tile];
+				});
+
+				const AMP_ALG Difference_type<I> m = AMP_ALG _max(0, n - suffix);
+				I f;
+				I l = first + t;
+				do {
+					f = _find_if_in_tile_n(l, m - (l - (first + t)), AMP_ALG forward<decltype(tidx)>(tidx), eq);
+					l = _find_if_not_in_tile_n(f, m - (f - (first + t)), AMP_ALG forward<decltype(tidx)>(tidx), eq);
+
+					const AMP_ALG Difference_type<I> x0 = prefix * (f == first + t);
+					const AMP_ALG Difference_type<I> x1 = l - f;
+					const AMP_ALG Difference_type<I> x2 = suffix * (l == (first + t + m));
+
+					if (count <= (x0 + x1 + x2)) {
+						uniform_invoke(tidx, [=](auto&& tile) { tmp1[tile] = f - first - x0; });
+						break;
+					}
+				} while (f != l);
+			});
+
+			return first + *_min_element(cbegin(tmp1), cend(tmp1));
+ 		}
+
+		template<typename I, typename N, typename T>
+		inline I _search_n(I first, I last, N n, const T& value)
+		{
+			return _search_n(first, last, std::move(n), value, amp_algorithms::equal_to<>());
+		}
+
+		//----------------------------------------------------------------------------
+		// binary_search
+		//----------------------------------------------------------------------------
+
+		template<typename I, typename T, typename C>
+		inline bool _binary_search(I first, I last, const T& value, C cmp)
+		{
+			if (first == last) return false;
+
+			const concurrency::array_view<unsigned int> r(1);
+			const I p = _partition_point(first, last, [=](auto&& x) restrict(amp) {
+				return cmp(AMP_ALG forward<decltype(x)>(x), value);
+			});
+
+			if (p == last) return false;
+
+			concurrency::parallel_for_each(r.extent, [=, cmp = std::move(cmp)](auto&&) restrict(amp) {
+				r[0] = !cmp(value, *p);
+			});
+
+			return positive(r[0]);
+		}
+
+		template<typename I, typename T>
+		inline bool _binary_search(I first, I last, const T& value)
+		{
+			return _binary_search(first, last, value, amp_algorithms::less<>());
+		}
+
+		//----------------------------------------------------------------------------
+		// set_difference, set_intersection, set_symmetric_difference, set_union
+		//----------------------------------------------------------------------------
+
+		template<typename I1, typename I2, typename I3, typename C>
+		inline I3 _set_difference(I1 first1, I1 last1, I2 first2, I2 last2, I3 dest_first, C cmp)
+		{
+			if (first1 == last1) return dest_first;
+			if (first2 == last2) return amp_stl_algorithms::copy(first1, last1, dest_first);
+
+			const auto tmp = Execution_parameters::temporary_buffer(last1 - first1);
+			const auto compute_domain = Execution_parameters::tiled_domain(last1 - first1);
+
+
+		}
+
+		template<typename I1, typename I2, typename I3>
+		inline I3 _set_difference(I1 first1, I1 last1, I2 first2, I2 last2, I3 dest_first)
+		{
+			return _set_difference(first1, last1, first2, last2, dest_first, amp_algorithms::less<>());
+		}
+
+		//----------------------------------------------------------------------------
+		// shuffle, random_shuffle
+		//----------------------------------------------------------------------------
+
+		//----------------------------------------------------------------------------
+		// is_sorted, is_sorted_until, sort, partial_sort, partial_sort_copy, stable_sort
+		//----------------------------------------------------------------------------
+
+		template<typename I, typename C>
+		inline I _is_sorted_until(I first, I last, C cmp)
+		{
+			if (first == last) return last;
+
+			const auto it = _adjacent_find(first,
+										   last,
+										   [cmp = std::move(cmp)](auto&& x, auto&& y) restrict(amp) {
+				return !(cmp(forward<decltype(x)>(x), forward<decltype(y)>(y)));
+			});
+			return it == last ? it : std::next(it);
+		}
+
+		template<typename I>
+		inline I _is_sorted_until(I first, I last)
+		{
+			return _is_sorted_until(first, last, amp_algorithms::less_equal<>());
+		}
+
+		template<typename I>
+		inline bool _is_sorted(I first, I last)
+		{
+			return _is_sorted_until(first, last, amp_algorithms::less_equal<>()) == last;
+		}
+
+		template<typename I, typename C>
+		inline bool _is_sorted(I first, I last, C comp)
+		{
+			return _is_sorted_until(first, last, std::move(comp)) == last;
+		}
+
+		template<typename T, typename C>
+		inline constexpr T _median_of_3_xy(const T& x, const T& y, const T& z, C cmp) restrict(cpu, amp)
+		{
+			return !cmp(z, y) ? y : _max(x, z, move(cmp));
+		}
+
+		template<typename T, typename C>
+		inline constexpr T _median_of_3(const T& x, const T& y, const T& z, C cmp) restrict(cpu, amp)
+		{
+			return cmp(y, x) ? _median_of_3_xy(y, x, z, move(cmp))
+						     : _median_of_3_xy(x, y, z, move(cmp));
+		}
+
+		template<typename I, typename C>
+		inline Value_type<I> _median_of_3_random_amp(I first, I last, C cmp)
+		{
+			static std::mt19937_64 g;
+			std::uniform_int_distribution<Difference_type<I>> d(Difference_type<I>(0),
+																predecessor(last - first));
+
+			const concurrency::array_view<Value_type<I>> m(1);
+			const Difference_type<I> dx = d(g);
+			const Difference_type<I> dy = d(g);
+			const Difference_type<I> dz = d(g);
+			concurrency::parallel_for_each(m.extent,
+										   [=,
+										   cmp = std::move(cmp)](auto&&) restrict(amp) {
+				m[0] = AMP_ALG _median_of_3(first[dx], first[dy], first[dz], AMP_ALG move(cmp));
+			});
+
+			return m[0];
+		}
+
+		template<typename I, typename T, typename C, int tsz>
+		inline pair<Difference_type<I>,
+					Difference_type<I>> _partition_3_way_single_tile_n(I first,
+				  						                               Difference_type<I> n,
+												                       const T& pivot,
+												                       const concurrency::tiled_index<tsz>& tidx,
+												                       C cmp) restrict(amp)
+		{	// TODO: tweak the atomics usage, it serializes atm.
+			using Offsets = pair<atomic<Difference_type<I>>, atomic<Difference_type<I>>>;
+			tile_exclusive_cache<Offsets, tidx.tile_dim0> dx(tidx, [=](auto&& out) {
+				AMP_ALG forward<decltype(out)>(out) = AMP_ALG make_pair(AMP_ALG Difference_type<I>(0),
+																		n);
+			});
+
+			if (tidx.local[0] < n) {
+				const Value_type<I> x = first[tidx.local[0]];
+				if (cmp(x, pivot)) {
+					first[dx.local().first++] = x;
+				}
+				else if (cmp(pivot, x)) {
+					first[--dx.local().second] = x;
+				}
+			}
+			return make_pair(dx.local().first.load(), dx.local().second.load());
+		}
+
+		template<typename I1, typename I2, int tsz>
+		inline pair<Difference_type<I1>,
+					Difference_type<I2>> _merge_3_way_partitions_in_tile(I1 first1,
+																		 Difference_type<I1> n_eq1,
+																		 I1 last1,
+																		 I2 first2,
+																		 Difference_type<I1> n_ls2,
+																		 Difference_type<I2> n_eq2,
+																		 const concurrency::tiled_index<tsz>& tidx) restrict(amp)
+		{
+			const auto mn = _swap_ranges_in_tile_n(first1,
+												   last1 - first1,
+												   first2 + n_ls2 - _min(n_ls2, last1 - first1),
+												   n_ls2,
+												   tidx);
+
+			const auto dx = _max(0, mn.first - n_eq1); // Out of place elems, greater before equal in second partition.
+			const auto pq = _swap_ranges_in_tile_n(first2 + n_ls2 - dx,
+												   n_ls2,
+												   first2 + n_ls2 + n_eq2 - _min(dx, n_eq2),
+												   n_ls2 + n_eq2,
+												   tidx);
+
+			const auto dy = _min(n_ls2 + n_eq2 - dx, last1 - (first1 + n_eq1 + dx)); // Out of place elems, greater before equal in final partition.
+			const auto rs = _swap_ranges_in_tile_n(first1 + n_eq1 + dx,
+												   last1 - first1,
+												   first2 + n_ls2 + n_eq2 - dx - dy,
+												   n_ls2 + n_eq2 - dx,
+												   tidx);
+
+			return make_pair(n_ls2, n_ls2 + n_eq2 - dx - dy);
+		}
+
+	/*	template<typename I, typename T, typename C, int tsz>
+		inline pair<I, I> _partition_3_way_in_tile_n(I first,
+													 Difference_type<I> n,
+													 const T& pivot,
+													 const concurrency::tiled_index<tsz>& tidx,
+													 C cmp) restrict(amp)
+		{
+			using Offsets = AMP_ALG pair<AMP_ALG Difference_type<I>, AMP_ALG Difference_type<I>>;
+			AMP_ALG tile_exclusive_cache<Offsets, tidx.tile_dim0> off(tidx, [=](auto&& out) {
+				AMP_ALG forward<decltype(out)>(out) = AMP_ALG make_pair(AMP_ALG Difference_type<I>(0),
+														                AMP_ALG Difference_type<I>(0));
+			});
+
+			AMP_ALG tile_exclusive_cache<AMP_ALG Value_type<I>[tidx.tile_dim0], tidx.tile_dim0> tmp(tidx, [](auto&&){});
+			for (AMP_ALG Difference_type<I> i = 0; i < n; i += tidx.tile_dim0) {
+				const AMP_ALG Difference_type<I> m = _min(tidx.tile_dim0 * 1, n - i);
+				_copy_in_tile_n(first + i, m, tmp.local(), tidx);
+
+				const auto pp = _partition_3_way_single_tile_n(tmp.local(), m, pivot, tidx, move(cmp));
+
+				if (positive(pp.second)) {
+					if (off.local().first != i) {
+						_merge_3_way_partitions_in_tile(first + off.local().first,
+														off.local().second - off.local().first,
+														first + i,
+														tmp.local(),
+														pp.first,
+														pp.second - pp.first,
+														AMP_ALG forward<decltype(tidx)>(tidx));
+					}
+					_copy_in_tile_n(tmp.local(), m, first + i, tidx);
+				}
+				uniform_invoke(tidx, [=](auto&&) {
+					off.local().first += pp.first;
+					off.local().second += pp.second;
+				});
+			}
+			_fill_in_tile_n(first + off.local().first,
+							off.local().second - off.local().first,
+							pivot,
+							AMP_ALG forward<decltype(tidx)>(tidx));
+
+			return AMP_ALG make_pair(first + off.local().first, first + off.local().second);
+		}*/
+
+		//template<typename I1, typename I2, typename T, typename C>
+		//inline std::pair<I1, I1> _partition_tiles_3_way(I1 first,
+		//											    I1 last,
+		//											    I2 dest_first,
+		//												const T& pivot,
+		//												C cmp)
+		//{
+		//	const auto d = Execution_parameters::tiled_domain(last - first);
+		//	const Difference_type<I1> w = Execution_parameters::work_per_tile(last - first);
+
+		//	concurrency::parallel_for_each(d, [=, cmp = std::move(cmp)](auto&& tidx) restrict(amp) {
+		//		const AMP_ALG Difference_type<I1> t = tidx.tile[0] * w;
+		//		const AMP_ALG Difference_type<I1> n = AMP_ALG _min(w, last - first - t);
+
+		//		const AMP_ALG pair<I1, I1> p = _partition_3_way_in_tile_n(first + t,
+		//									 				              n,
+		//																  pivot,
+		//																  AMP_ALG forward<decltype(tidx)>(tidx),
+		//																  AMP_ALG move(cmp));
+		//		uniform_invoke(tidx, [=](auto&& tile) {
+		//			dest_first[tile] = AMP_ALG make_pair(p.first - (first + t), p.second - (first + t));
+		//		});
+		//	});
+
+		//	const auto pp_dx = _reduce(dest_first,
+		//							   dest_first + rounded_up_quotient(last - first, w),
+		//							   make_pair(Difference_type<I1>(0), Difference_type<I1>(0)),
+		//							   [](auto&& x, auto&& y) restrict(amp) {
+		//		return AMP_ALG make_pair(x.first + y.first, x.second + y.second);
+		//	});
+
+		//	return std::make_pair(first + pp_dx.first, first + pp_dx.second);
+		//}
+
+		//template<typename I1, typename I2>
+		//inline void _merge_3_way_partitioned_tiles(I1 first1, I1 last1, I2 first2)
+		//{
+
+		//}
+
+		//template<typename I, typename T, typename C>
+		//inline std::pair<I, I> _partition_3_way(I first, I last, const T& pivot, C cmp)
+		//{
+		//	if (first == last) return std::make_pair(last, last);
+
+		//	using Offsets = typename pair<Difference_type<I>, Difference_type<I>>;
+		//	const auto tmp = Execution_parameters::temporary_buffer<Offsets>(last - first);
+
+		//	const std::pair<I, I> pp = _partition_tiles_3_way(first, last, begin(tmp), pivot, move(cmp));
+		//	if ((pp.first != first) && (pp.second != last)) {
+		//		_merge_3_way_partitioned_tiles(first, last, cbegin(tmp));
+		//	}
+
+		//	return pp;
+		//}
+
+		template<typename I, typename C>
+		inline bool _odd_even_sort_tiles_pass(I first, I last, C cmp)
+		{
+			if ((last - first) == Difference_type<I>(1)) return true;
+
+			concurrency::array_view<atomic<unsigned int>> swaps(1);
+			concurrency::parallel_for_each(swaps.extent, [=](auto&&) restrict(amp) { swaps[0] = 0u; });
+
+			const auto compute_domain = Execution_parameters::tiled_domain(half_nonnegative(last - first));
+			concurrency::parallel_for_each(compute_domain,
+										   [=, cmp = std::move(cmp)](auto&& tidx) restrict(amp) {
+				AMP_ALG Difference_type<I> t = AMP_ALG twice(tidx.tile_origin[0]);
+				while (t < (last - first)) {
+					const auto n = AMP_ALG _min(AMP_ALG twice(tidx.tile_dim0), last - first - t);
+
+					tile_static AMP_ALG Value_type<I> vals[AMP_ALG twice(tidx.tile_dim0)];
+					AMP_ALG _copy_in_tile_n(first + t, n, vals, AMP_ALG forward<decltype(tidx)>(tidx));
+
+					const bool not_done = AMP_ALG _rank_sort_single_tile_n(vals,
+																		   n,
+																		   AMP_ALG forward<decltype(tidx)>(tidx),
+																		   cmp);
+
+					AMP_ALG _copy_in_tile_n(vals, n, first + t, AMP_ALG forward<decltype(tidx)>(tidx));
+
+					if ((tidx.tile_origin == tidx.global) && not_done && AMP_ALG zero(swaps[0].load())) {
+						++swaps[0];
+					}
+
+					t += AMP_ALG twice(compute_domain.size());
+				}
+			});
+			return zero(swaps[0].load());
+		}
+
+		template<typename I, typename C>
+		inline void _odd_even_sort_tiles_unguarded(I first, I last, C cmp)
+		{
+			bool sorted;
+			do {
+				sorted = _odd_even_sort_tiles_pass(first + 1, last, cmp); // Odd.
+				sorted = _odd_even_sort_tiles_pass(first, last, cmp) && sorted; // Even.
+			} while (!sorted);
+		}
+
+		template<typename I, typename C>
+		inline void _partition_into_tiles(I first, I last, C cmp)
+		{	// This is just a proof-of-concept. It is neither fast enough nor an optimal
+			// implementation of Quicksort - will be overhauled for release.
+			while ((1 << 16) < (last - first)) {
+				const Value_type<I> pivot = _median_of_3_random_amp(first, last, cmp);
+				const I l = _partition(first, last, [=](auto&& x) restrict(amp) { return cmp(x, pivot); });
+				const I u = _partition(l, last, [=](auto&& x) restrict(amp) { return !cmp(pivot, x); });
+
+				if ((l == first) && (u == last)) return;
+
+				if ((l - first) < (last - u)) {
+					_partition_into_tiles(first, l, cmp);
+					first = u;
+				}
+				else {
+					_partition_into_tiles(u, last, cmp);
+					last = l;
+				}
+				std::cout << last - first << ' ';
+			}
+		//	std::cout << last - first << std::endl;
+		}
+		template<typename I, typename C, int tsz>
+		inline bool _rank_sort_single_tile_n(I first,
+											 Difference_type<I> n,
+											 const concurrency::tiled_index<tsz>& tidx,
+											 C cmp) restrict(amp)
+		{
+			tile_exclusive_cache<Value_type<I>[tidx.tile_dim0], tidx.tile_dim0> tmp(tidx, [=](auto&& out) {
+				_copy_in_tile_n(first, n, AMP_ALG forward<decltype(out)>(out), tidx);
+			});
+
+			tile_exclusive_cache<unsigned int[tidx.tile_dim0], tidx.tile_dim0> uns(tidx, [=](auto&& out){
+				AMP_ALG _fill_in_tile_n(AMP_ALG forward<decltype(out)>(out), tidx.tile_dim0, 0u, tidx);
+			});
+
+			if (tidx.local[0] < n) {
+				Difference_type<I> dx = 0;
+				for (auto i = 0; i != n; ++i) {
+					if (!cmp(tmp[tidx.local[0]], tmp[i])) {
+						if (cmp(tmp[i], tmp[tidx.local[0]])) ++dx;
+						else dx += i < tidx.local[0];
+					}
+				}
+
+				uns[tidx.local[0]] += dx != tidx.local[0];
+				if (tidx.local[0] != dx) {
+					first[dx] = tmp[tidx.local[0]];
+				}
+			}
+			return uns.reduce(amp_algorithms::plus<>()) != 0u;
+		}
+
+		template<typename I, typename C, int tsz>
+		inline bool _pbsn_sort_single_tile_n(I first,
+											 Difference_type<I> n,
+											 const concurrency::tiled_index<tsz>& tidx,
+											 C cmp) restrict(amp)
+		{
+			tile_exclusive_cache<Value_type<I>[AMP_ALG twice(tidx.tile_dim0)], tidx.tile_dim0> tmp(tidx, [=](auto&& out) {
+				AMP_ALG _copy_in_tile_n(first, n, AMP_ALG forward<decltype(out)>(out), tidx);
+			});
+			tile_exclusive_cache<unsigned int[tidx.tile_dim0], tidx.tile_dim0> uns(tidx, [=](auto&& out) {
+				AMP_ALG _fill_in_tile_n(AMP_ALG forward<decltype(out)>(out), tidx.tile_dim0, 0u, tidx);
+			});
+
+			static_for<AMP_ALG twice(tidx.tile_dim0), 0, Inc::div, 2>()([=](auto&&) {
+				AMP_ALG static_for<AMP_ALG twice(tidx.tile_dim0), 1, AMP_ALG Inc::div, 2>()([=](auto&& h) {
+					const unsigned int mask = AMP_ALG predecessor(h);
+					const AMP_ALG Difference_type<I> half_h = AMP_ALG half_nonnegative(h);
+					const AMP_ALG Difference_type<I> b_log = AMP_ALG binary_logarithm(half_h);
+
+					const AMP_ALG Difference_type<I> x0 = AMP_ALG even_division_remainder(tidx.local[0], half_h) +
+														  (tidx.local[0] >> b_log) * h;
+					const AMP_ALG Difference_type<I> x1 = x0 ^ mask;
+					if (AMP_ALG zero(x0 & half_h) && x1 < n) {
+						uns[tidx.local[0]] += AMP_ALG _compare_and_exchange(first[x0], first[x1], cmp);
+					}
+				});
+			});
+
+			return uns.reduce(amp_algorithms::plus<>()) != 0u;
+		}
+
+		template<typename I, typename C>
+		inline void _sort_tiles(I first, I last, Reference<unsigned int> swapped, C cmp)
+		{
+			if ((first == last) || (first == std::prev(last))) return;
+
+			const auto d = Execution_parameters::tiled_domain(last - first);
+			const Difference_type<I> w = Execution_parameters::work_per_tile(last - first);
+
+			concurrency::parallel_for_each(d, [=, cmp = std::move(cmp)](auto&& tidx) restrict(amp) {
+				const AMP_ALG Difference_type<I> t = tidx.tile[0] * w;
+				const AMP_ALG Difference_type<I> n = AMP_ALG _min(w, last - first - t);
+				for (AMP_ALG Difference_type<I> i = 0; i < n; i += 2 * tidx.tile_dim0) {
+					const AMP_ALG Difference_type<I> m = AMP_ALG _min(2 * tidx.tile_dim0 * 1, n - i);
+					const bool uns = _pbsn_sort_single_tile_n(first + t + i,
+															  m,
+															  AMP_ALG forward<decltype(tidx)>(tidx),
+															  cmp);
+					if (uns) uniform_invoke(tidx, [=](auto&&) { swapped.get() = 1u; });
+				}
+			});
+		}
+
+		template<typename I, typename C, int tsz>
+		inline bool _pbsn_sort_step_in_tile_n(I first,
+											  Difference_type<I> b,
+											  Difference_type<I> m,
+											  Difference_type<I> n,
+											  Difference_type<I> h,
+											  const concurrency::tiled_index<tsz>& tidx,
+											  C cmp) restrict(amp)
+		{
+			static constexpr Difference_type<I> unroll = 4;
+
+			tile_exclusive_cache<unsigned int[tidx.tile_dim0], tidx.tile_dim0> uns(tidx, [=](auto&& out) {
+				AMP_ALG _fill_in_tile_n(AMP_ALG forward<decltype(out)>(out), tidx.tile_dim0, 0u, tidx);
+			});
+
+			const Difference_type<I> mask = h - 1;
+			const Difference_type<I> half_h = half_nonnegative(h);
+			const Difference_type<I> b_log = binary_logarithm(half_h);
+
+			for (Difference_type<I> i = unroll * tidx.local[0]; i < m; i += unroll * tidx.tile_dim0) {
+				static_for<0u, unroll>()([=](auto&& j) {
+						const AMP_ALG Difference_type<I> x0 = AMP_ALG even_division_remainder(b + i + j, half_h) +
+															  ((b + i + j) >> b_log) * h;
+						const AMP_ALG Difference_type<I> x1 = x0 ^ mask;
+						uns[tidx.local[0]] += x1 < n ? AMP_ALG _compare_and_exchange(first[x0], first[x1], cmp)
+													 : 0u;
+				});
+			}
+
+			return uns.reduce(amp_algorithms::plus<>()) != 0u;
+		}
+
+		template<typename I1, typename I2, typename C>
+		inline void _pbsn_sort_outer(I1 first, I1 last, I2 dest_first, C cmp)
+		{
+			if (first == last || first == std::prev(last)) return;
+
+			const Difference_type<I1> next_pot_sz = round_up_to_next_binary_power(last - first);
+			const auto d = Execution_parameters::tiled_domain(half_nonnegative(next_pot_sz));
+			const Difference_type<I1> w = Execution_parameters::work_per_tile(half_nonnegative(next_pot_sz));
+
+			Difference_type<I1> h = next_pot_sz;
+			while (h > round_up_to_next_binary_power(w)) {
+				concurrency::parallel_for_each(d, [=](auto&& tidx) restrict(amp) {
+					const AMP_ALG Difference_type<I1> t = tidx.tile[0] * w;
+					const AMP_ALG Difference_type<I1> n = AMP_ALG _min(w, last - first - t);
+
+					if (_pbsn_sort_step_in_tile_n(first, t, n, last - first, h, tidx, cmp)) {
+						AMP_ALG uniform_invoke(tidx, [=](auto&& tile) { dest_first[tile] = 1u; });
+					}
+				});
+				h = half_nonnegative(h);
+			}
+		}
+
+		template<typename I1, typename I2, typename C>
+		inline void _pbsn_sort_inner(I1 first, I1 last, I2 dest_first, C cmp)
+		{
+			const auto d = Execution_parameters::tiled_domain(half_nonnegative(round_up_to_next_binary_power(last - first)));
+			const Difference_type<I1> w = Execution_parameters::work_per_tile(half_nonnegative(round_up_to_next_binary_power(last - first)));
+
+			concurrency::parallel_for_each(d, [=](auto&& tidx) restrict(amp) {
+				AMP_ALG Difference_type<I1> h = AMP_ALG round_up_to_next_binary_power(w);
+				const AMP_ALG Difference_type<I1> t = tidx.tile[0] * h;
+				if (t < (last - first)) {
+					const AMP_ALG Difference_type<I1> n = AMP_ALG _min(h, last - first - t);
+
+					bool unsorted = false;
+					while (h > 1) {
+						unsorted = _pbsn_sort_step_in_tile_n(first, t, n, last - first, h, tidx, cmp) || unsorted;
+						h = AMP_ALG half_nonnegative(h);
+					}
+
+					if (unsorted) AMP_ALG uniform_invoke(tidx, [=](auto&& tile) { dest_first[tile] = 1u; });
+				}
+			});
+		}
+
+		template<typename I, typename C>
+		inline bool _pbsn_sort(I first, I last, C cmp)
+		{
+			if (first == last || first == std::prev(last)) return true;
+
+			const auto tmp = Execution_parameters::temporary_buffer(half_nonnegative(round_up_to_next_binary_power(last - first)), 0u);
+
+			_pbsn_sort_outer(first, last, begin(tmp), cmp);
+			_pbsn_sort_inner(first, last, begin(tmp), cmp);
+
+			return _reduce(cbegin(tmp), cend(tmp), 0u, amp_algorithms::plus<>()) == 0u;
+		}
+
+		template<typename T, typename C>
+		inline bool _compare_and_exchange(T& x, T& y, C cmp) restrict(cpu, amp)
+		{
+			if (cmp(y, x)) { _swap(x, y); return true; }
+			return false;
+		}
+
+		template<typename I, typename C>
+		inline void _odd_even_sort_sorted_tiles(I first, I last, C cmp)
+		{
+			if (first == last || first == std::prev(last)) return;
+
+		/*	const auto tmp = Execution_parameters::temporary_buffer<unsigned int>(last - first);
+			std::fill(begin(tmp), end(tmp), 0u);
+			const auto d = Execution_parameters::tiled_domain(last - first);
+			const Difference_type<I> w = Execution_parameters::work_per_tile(last - first);*/
+			const concurrency::array_view<atomic<unsigned int>> foo(1);
+			do {
+				foo[0] = 0u;
+
+				const concurrency::extent<1> d(last - first);
+				// Even.
+				concurrency::parallel_for_each(d, [=](auto&& idx) restrict(amp) {
+					const AMP_ALG Difference_type<I> x0 = idx[0] * 2;
+					const AMP_ALG Difference_type<I> x1 = x0 + 1;
+					if (x1 < (last - first)) {
+						const bool bs = AMP_ALG _compare_and_exchange(first[x0], first[x1], cmp);
+						if (bs) ++foo[0];
+					}
+					//	}
+				});
+
+				// Odd.
+				concurrency::parallel_for_each(d, [=](auto&& idx) restrict(amp) {
+					const AMP_ALG Difference_type<I> x0 = idx[0] * 2 + 1;
+					const AMP_ALG Difference_type<I> x1 = x0 + 1;
+					if (x1 < (last - first)) {
+						const bool bs = AMP_ALG _compare_and_exchange(first[x0], first[x1], cmp);
+						if (bs) ++foo[0];
+					}
+				});
+
+				std::cout << foo[0] << ' ';
+			} while (foo[0].load());
+			std::cout << std::endl;
+		}
+
+		template<typename I, typename C>
+		inline void _sort(I first, I last, C cmp)
+		{
+			if ((first == last) || first == std::prev(last)) return;
+			bool sorted;
+			//unsigned int i = 0u;
+			do {
+				sorted = _pbsn_sort(first, last, cmp);
+				//++i;
+			} while (!sorted);
+			//if (i != binary_logarithm(round_up_to_next_binary_power(last - first))) std::cout << "Early out " << i << std::endl;
+		}
+
+		template<typename I>
+		inline void _sort(I first, I last)
+		{
+			_sort(first, last, amp_algorithms::less<>());
+		}
+
+		template<typename I, typename C>
+		inline void _partial_sort(I first, I middle, I last, C cmp)
+		{
+			_nth_element(first, middle, last, cmp);
+			_sort(first, middle, move(cmp));
+		}
+
+		template<typename I>
+		inline void _partial_sort(I first, I middle, I last)
+		{
+			_partial_sort(first, middle, last, amp_algorithms::less<>());
+		}
+
+		//----------------------------------------------------------------------------
+		// swap, swap<T, N>, swap_ranges, iter_swap
+		//----------------------------------------------------------------------------
+
+		template<typename T>
+		void _swap(T& x, T& y) restrict(cpu, amp)
+		{
+			T t = move(x);
+			x = move(y);
+			y = move(t);
+		}
+
+		// TODO: Are there other overloads of swap() that should be implemented.
+		template<typename T, int N>
+		inline void _swap(T (&x)[N], T (&y)[N]) restrict(cpu, amp)
+		{
+			const concurrency::array_view<T> xa(N, &x[0]);
+			const concurrency::array_view<T> ya(N, &y[0]);
+			static_for<0u, N>()([=](auto&& i) {
+				_swap(xa[forward<decltype(i)>(i)], ya[forward<decltype(i)>(i)]);
+			});
+		}
+
+		template<typename I1, typename I2, int tsz>
+		inline pair<Difference_type<I1>,
+					Difference_type<I2>> _swap_ranges_in_tile_n(I1 first1,
+													            Difference_type<I1> n1,
+																I2 first2,
+																Difference_type<I2> n2,
+																const concurrency::tiled_index<tsz>& tidx) restrict(amp)
+		{
+			if (!positive(n1) || !positive(n2)) return make_pair(Difference_type<I1>(0), Difference_type<I2>(0));
+
+			const Difference_type<I1> n = _min(n1, n2);
+			for (Difference_type<I1> i = tidx.local[0]; i < n; i += tidx.tile_dim0) {
+				_iter_swap(first1 + i, first2 + i);
+			}
+			return make_pair(n, n);
+		}
+
+		template<typename I1, typename I2>
+		inline I2 _swap_ranges(I1 first1, I1 last1, I2 first2)
+		{
+			concurrency::parallel_for_each(concurrency::extent<1>(last1 - first1), [=](auto&& idx) restrict(amp) {
+				_iter_swap(first1 + idx[0], first2 + idx[0]);
+			});
+
+			return first2 + (last1 - first1);
+		}
+
+		template<typename I1, typename I2>
+		inline void _iter_swap(I1 i0, I2 i1) restrict(cpu, amp)
+		{
+			_swap(*i0, *i1);
+		}
+
+		//----------------------------------------------------------------------------
+		// transform (Unary)
+		//----------------------------------------------------------------------------
+
+		// The "UnaryFunction" functor needs to be callable as "func(ConstRandomAccessIterator::value_type)".
+		// The functor needs to be blittable and cannot contain any array, array_view, or textures.
+
+		template<typename I1, typename I2, typename Unary_op, int tsz>
+		inline I2 _transform_single_tile_n(I1 first,
+										   Difference_type<I1> n,
+										   I2 dest_first,
+										   const concurrency::tiled_index<tsz>& tidx,
+										   Unary_op op) restrict(amp)
+		{
+			if (!positive(n)) return dest_first;
+
+			if (tidx.local[0] < n) {
+				dest_first[tidx.local[0]] = op(first[tidx.local[0]]);
+			}
+
+			return dest_first + n;
+		}
+
+		template<typename I1, typename I2, typename I3, typename Binary_op, int tsz>
+		inline I3 _transform_single_tile_n(I1 first1,
+										   Difference_type<I1> n,
+										   I2 first2,
+										   I3 dest_first,
+										   const concurrency::tiled_index<tsz>& tidx,
+										   Binary_op op) restrict(amp)
+		{
+			if (!positive(n)) return dest_first;
+
+			if (tidx.local[0] < n) {
+				dest_first[tidx.local[0]] = op(first1[tidx.local[0]], first2[tidx.local[0]]);
+			}
+
+			return dest_first + n;
+		}
+
+		template<typename I1, typename I2, typename Unary_op, int tsz>
+		inline I2 _transform_in_tile_n(I1 first,
+									   Difference_type<I1> n,
+									   I2 dest_first,
+									   const concurrency::tiled_index<tsz>& tidx,
+									   Unary_op op) restrict(amp)
+		{
+			if (!positive(n)) return dest_first;
+
+			for (Difference_type<I1> i = 0; i < n; i += tidx.tile_dim0) {
+				const Difference_type<I1> m = _min(tidx.tile_dim0 * 1, n - i);
+				dest_first = _transform_single_tile_n(first + i, m, dest_first, tidx, op);
+			}
+
+			return dest_first;
+		}
+
+		template<typename I1, typename I2, typename I3, typename Binary_op, int tsz>
+		inline I3 _transform_in_tile_n(I1 first1,
+									   Difference_type<I1> n,
+									   I2 first2,
+									   I3 dest_first,
+									   const concurrency::tiled_index<tsz>& tidx,
+									   Binary_op op) restrict(amp)
+		{
+			if (!positive(n)) return dest_first;
+
+			for (Difference_type<I1> i = 0; i < n; i += tidx.tile_dim0) {
+				const Difference_type<I1> m = _min(tidx.tile_dim0 * 1, n - i);
+				dest_first = _transform_single_tile_n(first1 + i, m, first2 + i, dest_first, tidx, op);
+			}
+
+			return dest_first;
+		}
+
+		template<typename I1, typename I2, typename Unary_op>
+		inline I2 _transform(I1 first, I1 last, I2 dest_first, Unary_op op)
+		{
+			if (first == last) return dest_first;
+
+			concurrency::parallel_for_each(concurrency::extent<1>(last - first),
+										   [=, op = std::move(op)](auto&& idx) restrict(amp) {
+				dest_first[idx[0]] = op(first[idx[0]]);
+			});
+
+			return dest_first + (last - first);
+		}
+
+		// The "BinaryFunction" functor needs to be callable as "func(ConstRandomAccessIterator1::value_type,
+		// ConstRandomAccessIterator2::value_type)". The functor needs to be blittable and cannot
+		// contain any array, array_view, or textures.
+
+		template<typename I1, typename I2, typename I3, typename Binary_op>
+		inline I3 _transform(I1 first1, I1 last1, I2 first2, I3 dest_first, Binary_op op)
+		{
+			if (first1 == last1) return dest_first;
+
+			concurrency::parallel_for_each(concurrency::extent<1>(last1 - first1),
+										   [=, op = std::move(op)](auto&& idx) restrict(amp) {
+				dest_first[idx[0]] = op(first1[idx[0]], first2[idx[0]]);
+			});
+
+			return dest_first + (last1 - first1);
+		}
+
+		//----------------------------------------------------------------------------
+		// unique, unique_copy
+		//----------------------------------------------------------------------------
+
+		template<typename I, typename P, int tsz>
+		inline I _unique_single_tile_n(I first,
+									   Difference_type<I> n,
+									   const concurrency::tiled_index<tsz>& tidx,
+									   P p) restrict(amp)
+		{	// This assumes that n <= successor(tidx.tile_dim0)
+			tile_static Difference_type<I> tile_dx;
 			if (tidx.tile_origin == tidx.global) {
-				eg_off[tidx.tile] = Offsets(tile_eg.first + eg.first, tile_eg.second + eg.second);
+				tile_dx = Difference_type<I>(0);
 			}
-		});
 
-		return std::make_pair(first + eg_off[predecessor(eg_off.extent.size())].first, first + eg_off[predecessor(eg_off.extent.size())].second);
-	}
+			if (successor(tidx.local[0]) < n) {
+				const Value_type<I> x = *(first + tidx.local[0]);
+				const Value_type<I>	y = *(first + successor(tidx.local[0]));
 
-	template<typename T, typename C>
-	inline bool _compare_and_exchange(T&& x, T&& y, C&& cmp) restrict(amp)
-	{
-		if (cmp(y, x)) {
-			amp_stl_algorithms::swap(forward<T>(x), forward<T>(y));
-			return true;
-		}
-		return false;
-	}
+				if (!p(x, y)) {
+					first[concurrency::atomic_fetch_inc(&tile_dx)] = y;
+				}
+			}
 
-	template<typename I, typename C, int tsz>
-	inline bool _odd_even_sort_single_tile_n(I first, Difference_type<I> n, const concurrency::tiled_index<tsz>& tidx, C&& cmp) restrict(amp)
-	{	// TODO: this is unclean and not very nice, but since it is just a placeholder it will stay in during testing.
-		Difference_type<I> even_idx = twice(tidx.local[0]);
-		Difference_type<I> odd_idx = successor(twice(tidx.local[0]));
-
-		tile_static bool unsorted;
-		if (tidx.tile_origin == tidx.global) {
-			unsorted = false;
+			return first + tile_dx;
 		}
 
-		tile_static unsigned int swaps;
-		do {
-			tidx.barrier.wait_with_tile_static_memory_fence();
-
+		template<typename I, typename P, int tsz>
+		inline I _unique_in_tile_n(I first,
+								   Difference_type<I> n,
+								   const Value_type<I>& x0,
+								   const concurrency::tiled_index<tsz>& tidx,
+								   P p) restrict(amp)
+		{
+			tile_static Difference_type<I> tile_dx;
 			if (tidx.tile_origin == tidx.global) {
-				swaps = 0u;
+				tile_dx = Difference_type<I>(0);
 			}
 
-			tidx.barrier.wait_with_tile_static_memory_fence();
+			tile_static Value_type<I> tmp[successor(tidx.tile_dim0)];
 
-			if (successor(odd_idx) < n) {
-				if (_compare_and_exchange(*(first + odd_idx), *(first + successor(odd_idx)), forward<C>(cmp))) {
-					concurrency::atomic_fetch_inc(&swaps);
+			for (Difference_type<I> i = 0; i < n; i += tidx.tile_dim0) {
+				if (tidx.tile_origin == tidx.global) {
+					tmp[0] = positive(i) ? tmp[tidx.tile_dim0] : x0;
+				}
+				const auto m = _min(tidx.tile_dim0 * 1, n - i);
+				_copy_in_tile_n(first + i, m, tmp + 1, tidx);
+
+				const auto last_unique = _unique_single_tile_n(tmp, successor(m), tidx, p);
+				if (last_unique != tmp) {
+					_copy_in_tile(tmp, last_unique, first + tile_dx, tidx);
+					if (tidx.tile_origin == tidx.global) {
+						tile_dx += last_unique - tmp;
+					}
 				}
 			}
 
-			tidx.barrier.wait_with_tile_static_memory_fence();
+			return first + tile_dx;
+		}
 
-			if (successor(even_idx) < n) {
-				if (_compare_and_exchange(*(first + even_idx), *(first + successor(even_idx)), forward<C>(cmp))) {
-					concurrency::atomic_fetch_inc(&swaps);
+		template<typename I, typename P>
+		inline I _unique(I first, I last, P p)
+		{	// TODO: cleanup and optimisation.
+			if (first == last) return first;
+			if ((last - first) == Difference_type<I>(1)) return last;
+
+			const Difference_type<I> work_per_tile = Execution_parameters::work_per_tile(predecessor(last - first));
+
+			const auto dx = Execution_parameters::temporary_buffer(predecessor(last - first), last - first);
+			const auto tmp = Execution_parameters::temporary_buffer<Value_type<I>>(predecessor(last - first));
+			concurrency::parallel_for_each(tmp.extent, [=](auto&& idx) restrict(amp) {
+				const Difference_type<I> t = successor(idx[0] * work_per_tile);
+				tmp[idx] = first[predecessor(t)];
+			});
+
+			const auto compute_domain = Execution_parameters::tiled_domain(predecessor(last - first));
+			concurrency::parallel_for_each(compute_domain, [=, p = std::move(p)](auto&& tidx) restrict(amp) {
+				const Difference_type<I> t = successor(tidx.tile[0] * work_per_tile);
+				const auto n = _min(work_per_tile, last - first - t);
+
+				I last_unique = _unique_in_tile_n(first + t, n, tmp[tidx.tile], tidx, move(p));
+
+				if (positive(tidx.tile[0])) {
+					tile_static Difference_type<I> tile_dx;
+					if (tidx.tile_origin == tidx.global) {
+						do {
+							tile_dx = _uncached_load(&dx[predecessor(tidx.tile[0])]);
+						} while (tile_dx == (last - first));
+					}
+
+					if ((last_unique != (first + t)) && (tile_dx != t)) {
+						_copy_in_tile(last_unique - _min(last_unique - (first + t),t - tile_dx),
+									  last_unique,
+									  first + tile_dx,
+									  tidx);
+					}
+					last_unique = first + tile_dx + (last_unique - (first + t));
+				}
+
+				if (tidx.tile_origin == tidx.global) {
+					dx[tidx.tile] = last_unique - first;
+				}
+			});
+			return first + dx[predecessor(dx.extent.size())];
+		}
+
+		template<typename I>
+		inline I _unique(I first, I last)
+		{
+			return _unique(first, last, amp_algorithms::equal_to<>());
+		}
+
+		template<typename I1, typename I2, typename P, int tsz>
+		inline I2 _unique_copy_in_tile_n(I1 first,
+										 Difference_type<I1> n,
+										 I2 dest_first,
+										 Difference_type<I2>& dx,
+										 const concurrency::tiled_index<tsz>& tidx,
+										 P p) restrict(amp)
+		{
+			tile_static Difference_type<I2> tile_dx;
+			if (tidx.tile_origin == tidx.global) {
+				tile_dx = Difference_type<I2>(0);
+			}
+
+			tile_static Value_type<I2> tmp[successor(tidx.tile_dim0)];
+
+			for (Difference_type<I1> i = 1; i < n; i += tidx.tile_dim0) {
+				const auto m = _min(successor(tidx.tile_dim0), n - predecessor(i));
+				_copy_in_tile_n(first + predecessor(i), m, tmp, tidx);
+
+				const auto last_unique = _unique_single_tile_n(tmp, m, tidx, p);
+				if (last_unique != tmp) {
+					if (tidx.tile_origin == tidx.global) {
+						tile_dx = concurrency::atomic_fetch_add(&dx, last_unique - tmp);
+					}
+
+					_copy_in_tile(tmp, last_unique, dest_first + tile_dx, tidx);
 				}
 			}
 
-			tidx.barrier.wait_with_tile_static_memory_fence();
-
-			if ((tidx.tile_origin == tidx.global) && !unsorted && positive(swaps)) {
-				unsorted = true;
-			}
-
-			tidx.barrier.wait_with_tile_static_memory_fence();
-		} while (positive(swaps));
-
-		return unsorted;
-	}
-
-	template<typename I, typename C>
-	inline bool _odd_even_sort_tiles_pass(I first, I last, C&& cmp, bool even_pass = false)
-	{
-		concurrency::array_view<unsigned int> swaps(1);
-		concurrency::parallel_for_each(swaps.extent, [=](auto&&) restrict(amp) { swaps[0] = 0u; });
-
-		const auto compute_domain = _details::Execution_parameters::tiled_domain(half_nonnegative(last - first));
-		concurrency::parallel_for_each(compute_domain, [=, cmp = std::forward<C>(cmp)](auto&& tidx) restrict(amp) {
-			Difference_type<I> t = twice(tidx.tile_origin[0]) + (even_pass ? Difference_type<I>(0) : tidx.tile_dim0);
-			while (t < (last - first)) {
-				const auto n = amp_stl_algorithms::min(twice(tidx.tile_dim0), last - first - t);
-
-				tile_static Value_type<I> vals[twice(tidx.tile_dim0)];
-				_copy_single_tile(first + t, first + t + n, vals, tidx);
-
-				auto was_unsorted = _odd_even_sort_single_tile_n(vals, n, tidx, cmp);
-
-				_copy_single_tile(vals, vals + n, first + t, tidx);
-
-				if ((tidx.tile_origin == tidx.global) && was_unsorted && zero(swaps[0])) {
-					concurrency::atomic_fetch_inc(&swaps[0]);
-				}
-
-				t += twice(compute_domain.size());
-			}
-		});
-
-		return zero(swaps[0]);
-	}
-
-	template<typename I, typename C>
-	inline void _odd_even_sort_tiles_unguarded(I first, I last, C&& cmp)
-	{
-		bool sorted;
-		do {
-			sorted = _odd_even_sort_tiles_pass(first, last, std::forward<C>(cmp));
-			sorted = sorted && _odd_even_sort_tiles_pass(first, last, std::forward<C>(cmp), true);
-		}
-		while (!sorted);
-	}
-
-	template<typename I, typename C>
-	inline void _partition_into_tiles(I first, I last, C&& cmp)
-	{	// This is just a proof-of-concept. It is neither fast enough nor an optimal implementation of Quicksort - will be overhauled for release.
-		// The three-way partitioning triggers an annoying bug in current IHV drivers, and is therefore temporarily broken and disabled.
-		while (_details::Execution_parameters::tile_size() < (last - first)) {
-			const auto p = _median_of_3_random_amp(first, last, std::forward<C>(cmp));
-			const auto e = amp_stl_algorithms::partition(first, last, [=, cmp = std::forward<C>(cmp)](auto&& x) restrict(amp) { return cmp(x, *p); });//_partition_3_way_unguarded(first, last, _median_of_3_random_amp(first, last, std::forward<C>(cmp)), std::forward<C>(cmp));
-			const auto g = amp_stl_algorithms::partition(e, last, [=, cmp = std::forward<C>(cmp)](auto&& x) restrict(amp) { return !cmp(x, *p) && !cmp(*p, x); });
-
-			if ((g - e) == (last - first)) return;
-
-			if ((e - first) < (last - g)) {
-				_partition_into_tiles(first, e, std::forward<C>(cmp));
-				first = g;
-			}
-			else {
-				_partition_into_tiles(g, last, std::forward<C>(cmp));
-				last = e;
-			}
-		}
-	}
-
-	template<typename I, typename C>
-	inline void sort(I first, I last, C&& cmp)
-	{
-		if ((first == last) || (first == (last - 1))) return;
-
-		_partition_into_tiles(first, last, std::forward<C>(cmp));
-		if (!one(_details::Execution_parameters::tile_size())) {
-			_odd_even_sort_tiles_unguarded(first, last, cmp);
+			return dest_first + tile_dx;
 		}
 
-	}
+		template<typename I1, typename I2, typename P>
+		inline I2 _unique_copy(I1 first, I1 last, I2 dest_first, P p)
+		{
+			if (first == last) return dest_first;
+			if (std::next(first) == last) return amp_stl_algorithms::copy(first, last, dest_first);
 
-	template<typename I>
-	inline void sort(I first, I last)
-	{
-		return amp_stl_algorithms::sort(first, last, amp_algorithms::less<>());
-	}
+			concurrency::array_view<Difference_type<I2>> off(1);
+			concurrency::parallel_for_each(off.extent, [=](auto&&) restrict(amp) {
+				*dest_first = *first;
+				off[0] = Difference_type<I2>(1);
+			});
 
-    //----------------------------------------------------------------------------
-    // swap, swap<T, N>, swap_ranges, iter_swap
-    //----------------------------------------------------------------------------
+			const auto compute_domain = Execution_parameters::tiled_domain(predecessor(last - first));
+			const Difference_type<I1> work_per_tile = Execution_parameters::work_per_tile(predecessor(last - first));
 
-    template<typename T>
-    void swap(T& a, T& b) restrict(cpu, amp)
-    {
-        T tmp = amp_algorithms::move(a);
-        a = amp_algorithms::move(b);
-        b = amp_algorithms::move(tmp);
-    }
+			concurrency::parallel_for_each(compute_domain, [=, p = std::move(p)](auto&& tidx) restrict(amp) {
+				const Difference_type<I1> t = successor(tidx.tile[0] * work_per_tile); // Offset by 1 since we already populated *dest_first.
+				const Difference_type<I1> n = _min(successor(work_per_tile), last - first - predecessor(t));
+				_unique_copy_in_tile_n(first + predecessor(t), n, dest_first, off[0], tidx, move(p)); // Grab final element of prior block, correct length for the offsetting.
+			});
 
-    // TODO: Are there other overloads of swap() that should be implemented.
-    template<typename T, int N>
-    inline void swap(T (&a)[N], T (&b)[N]) restrict(cpu, amp)
-    {
-        for (int i = 0; i != N; ++i) {
-            amp_stl_algorithms::swap(a[i], b[i]);
-        }
-    }
+			return dest_first + off[0];
+		}
 
-    template<typename RandomAccessIterator1, typename RandomAccessIterator2>
-    inline RandomAccessIterator2 swap_ranges(RandomAccessIterator1 first1, RandomAccessIterator1 last1, RandomAccessIterator2 first2)
-    {
-        concurrency::parallel_for_each(concurrency::extent<1>(last1 - first1), [=] (auto&& idx) restrict(amp) {
-            amp_stl_algorithms::iter_swap(first1 + idx[0], first2 + idx[0]);
-        });
-
-        return first2 + (last1 - first1);
-    }
-
-    template<typename RandomAccessIterator1, typename RandomAccessIterator2>
-    inline void iter_swap(RandomAccessIterator1 a, RandomAccessIterator2 b) restrict(cpu, amp)
-    {
-        amp_stl_algorithms::swap(*a, *b);
-    }
-
-    //----------------------------------------------------------------------------
-    // transform (Unary)
-    //----------------------------------------------------------------------------
-
-    // The "UnaryFunction" functor needs to be callable as "func(ConstRandomAccessIterator::value_type)".
-    // The functor needs to be blittable and cannot contain any array, array_view, or textures.
-
-    template<typename ConstRandomAccessIterator,typename RandomAccessIterator, typename UnaryFunction>
-    inline RandomAccessIterator transform(ConstRandomAccessIterator first, ConstRandomAccessIterator last, RandomAccessIterator dest_first, UnaryFunction&& func)
-    {
-        concurrency::parallel_for_each(concurrency::extent<1>(last - first), [=, func = std::forward<UnaryFunction>(func)] (auto&& idx) restrict(amp) {
-            *(dest_first + idx[0]) = func(*(first + idx[0]));
-        });
-
-        return dest_first;
-    }
-
-    // The "BinaryFunction" functor needs to be callable as "func(ConstRandomAccessIterator1::value_type, ConstRandomAccessIterator2::value_type)".
-    // The functor needs to be blittable and cannot contain any array, array_view, or textures.
-
-    template<typename ConstRandomAccessIterator1, typename ConstRandomAccessIterator2,typename RandomAccessIterator, typename BinaryFunction>
-    inline RandomAccessIterator transform(ConstRandomAccessIterator1 first1, ConstRandomAccessIterator1 last1, ConstRandomAccessIterator2 first2, RandomAccessIterator dest_first, BinaryFunction&& func)
-    {
-        concurrency::parallel_for_each(concurrency::extent<1>(last1 - first1), [=, func = std::forward<BinaryFunction>(func)] (auto&& idx) restrict(amp) {
-            *(dest_first + idx[0]) = func(*(first1 + idx[0]), *(first2 + idx[0]));
-        });
-
-        return dest_first;
-    }
-
-    //----------------------------------------------------------------------------
-    // unique, unique_copy
-    //----------------------------------------------------------------------------
-
-	template<typename I, typename P>
-	inline I unique(I first, I last, P&& pred)
-	{
-		if (first == last) return last;
-
-		static constexpr auto tsz = _details::Execution_parameters::tile_size();
-		concurrency::array_view<unsigned int> locks(_details::Execution_parameters::tile_cnt(last - first));
-		concurrency::array_view<Difference_type<RandomAccessIterator>> off(1);
-
-		static constexpr unsigned int locked = 1u;
-		static constexpr unsigned int unlocked = 0u;
-		concurrency::parallel_for_each(locks.extent, [=](auto&& idx) restrict(amp) {
-			if (zero(idx[0])) off[0] = Difference_type<RandomAccessIterator>(0);
-			locks[idx] = locked;
-		});
-
-		const auto compute_domain = _details::Execution_parameters::tiled_domain(last - first);
-
-		return first + off[0];
-
-	}
-
-	template<typename I>
-	inline I unique(I first, I last)
-	{
-		return amp_stl_algorithms::unique(first, last, amp_algorithms::equal_to<>());
-	}
-}// namespace amp_stl_algorithms
+		template<typename I1, typename I2>
+		inline I2 _unique_copy(I1 first, I1 last, I2 dest_first)
+		{
+			return _unique_copy(first, last, dest_first, amp_algorithms::equal_to<>());
+		}
+	}	   // namespace amp_stl_algorithms
+}
+#endif // _XX_AMP_STL_ALGORITHMS_IMPL_INL_H_BUMPTZI

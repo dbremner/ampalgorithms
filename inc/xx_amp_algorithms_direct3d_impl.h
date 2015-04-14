@@ -21,15 +21,64 @@
 *---------------------------------------------------------------------------*/
 
 #pragma once
+#ifndef _XX_AMP_ALGORITHMS_DIRECT3D_IMPL_H_BUMPTZI
+#define _XX_AMP_ALGORITHMS_DIRECT3D_IMPL_H_BUMPTZI
+
+#include <amp_algorithms.h>
+
 #include <d3d11.h>
 #include <d3dcsx.h>
 #include <wrl\client.h>
 #pragma comment(lib, "d3dcsx")
 
-#include <amp_algorithms.h>
-
 namespace amp_algorithms
 {
+	//----------------------------------------------------------------------------
+	// max and min implemented as functors, needed by the DirectX infrastructure;
+	// this whole chunk should be considered for removal since we no longer need it
+	//----------------------------------------------------------------------------
+#ifdef max
+#error amp_algorithms encountered a definition of the macro max.
+#endif
+	template<typename T = void>
+	struct max : std::binary_function<T, T, T> {
+		/*constexpr*/ const T& operator()(const T &a, const T &b) const restrict(cpu, amp)
+		{
+			return amp_algorithms::less<>()(b, a) ? a : b;
+		}
+	};
+
+	template<>
+	struct max<void> {
+		template<typename T, typename U>
+		/*constexpr*/ std::common_type_t<T, U> operator()(T&& a, U&& b) const restrict(cpu, amp)
+		{
+			return amp_algorithms::less<>()(amp_stl_algorithms::forward<U>(b), amp_stl_algorithms::forward<T>(a)) ? amp_stl_algorithms::forward<T>(a)
+				: amp_stl_algorithms::forward<U>(b);
+		}
+	};
+
+#ifdef min
+#error amp_algorithms encountered a definition of the macro min.
+#endif
+
+	template<typename T = void>
+	struct min : std::binary_function<T, T, T> {
+		/*constexpr*/ const T& operator()(const T &a, const T &b) const restrict(cpu, amp)
+		{
+			return amp_algorithms::less<>()(b, a) ? b : a;
+		}
+	};
+	template<>
+	struct min<void> {
+		template<typename T, typename U>
+		/*constexpr*/ std::common_type_t<T, U> operator()(T&& a, U&& b) const restrict(cpu, amp)
+		{
+			return amp_algorithms::less<>()(amp_stl_algorithms::forward<U>(b), amp_stl_algorithms::forward<T>(a)) ? amp_stl_algorithms::forward<U>(b)
+				: amp_stl_algorithms::forward<T>(a);
+		};
+	};
+
     namespace direct3d
     {
         namespace _details
@@ -214,5 +263,6 @@ namespace amp_algorithms
                 static const D3DX11_SCAN_OPCODE dx_op_type = D3DX11_SCAN_OPCODE_XOR;
             };
         } // namespace amp_algorithms::direct3d::_details
-    } // namespace amp_algorithms::direct3d
-} // namespace amp_algorithms
+    }	  // namespace amp_algorithms::direct3d
+}		  // namespace amp_algorithms
+#endif	  // _XX_AMP_ALGORITHMS_DIRECT3D_IMPL_H_BUMPTZI

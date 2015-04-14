@@ -18,30 +18,37 @@
 *
 *---------------------------------------------------------------------------*/
 
+#pragma once
+#ifndef _STDAFX_H_BUMPTZI
+#define _STDAFX_H_BUMPTZI
+
 // TODO: Currently calls to amp_algorithms::copy() causes these warnings.
 
 //#define _SCL_SECURE_NO_WARNINGS         // (4996) function call with parameters that may be unsafe...
 //#pragma  warning (disable : 4267)       // Conversion from 'size_t' to 'int', possible loss of data
 //#pragma  warning (disable : 4244)       // 'argument' : conversion from '__int64' to 'int', possible loss of data
 
-#include <algorithm>
-#include <array>
-#include <functional>
-#include <iostream>
-#include <numeric>
-#include <random>
-#include <vector>
+//#include <algorithm>
+//#include <array>
+//#include <cmath>
+//#include <functional>
+//#include <exception>
+//#include <iostream>
+//#include <numeric>
+//#include <random>
+//#include <vector>
+//
+//// These are not required includes, they already included by the AMP library headers.
+//#include <amp.h>
+//#include <amp_graphics.h>
+//#include <cassert>
+//#include <d3d11.h>
+//#include <d3dcsx.h>
+//#include <iterator>
+//#include <sstream>
+//#include <type_traits>
+//#include <utility>
+//
+//#include <gtest\gtest.h>
 
-// These are not required includes, they already included by the AMP library headers.
-#include <amp.h>
-#include <amp_graphics.h>
-#include <assert.h>
-//#include <wrl\client.h>
-#include <d3d11.h>
-#include <d3dcsx.h>
-#include <iterator>
-#include <sstream>
-#include <type_traits>
-#include <utility>
-
-#include <gtest/gtest.h>
+#endif // _STDAFX_H_BUMPTZI

@@ -25,14 +25,18 @@
 #include <amp_stl_algorithms.h>
 #include "testtools.h"
 
-/*TEST(stl_iterator_tests, begin_end_array_view)
+#include <amp.h>
+
+TEST(stl_iterator_tests, begin_end_array_view)
 {
+	using namespace amp_stl_algorithms;
+
     std::vector<int> v1(6);
-    array_view<int> a1(6, v1);
+    concurrency::array_view<int> a1(6, v1);
     auto iter1 = begin(a1);
 	auto itern = end(a1);
 
-    array_view<const int> ar1 = a1;
+    concurrency::array_view<const int> ar1 = a1;
     auto iter2 = begin(ar1);
 
     auto iter3 = iter1++;
@@ -44,12 +48,14 @@
 
 TEST(stl_iterator_tests, cbegin_cend_array_view)
 {
+	using namespace amp_stl_algorithms;
+
 	std::vector<int> v1(6);
-	array_view<int> a1(6, v1);
+	concurrency::array_view<int> a1(6, v1);
 	auto iter1 = cbegin(a1);
 	auto itern = cend(a1);
 
-	array_view<const int> ar1 = a1;
+	concurrency::array_view<const int> ar1 = a1;
 	auto iter2 = cbegin(ar1);
 
 	auto iter3 = iter1++;
@@ -61,6 +67,8 @@ TEST(stl_iterator_tests, cbegin_cend_array_view)
 
 TEST(stl_iterator_tests, random_access_iterator_default_ctor)
 {
+	using namespace amp_stl_algorithms;
+
     array_view_iterator<int> iter1;
 	array_view_iterator<const int> iter2;
 
@@ -70,8 +78,10 @@ TEST(stl_iterator_tests, random_access_iterator_default_ctor)
 
 TEST(stl_iterator_tests, random_access_iterator_copy_assignment_comparison)
 {
+	using namespace amp_stl_algorithms;
+
     std::vector<int> v1(16);
-    array_view<int> a1(16, v1);
+    concurrency::array_view<int> a1(16, v1);
 
     // Copy constructor and assignment
     array_view_iterator<int> iter1 = begin(a1);
@@ -82,36 +92,40 @@ TEST(stl_iterator_tests, random_access_iterator_copy_assignment_comparison)
     ASSERT_TRUE(begin(a1) == iter1);
     ASSERT_TRUE(begin(a1) == iter2);
     ASSERT_TRUE(begin(a1) == iter3);
-    iter1++;
+    ++iter1;
     ASSERT_FALSE(begin(a1) == iter1);
 }
 
 TEST(stl_iterator_tests, mixed_random_access_iterator_copy_assignment_comparison)
 {
+	using namespace amp_stl_algorithms;
+
 	std::vector<int> v1(16);
-	array_view<int> a1(16, v1);
+	concurrency::array_view<int> a1(16, v1);
 
 	// Copy constructor and assignment
 	auto iter1 = cbegin(a1);
 	array_view_iterator<int> iter2 = begin(a1);
-	array_view_iterator<const int> iter3 = iter2;
+	const_array_view_iterator<int> iter3 = iter2;
 
 	// Equality/inequality comparisons
 	ASSERT_TRUE(begin(a1) == iter1);
 	ASSERT_TRUE(begin(a1) == iter2);
 	ASSERT_TRUE(begin(a1) == iter3);
-	iter2++;
+	++iter2;
 	ASSERT_FALSE(begin(a1) == iter2);
 }
 
 TEST(stl_iterator_tests, random_access_iterator_dereference)
 {
+	using namespace amp_stl_algorithms;
+
     std::vector<int> v1(16);
-    array_view<int> a1(16, v1);
+    concurrency::array_view<int> a1(16, v1);
     array_view_iterator<int> iter = begin(a1);
 
     // dereference
-    iter++;
+    ++iter;
     *iter = 10;
     ASSERT_EQ(10, a1[1]);
 
@@ -122,8 +136,10 @@ TEST(stl_iterator_tests, random_access_iterator_dereference)
 
 TEST(stl_iterator_tests, const_random_access_iterator_dereference)
 {
+	using namespace amp_stl_algorithms;
+
 	std::vector<int> v1(16);
-	array_view<const int> a1(16, v1);
+	concurrency::array_view<const int> a1(16, v1);
 	auto iter = begin(a1);
 
 	// dereference
@@ -137,12 +153,14 @@ TEST(stl_iterator_tests, const_random_access_iterator_dereference)
 
 TEST(stl_iterator_tests, random_access_iterator_increment_decrement)
 {
+	using namespace amp_stl_algorithms;
+
     std::vector<int> v1(16);
-    array_view<int> a1(16, v1);
+    concurrency::array_view<int> a1(16, v1);
     array_view_iterator<int> iter1 = begin(a1);
     array_view_iterator<int> iter2 = begin(a1);
 
-    iter1++;
+    ++iter1;
     iter1 = iter1 + 1;
     iter2 += 2;
     ASSERT_TRUE(iter1 == iter2);
@@ -159,8 +177,10 @@ TEST(stl_iterator_tests, random_access_iterator_increment_decrement)
 
 TEST(stl_iterator_tests, const_random_access_iterator_increment_decrement)
 {
+	using namespace amp_stl_algorithms;
+
 	std::vector<int> v1(16);
-	array_view<int> a1(16, v1);
+	concurrency::array_view<int> a1(16, v1);
 	auto iter1 = cbegin(a1);
 	auto iter2 = cbegin(a1);
 
@@ -181,8 +201,10 @@ TEST(stl_iterator_tests, const_random_access_iterator_increment_decrement)
 
 TEST(stl_iterator_tests, random_access_iterator_equality)
 {
+	using namespace amp_stl_algorithms;
+
     std::vector<int> v1(16);
-    array_view<int> a1(16, v1);
+    concurrency::array_view<int> a1(16, v1);
     array_view_iterator<int> iter1 = begin(a1);
     array_view_iterator<int> iter2 = begin(a1) + 1;
 
@@ -194,8 +216,10 @@ TEST(stl_iterator_tests, random_access_iterator_equality)
 
 TEST(stl_iterator_tests, mixed_random_access_iterator_equality)
 {
+	using namespace amp_stl_algorithms;
+
 	std::vector<int> v1(16);
-	array_view<int> a1(16, v1);
+	concurrency::array_view<int> a1(16, v1);
 	auto iter1 = begin(a1);
 	auto iter2 = cbegin(a1) + 1;
 
@@ -207,8 +231,10 @@ TEST(stl_iterator_tests, mixed_random_access_iterator_equality)
 
 TEST(stl_iterator_tests, random_access_iterator_increment)
 {
+	using namespace amp_stl_algorithms;
+
     std::vector<int> v1(16);
-    array_view<int> a1(16, v1);
+    concurrency::array_view<int> a1(16, v1);
     array_view_iterator<int> iter = begin(a1);
 
     *iter = 3;
@@ -221,13 +247,14 @@ TEST(stl_iterator_tests, random_access_iterator_increment)
 
 TEST(stl_iterator_tests, random_access_iterator_in_amp)
 {
+	using namespace amp_stl_algorithms;
+
     std::vector<int> v1(16);
-    array_view<int> a1(16, v1);
+    concurrency::array_view<int> a1(16, v1);
     std::vector<int> v2(16);
-    array_view<int> result(16, v2);
+    concurrency::array_view<int> result(16, v2);
     result.discard_data();
-    parallel_for_each(concurrency::extent<1>(1), [=](concurrency::index<1>) restrict(amp)
-    {
+    parallel_for_each(concurrency::extent<1>(1), [=](concurrency::index<1>) restrict(amp) {
         int id = 1;
 
         // can be default constructed.
@@ -245,7 +272,7 @@ TEST(stl_iterator_tests, random_access_iterator_in_amp)
         // equality/inequality comparisons
         bool res = iter3 == iter5;
         result[id++] = res;
-        iter3++;
+        ++iter3;
         res = iter3 != iter4;
         result[id++] = res;
 
@@ -260,7 +287,7 @@ TEST(stl_iterator_tests, random_access_iterator_in_amp)
         // increment, decrement, + , -, +=, -=
         auto iter6 = iter3;
         auto iter7 = iter3;
-        iter6++;
+        ++iter6;
         iter6 = iter6 + 1;
         iter7 += 2;
         result[id++] = (iter6 == iter7);
@@ -300,10 +327,12 @@ TEST(stl_iterator_tests, random_access_iterator_in_amp)
 
 TEST(stl_iterator_tests, mixed_random_access_iterator_in_amp)
 {
+	using namespace amp_stl_algorithms;
+
 	std::vector<int> v1(16);
-	array_view<int> a1(16, v1);
+	concurrency::array_view<int> a1(16, v1);
 	std::vector<int> v2(16);
-	array_view<int> result(16, v2);
+	concurrency::array_view<int> result(16, v2);
 	result.discard_data();
 	parallel_for_each(concurrency::extent<1>(1), [=](concurrency::index<1>) restrict(amp) {
 		int id = 1;
@@ -314,8 +343,8 @@ TEST(stl_iterator_tests, mixed_random_access_iterator_in_amp)
 
 		// can be copy constructed
 		array_view_iterator<int> iter3 = begin(a1);
-		array_view_iterator<const int> iter4(iter3);
-		array_view_iterator<const int> iter5 = iter4;
+		const_array_view_iterator<int> iter4(iter3);
+		const_array_view_iterator<int> iter5 = iter4;
 
 		// assignment
 		iter5 = iter3;
@@ -323,7 +352,7 @@ TEST(stl_iterator_tests, mixed_random_access_iterator_in_amp)
 		// equality/inequality comparisons
 		bool res = iter3 == iter5;
 		result[id++] = res;
-		iter3++;
+		++iter3;
 		res = iter3 != iter4;
 		result[id++] = res;
 
@@ -352,7 +381,7 @@ TEST(stl_iterator_tests, mixed_random_access_iterator_in_amp)
 
 		// <, >, <= >=
 		iter7 = iter3;
-		array_view_iterator<const int> iter8 = iter3 + 1;
+		const_array_view_iterator<int> iter8 = iter3 + 1;
 		result[id++] = (iter7 < iter8);
 		result[id++] = (iter7 <= iter8);
 		result[id++] = (iter8 > iter7);
@@ -374,4 +403,4 @@ TEST(stl_iterator_tests, mixed_random_access_iterator_in_amp)
 	{
 		ASSERT_EQ(1, v2[1 + i]);
 	}
-}*/
+}

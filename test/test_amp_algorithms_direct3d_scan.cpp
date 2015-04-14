@@ -19,9 +19,9 @@
 * This file contains unit tests for scan.
 *---------------------------------------------------------------------------*/
 
-#include "stdafx.h"
-
 #include <amp_algorithms_direct3d.h>
+#include <gtest/gtest.h>
+
 #include "testtools.h"
 
 using namespace concurrency;
@@ -63,8 +63,7 @@ public:
 //#endif
         accelerator().default_view.wait();
 
-        std::vector<T> in(row_count * column_count);
-        generate_data(in);
+        std::vector<T> in(generate_data<T>(row_count * column_count));
         std::vector<T> out(row_count * column_count);
         amp_algorithms::bitvector flags(column_count);
 
@@ -244,12 +243,10 @@ public:
 
 TEST_F(amp_algorithms_direct3d_scan_tests, check_hresult)
 {
-    try
-    {
+    try {
         amp_algorithms::direct3d::_details::_check_hresult(E_FAIL, "Failed!");
     }
-    catch (runtime_exception& ex)
-    {
+    catch (runtime_exception& ex) {
         EXPECT_EQ(E_FAIL, ex.get_error_code());
         ASSERT_STREQ("Failed! 0x80004005.", ex.what());
     }
@@ -401,7 +398,7 @@ TEST_F(amp_algorithms_direct3d_scan_tests, scan_other)
 //    // Check scan binding cleanup
 //    array_view<const unsigned int> view(input);
 //    concurrency::array<unsigned int> output(input.extent, input.accelerator_view);
-//    parallel_for_each(output.extent, [view, &output] (concurrency::index<1> idx) restrict(amp) 
+//    parallel_for_each(output.extent, [view, &output] (concurrency::index<1> idx) restrict(amp)
 //    {
 //        output[idx] = view[idx];
 //    });

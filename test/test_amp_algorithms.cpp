@@ -19,8 +19,10 @@
 * This file contains unit tests.
 *---------------------------------------------------------------------------*/
 
-#include "stdafx.h"
+//#include "stdafx.h"
+
 #include <amp_algorithms.h>
+#include <gtest/gtest.h>
 
 #include "testtools.h"
 
@@ -81,8 +83,7 @@ TEST_F(amp_algorithms_tests, transform_unary)
     });
     av_out.synchronize();
 
-    for (auto e : vec_out)
-    {
+    for (auto&& e : vec_out) {
         EXPECT_EQ(2 * 7, e);
     }
 }
@@ -107,13 +108,10 @@ TEST_F(amp_algorithms_tests, transform_binary)
 
     // Test "transform" by adding the two input elements
 
-    amp_algorithms::transform(av_in1, av_in2, av_out, [] (int x1, int x2) restrict(amp) {
-        return x1 + x2;
-    });
+    amp_algorithms::transform(av_in1, av_in2, av_out, amp_algorithms::plus<>());
     av_out.synchronize();
 
-    for (auto e : vec_out)
-    {
+    for (auto&& e : vec_out) {
         EXPECT_EQ(343 + 323, e);
     }
 }
@@ -121,14 +119,13 @@ TEST_F(amp_algorithms_tests, transform_binary)
 TEST_F(amp_algorithms_tests, fill_int)
 {
     std::vector<int> vec(1024);
-    array_view<int> av(1024, vec);
+    array_view<int> av(vec);
     av.discard_data();
 
     amp_algorithms::fill(av, 7);
     av.synchronize();
 
-    for (auto e : vec) 
-    {
+    for (auto&& e : vec) {
         EXPECT_EQ(7, e);
     }
 }
